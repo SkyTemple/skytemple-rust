@@ -76,6 +76,8 @@ pub struct MetaFrame {
     #[pyo3(get)]
     pub is_mosaic: bool,
     #[pyo3(get)]
+    pub pal_idx: u16,
+    #[pyo3(get)]
     pub resolution: Option<Resolution>,
 }
 
@@ -225,6 +227,7 @@ fn wrap_meta_frame(lib_ent: &lib::MetaFrame) -> MetaFrame {
         v_flip: lib_ent.v_flip,
         h_flip: lib_ent.h_flip,
         is_mosaic: lib_ent.is_mosaic,
+        pal_idx: lib_ent.pal_idx,
         resolution: resolution,
     }
 }
