@@ -1,0 +1,15 @@
+[package]
+name = "skytemple_rust"
+version = "0.1.0"
+authors = ["Marco 'Parakoopa' Köpcke <parakoopa@live.de>"]
+edition = "2018"
+repository = "https://github.com/SkyTemple/skytemple-rust"
+license = "MIT"
+
+[lib]
+crate-type = ["cdylib"]
+name = "skytemple_rust"
+
+[dependencies]
+pyo3 = { version = "0.10.1", features = ["extension-module"] }
+pmd_wan = "1.0.0"

@@ -1,0 +1,37 @@
+import os
+import sys
+from typing import Optional
+
+from PIL import Image
+from skytemple_rust.pmd_wan import MetaFrame, Image as PmdWanImage, Resolution, MetaFrameGroup
+
+from skytemple_rust import pmd_wan
+from skytemple_files.common.types.file_types import FileType
+
+
+PACK_FILE = '/home/marco/austausch/dev/skytemple/ppmd_statsutil/sky_rom/data/MONSTER/monster.bin'
+SPRITE_ID = 10
+
+with open(PACK_FILE, 'rb') as f:
+    bin_pack = FileType.BIN_PACK.deserialize(f.read())
+    for s_i, sprite in enumerate(bin_pack):
+        sprite_bin_decompressed = FileType.PKDPX.deserialize(sprite).decompress()
+        image = pmd_wan.WanImage(sprite_bin_decompressed)
+
+        meta_frame: MetaFrame
+        meta_frame_group: MetaFrameGroup
+        for mfg_i, meta_frame_group in enumerate(image.meta_frame_store.meta_frame_groups):
+            os.makedirs(f'/tmp/outimg/{s_i}/{mfg_i}', exist_ok=True)
+            for mf_i, meta_frame_id in enumerate(meta_frame_group.meta_frames_id):
+                meta_frame = image.meta_frame_store.meta_frames[meta_frame_id]
+                meta_frame_img: PmdWanImage = image.image_store.images[meta_frame.image_index]
+                resolution1: Optional[Resolution] = meta_frame.resolution
+                try:
+                    im = Image.frombuffer('RGBA',
+                                     (resolution1.x, resolution1.y),
+                                     bytearray(meta_frame_img.img),
+                                     'raw', 'RGBA', 0, 1)
+
+                    im.save(f'/tmp/outimg/{s_i}/{mfg_i}/{mf_i}.png')
+                except ValueError as e:
+                    print(f"Error converting {s_i}/{mfg_i}/{mf_i}", file=sys.stderr)
