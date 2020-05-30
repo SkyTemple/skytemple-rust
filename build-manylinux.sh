@@ -10,7 +10,7 @@ for PYBIN in /opt/python/{cp36-cp36m,cp37-cp37m}/bin; do
     export PYTHON_SYS_EXECUTABLE="$PYBIN/python"
 
     "${PYBIN}/pip" install -U setuptools wheel
-    "${PYBIN}/pip" install -r dev-dev-requirements.txt
+    "${PYBIN}/pip" install -r dev-requirements.txt
     "${PYBIN}/python" setup.py bdist_wheel
 done
 
