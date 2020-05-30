@@ -1,6 +1,6 @@
 [package]
 name = "skytemple_rust"
-version = "0.1.0"
+version = "0.0.1"
 authors = ["Marco 'Parakoopa' Köpcke <parakoopa@live.de>"]
 edition = "2018"
 repository = "https://github.com/SkyTemple/skytemple-rust"
@@ -13,9 +13,3 @@ name = "skytemple_rust"
 [dependencies]
 pyo3 = { version = "0.10.1", features = ["extension-module"] }
 pmd_wan = { git = "https://github.com/SkyTemple/pmd_wan", branch = "props-support" }
-
-[dependencies.image]
-version = "0.22.0"
-
-[dependencies.log]
-version = "0.4.8"

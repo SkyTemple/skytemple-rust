@@ -40,6 +40,10 @@ pub struct Image {
     #[pyo3(get)]
     pub img: Vec<u8>,
     #[pyo3(get)]
+    pub width: u32,
+    #[pyo3(get)]
+    pub height: u32,
+    #[pyo3(get)]
     pub z_index: u32,
 }
 
@@ -198,6 +202,8 @@ fn wrap_image_store(lib_ent: &lib::ImageStore) -> ImageStore {
 fn wrap_image(lib_ent: &lib::Image) -> Image {
     Image {
         img: lib_ent.img.to_vec(),
+        width: lib_ent.img.width(),
+        height: lib_ent.img.height(),
         z_index: lib_ent.z_index
     }
 }

@@ -19,6 +19,7 @@ setup(
     version=cargo_toml['package']['version'],
     rust_extensions=[RustExtension("skytemple_rust.pmd_wan", binding=Binding.PyO3)],
     packages=["skytemple_rust"],
+    package_data={"skytemple_rust": ["py.typed", "*.pyi"]},
     description='Binary Rust extension for skytemple-files',
     long_description=long_description,
     long_description_content_type='text/x-rst',
