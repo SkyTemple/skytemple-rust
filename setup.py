@@ -1,11 +1,7 @@
-import os
+__version__ = '0.0.1'
 
-import toml as toml
 from setuptools import setup
 from setuptools_rust import Binding, RustExtension
-
-with open(os.path.join(os.path.dirname(__file__), 'Cargo.toml'), 'r') as f:
-    cargo_toml = toml.load(f)
 
 # README read-in
 from os import path
@@ -16,7 +12,7 @@ with open(path.join(this_directory, 'README.rst'), encoding='utf-8') as f:
 
 setup(
     name="skytemple-rust",
-    version=cargo_toml['package']['version'],
+    version=__version__,
     rust_extensions=[RustExtension("skytemple_rust.pmd_wan", binding=Binding.PyO3)],
     packages=["skytemple_rust"],
     package_data={"skytemple_rust": ["py.typed", "*.pyi"]},
