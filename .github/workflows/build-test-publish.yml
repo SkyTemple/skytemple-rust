@@ -26,6 +26,10 @@ jobs:
       - name: Upgrade pip
         run: |
           python -m pip install --upgrade pip
+        # For some reasons AVX512 stage 1 support seems to be broken on the build server
+      - name: Setup envs
+        run: |
+          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
       - name: Build Python wheels
         uses: RalfG/python-wheels-manylinux-build@v0.3.3-manylinux2014_x86_64
         with:
