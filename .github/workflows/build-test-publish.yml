@@ -91,8 +91,8 @@ jobs:
       fail-fast: false
       matrix:
         include: [
-          { msystem: MINGW64, arch: x86_64, path: mingw64, rust_target: x86_64-pc-windows-gnu },
-          { msystem: MINGW32, arch: i686, path: mingw32, rust_target: i686-pc-windows-gnu }
+          { msystem: MINGW64, arch: x86_64, path: mingw64, rust_target: x86_64-pc-windows-gnu, lib_dir: /mingw64/lib/ },
+          { msystem: MINGW32, arch: i686, path: mingw32, rust_target: i686-pc-windows-gnu, lib_dir: /mingw32/lib/ }
         ]
     steps:
       - name: Install MSys2 and dependencies
@@ -143,6 +143,7 @@ jobs:
           PATH="$PATH:/c/Rust/.cargo/bin" python setup.py bdist_wheel
         env:
           CARGO_BUILD_TARGET: ${{ matrix.rust_target }}
+          PYO3_CROSS_LIB_DIR: ${{ matrix.lib_dir }}
       - name: Upload wheels
         uses: actions/upload-artifact@v2
         with:
