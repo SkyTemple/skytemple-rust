@@ -11,5 +11,5 @@ crate-type = ["cdylib"]
 name = "skytemple_rust"
 
 [dependencies]
-pyo3 = { version = "0.10.1", features = ["extension-module"] }
+pyo3 = { version = "0.13.2", features = ["extension-module"] }
 pmd_wan = "1.2.0"

@@ -316,11 +316,11 @@ impl WanImage {
 fn convert_error(err: lib::WanError) -> PyErr {
     match err {
         WanError::IOError(_) => 
-            exceptions::IOError::py_err(
+            exceptions::PyIOError::new_err(
                 "an io error happened"
             ),
         err =>
-            exceptions::ValueError::py_err(
+            exceptions::PyValueError::new_err(
                 format!("{}", err)
             ),
     }
