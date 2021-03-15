@@ -1,7 +1,7 @@
 use pyo3::prelude::*;
-use pmd_wan::wan as lib;
+use pmd_wan as lib;
 use std::io::Cursor;
-use pmd_wan::wan::WanError;
+use pmd_wan::WanError;
 use pyo3::exceptions;
 
 /// A PMD2 WAN sprite.
@@ -316,72 +316,12 @@ impl WanImage {
 fn convert_error(err: lib::WanError) -> PyErr {
     match err {
         WanError::IOError(_) => 
-            exceptions::IOError::py_err(
+            exceptions::PyIOError::new_err(
                 "an io error happened"
             ),
-        WanError::ImageIDPointBackButFirstImage => 
-            exceptions::ValueError::py_err(
-                "an image id point to the same than the previous one, but it is the first image"
-            ),
-        WanError::MetaFrameLessThanLessOne(id) => 
-            exceptions::ValueError::py_err(
-                format!("a metaframe is inferior to -1, but that is not valid (it actually is {})", id)
-            ),
-        WanError::InvalidOffset => 
-            exceptions::ValueError::py_err(
-                "in the creation of a meta frame store: the check for the offset of the pointer of the animation group are not valid!"
-            ),
-        WanError::InvalidResolution => 
-            exceptions::ValueError::py_err(
-                "the resolution was not found!!!"
-            ),
-        WanError::IncoherentPointerToImagePart => 
-            exceptions::ValueError::py_err(
-                "pointer to image parts are not coherent."
-            ),
-        WanError::NoZIndex => 
-            exceptions::ValueError::py_err(
-                "impossible to find a definied z_index (the image is probably empty)!!! aborting"
-            ),
-        WanError::ImpossibleAlphaLevel => 
-            exceptions::ValueError::py_err(
-                "an impossible alpha level was found in the picture !"
-            ),
-        WanError::NullImagePointer => 
-            exceptions::ValueError::py_err(
-                "an image data pointer is null !!!"
-            ),
-        WanError::ImageWithoutResolution => 
-            exceptions::ValueError::py_err(
-                "the image does not have a resolution"
-            ),
-        WanError::PaletteDontEndWithZero => 
-            exceptions::ValueError::py_err(
-                "the palette data doesn't end with 0s !!!"
-            ),
-        WanError::PaletteOOB => 
-            exceptions::ValueError::py_err(
-                "impossible to get a color in the palette, as this will do an OOB."
-            ),
-        WanError::CantFindColorInPalette => 
-            exceptions::ValueError::py_err(
-                "impossible to find the specified color in the palette!"
-            ),
-        WanError::InvalidSir0(value) => 
-            exceptions::ValueError::py_err(
-                format!("the sir0 header in invalid, expected SIR0, found {:?}", value)
-            ),
-        WanError::InvalidEndOfSir0Header(value) => 
-            exceptions::ValueError::py_err(
-                format!("the end of the sir0 header should be four 0, found {:?}", value)
-            ),
-        WanError::TypeOfSpriteUnknown(value) =>
-            exceptions::ValueError::py_err(
-                format!("the type of sprite is unknown (found the sprite type id {}, but this program only known sprite for [0, 1, 3])", value)
-            ),
-        WanError::InvalidColorNumber(value) =>
-            exceptions::ValueError::py_err(
-                format!("the 2 byte that indicate the number of color is invalid (found {}, expected 0 or 1)", value)
+        err =>
+            exceptions::PyValueError::new_err(
+                format!("{}", err)
             ),
     }
 }
