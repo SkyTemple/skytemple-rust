@@ -12,4 +12,4 @@ name = "skytemple_rust"
 
 [dependencies]
 pyo3 = { version = "0.10.1", features = ["extension-module"] }
-pmd_wan = { git = "https://github.com/SkyTemple/pmd_wan", branch = "props-support" }
+pmd_wan = "1.2.0"
