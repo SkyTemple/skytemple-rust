@@ -145,6 +145,7 @@ jobs:
           CARGO_BUILD_TARGET: ${{ matrix.rust_target }}
           PYO3_CROSS_LIB_DIR: ${{ matrix.lib_dir }}
           PYO3_CROSS_INCLUDE_DIR: ${{ matrix.include_dir }}
+          PYO3_CROSS_PYTHON_VERSION: "3.9"
       - name: Upload wheels
         uses: actions/upload-artifact@v2
         with:
