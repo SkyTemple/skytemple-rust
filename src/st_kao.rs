@@ -16,11 +16,37 @@
  * You should have received a copy of the GNU General Public License
  * along with SkyTemple.  If not, see <https://www.gnu.org/licenses/>.
  */
-pub mod python;
-#[cfg(feature = "no-python")]
-pub mod no_python;
 
-pub mod st_kao;
+use crate::python::*;
+
+#[pyclass(module = "st_kao")]
+#[derive(Clone)]
+pub struct Dummy {
+    test: String
+}
+
+#[pymethods]
+impl Dummy {
+    #[new]
+    pub fn new(value: u8) -> PyResult<Self> {
+        match value {
+            0 => Ok(Dummy {test: "1".to_string() }),
+            1 => Ok(Dummy {test: "2".to_string() }),
+            3 => Ok(Dummy {test: "3".to_string() }),
+            _ => Err(exceptions::PyValueError::new_err("no"))
+        }
+    }
+    pub fn get_test(&self) -> PyResult<&str> {
+        Ok(self.test.as_str())
+    }
+    pub fn set_test(&mut self, value: &str) {
+        self.test = value.to_string();
+    }
+}
 
 #[cfg(not(feature = "no-python"))]
-pub mod pmd_wan;
+#[pymodule]
+fn st_kao(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
+    m.add_class::<Dummy>()?;
+    Ok(())
+}

@@ -1,15 +1,19 @@
 [package]
 name = "skytemple_rust"
-version = "0.0.1"
-authors = ["Marco 'Parakoopa' Köpcke <parakoopa@live.de>"]
+version = "1.4.0"
+authors = ["Marco 'Capypara' Köpcke <hello@capypara.de>"]
 edition = "2018"
 repository = "https://github.com/SkyTemple/skytemple-rust"
-license = "MIT"
+license = "GPL-3.0-or-later"
 
 [lib]
-crate-type = ["cdylib"]
+crate-type = ["cdylib", "rlib"]
 name = "skytemple_rust"
+
+[features]
+no-python = []
 
 [dependencies]
 pyo3 = { version = "0.14.1", features = ["extension-module"] }
+skytemple_rust_macros = { path = "skytemple_rust_macros" }
 pmd_wan = "1.2.0"

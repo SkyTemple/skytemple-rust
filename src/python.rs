@@ -16,11 +16,11 @@
  * You should have received a copy of the GNU General Public License
  * along with SkyTemple.  If not, see <https://www.gnu.org/licenses/>.
  */
-pub mod python;
-#[cfg(feature = "no-python")]
-pub mod no_python;
-
-pub mod st_kao;
 
 #[cfg(not(feature = "no-python"))]
-pub mod pmd_wan;
+pub use pyo3::exceptions;
+#[cfg(not(feature = "no-python"))]
+pub use pyo3::prelude::*;
+
+#[cfg(feature = "no-python")]
+pub use crate::no_python::*;

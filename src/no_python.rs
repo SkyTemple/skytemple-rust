@@ -16,11 +16,33 @@
  * You should have received a copy of the GNU General Public License
  * along with SkyTemple.  If not, see <https://www.gnu.org/licenses/>.
  */
-pub mod python;
-#[cfg(feature = "no-python")]
-pub mod no_python;
+/** Definitions of a Pyo3 types without Python or Pyo3 */
+extern crate skytemple_rust_macros;
+pub use skytemple_rust_macros::*;
 
-pub mod st_kao;
+pub type PyResult<T> = Result<T, PyErr>;
 
-#[cfg(not(feature = "no-python"))]
-pub mod pmd_wan;
+#[derive(Debug)]
+#[allow(dead_code)]
+pub struct PyErr {
+    type_name: String,
+    value: String
+}
+
+pub mod exceptions {
+    use crate::no_python::PyErr;
+
+    macro_rules! impl_py_exception (
+        ($name:ident) => (
+            pub struct $name {}
+            impl $name {
+                pub fn new_err(value: &str) -> PyErr
+                {
+                    PyErr { type_name: String::from(stringify!($name)), value: String::from(value)}
+                }
+            }
+        );
+    );
+
+    impl_py_exception!(PyValueError);
+}

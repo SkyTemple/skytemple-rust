@@ -1,0 +1,29 @@
+on: [push]
+
+name: Build Pure Rust
+
+jobs:
+  build_with_python:
+    name: Build Release with PyO3
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+      - uses: actions-rs/cargo@v1
+        with:
+          command: build
+          args: --release
+  build_with_no_python:
+    name: Build Release without PyO3
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+      - uses: actions-rs/cargo@v1
+        with:
+          command: build
+          args: --release  --features no-python

@@ -16,11 +16,21 @@
  * You should have received a copy of the GNU General Public License
  * along with SkyTemple.  If not, see <https://www.gnu.org/licenses/>.
  */
-pub mod python;
-#[cfg(feature = "no-python")]
-pub mod no_python;
+/** Dummy macros for using skytemple_rust without Pyo3 */
+extern crate proc_macro;
+use proc_macro::TokenStream;
 
-pub mod st_kao;
+#[proc_macro_attribute]
+pub fn pyclass(_: TokenStream, item: TokenStream) -> TokenStream {
+    item
+}
 
-#[cfg(not(feature = "no-python"))]
-pub mod pmd_wan;
+#[proc_macro_attribute]
+pub fn pymethods(_: TokenStream, item: TokenStream) -> TokenStream {
+    item
+}
+
+#[proc_macro_attribute]
+pub fn new(_: TokenStream, item: TokenStream) -> TokenStream {
+    item
+}
