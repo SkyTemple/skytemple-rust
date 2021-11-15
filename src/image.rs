@@ -17,14 +17,16 @@
  * along with SkyTemple.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+use image::DynamicImage;
+
 #[cfg(not(feature = "no-python"))]
-pub use pyo3::exceptions;
+use pyo3::prelude::*;
+
+#[derive(FromPyObject)]
 #[cfg(not(feature = "no-python"))]
-pub use pyo3::prelude::*;
-#[cfg(not(feature = "no-python"))]
-pub use pyo3::types::PyType;
-#[cfg(not(feature = "no-python"))]
-pub use crate::python_image::*;
+pub struct InWrappedImage<'a>(pub &'a PyAny);
 
 #[cfg(feature = "no-python")]
-pub use crate::no_python::*;
+pub struct InWrappedImage(pub DynamicImage);
+
+pub struct OutWrappedImage(pub DynamicImage);

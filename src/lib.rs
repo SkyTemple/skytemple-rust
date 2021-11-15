@@ -1,3 +1,4 @@
+#![feature(in_band_lifetimes)]
 /*
  * Copyright 2021-2021 Parakoopa and the SkyTemple Contributors
  *
@@ -17,8 +18,11 @@
  * along with SkyTemple.  If not, see <https://www.gnu.org/licenses/>.
  */
 pub mod python;
+pub mod image;
 #[cfg(feature = "no-python")]
 pub mod no_python;
+#[cfg(not(feature = "no-python"))]
+mod python_image;
 
 pub mod st_kao;
 

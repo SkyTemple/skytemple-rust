@@ -18,7 +18,10 @@
  */
 /** Definitions of a Pyo3 types without Python or Pyo3 */
 extern crate skytemple_rust_macros;
+
+use image::DynamicImage;
 pub use skytemple_rust_macros::*;
+use crate::image::InWrappedImage;
 
 pub type PyResult<T> = Result<T, PyErr>;
 
@@ -27,6 +30,12 @@ pub type PyResult<T> = Result<T, PyErr>;
 pub struct PyErr {
     type_name: String,
     value: String
+}
+
+impl InWrappedImage {
+    pub fn unwrap(self) -> PyResult<DynamicImage> {
+        Ok(self.0)
+    }
 }
 
 pub mod exceptions {
@@ -45,4 +54,5 @@ pub mod exceptions {
     );
 
     impl_py_exception!(PyValueError);
+    impl_py_exception!(PyRuntimeError);
 }

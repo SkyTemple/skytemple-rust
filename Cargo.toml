@@ -17,3 +17,4 @@ no-python = []
 pyo3 = { version = "0.14.1", features = ["extension-module"] }
 skytemple_rust_macros = { path = "skytemple_rust_macros" }
 pmd_wan = "1.2.0"
+image = { version = "0.23.14" }

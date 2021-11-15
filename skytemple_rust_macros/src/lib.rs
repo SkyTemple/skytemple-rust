@@ -34,3 +34,8 @@ pub fn pymethods(_: TokenStream, item: TokenStream) -> TokenStream {
 pub fn new(_: TokenStream, item: TokenStream) -> TokenStream {
     item
 }
+
+#[proc_macro_attribute]
+pub fn pyo3(_: TokenStream, item: TokenStream) -> TokenStream {
+    item
+}
