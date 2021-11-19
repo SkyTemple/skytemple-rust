@@ -1,4 +1,3 @@
-#![feature(in_band_lifetimes)]
 /*
  * Copyright 2021-2021 Parakoopa and the SkyTemple Contributors
  *
@@ -17,22 +16,5 @@
  * You should have received a copy of the GNU General Public License
  * along with SkyTemple.  If not, see <https://www.gnu.org/licenses/>.
  */
-pub(crate) mod util;
-pub mod python;
-pub mod image;
-#[cfg(feature = "no-python")]
-pub mod no_python;
-#[cfg(not(feature = "no-python"))]
-mod python_image;
-
-pub mod compression;
-pub mod st_at_common;
-pub mod st_at3px;
-pub mod st_at4pn;
-pub mod st_at4px;
-pub mod st_atupx;
-pub mod st_pkdpx;
-pub mod st_kao;
-
-#[cfg(not(feature = "no-python"))]
-pub mod pmd_wan;
+pub mod custom_999;
+pub mod px;

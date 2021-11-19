@@ -1,6 +1,8 @@
 __version__ = '1.4.0'
 all_libs = [
-    'pmd_wan', 'st_kao'
+    'pmd_wan',
+    'st_at3px', 'st_at4pn', 'st_at4px', 'st_atupx', 'st_pkdpx',
+    'st_kao'
 ]
 
 from setuptools import setup

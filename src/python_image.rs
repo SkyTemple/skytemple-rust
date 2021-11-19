@@ -28,8 +28,8 @@ fn in_from_py<'a>(img: &'a InWrappedImage, py: Python<'a>) -> PyResult<&'a PyByt
         .getattr("BytesIO")?;
     let arr = bytesio
         .getattr("__new__")?
-        .call1(PyTuple::new(py, [bytesio]))?;
-    let args = PyTuple::new(py, [arr]);
+        .call1(PyTuple::new(py, vec![bytesio]))?;
+    let args = PyTuple::new(py, vec![arr]);
     let kwargs = PyDict::new(py);
     kwargs.set_item("format", "PNG")?;
     img.0.getattr("save")?.call(args, Option::Some(kwargs))?;
@@ -44,12 +44,12 @@ fn out_to_py<'a>(img: &'a OutWrappedImage, py: Python<'a>) -> PyResult<PyObject>
         Err(e) => return Err(exceptions::PyRuntimeError::new_err(format!("{:?}", e)))
     }
     let bytesio = PyModule::import(py, "io")?.getattr("BytesIO")?;
-    let buff = bytesio.getattr("__new__")?.call1(PyTuple::new(py, [bytesio]))?;
-    buff.getattr("__init__")?.call1(PyTuple::new(py, [PyBytes::new(py, &*src)]));
+    let buff = bytesio.getattr("__new__")?.call1(PyTuple::new(py, vec![bytesio]))?;
+    buff.getattr("__init__")?.call1(PyTuple::new(py, vec![PyBytes::new(py, &*src)]))?;
     let img = PyModule::import(py, "PIL.Image")?
         .getattr("open")?
-        .call1(PyTuple::new(py, [buff]))?;
-    return Ok(img.to_object(py));
+        .call1(PyTuple::new(py, vec![buff]))?;
+    Ok(img.to_object(py))
 }
 
 impl IntoPy<PyObject> for OutWrappedImage {

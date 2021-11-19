@@ -208,7 +208,7 @@ impl SpriteType {
     }
 }
 
-fn wrap_vec<T, U>(vector: &Vec<T>, convert_cb: fn (&T) -> U) -> Vec<U> {
+fn wrap_vec<T, U>(vector: &[T], convert_cb: fn (&T) -> U) -> Vec<U> {
     vector.iter().map(convert_cb).collect()
 }
 
@@ -253,7 +253,7 @@ fn wrap_meta_frame(lib_ent: &lib::MetaFrame) -> MetaFrame {
         h_flip: lib_ent.h_flip,
         is_mosaic: lib_ent.is_mosaic,
         pal_idx: lib_ent.pal_idx,
-        resolution: resolution,
+        resolution,
     }
 }
 

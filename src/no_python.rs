@@ -19,6 +19,9 @@
 /** Definitions of a Pyo3 types without Python or Pyo3 */
 extern crate skytemple_rust_macros;
 
+use std::error::Error;
+use std::fmt::{Display, Formatter};
+use std::io;
 use image::DynamicImage;
 pub use skytemple_rust_macros::*;
 use crate::image::InWrappedImage;
@@ -29,8 +32,28 @@ pub type PyResult<T> = Result<T, PyErr>;
 #[allow(dead_code)]
 pub struct PyErr {
     type_name: String,
-    value: String
+    value: String,
+    rust_source: Option<Box<dyn Error>>
 }
+
+impl Display for PyErr {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}: {}", self.type_name, self.value)
+    }
+}
+
+impl From<io::Error> for PyErr {
+    fn from(err: io::Error) -> Self {
+        let value = err.to_string();
+        Self {
+            type_name: "FromRust".to_string(),
+            rust_source: Some(Box::new(err)),
+            value
+        }
+    }
+}
+
+impl Error for PyErr {}
 
 impl InWrappedImage {
     pub fn unwrap(self) -> PyResult<DynamicImage> {
@@ -45,9 +68,9 @@ pub mod exceptions {
         ($name:ident) => (
             pub struct $name {}
             impl $name {
-                pub fn new_err(value: &str) -> PyErr
+                pub fn new_err<S>(value: S) -> PyErr where S: Into<String>
                 {
-                    PyErr { type_name: String::from(stringify!($name)), value: String::from(value)}
+                    PyErr { type_name: String::from(stringify!($name)), value: value.into(), rust_source: None}
                 }
             }
         );
