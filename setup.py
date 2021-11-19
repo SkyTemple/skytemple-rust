@@ -23,7 +23,7 @@ setup(
     package_data={"skytemple_rust": ["py.typed", "*.pyi"]},
     description='Binary Rust extension for skytemple-files',
     requirements=[
-        'Pillow >= 6.1.0',
+        #'Pillow >= 6.1.0',
     ],
     long_description=long_description,
     long_description_content_type='text/x-rst',
