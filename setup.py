@@ -1,9 +1,4 @@
 __version__ = '1.4.0'
-all_libs = [
-    'pmd_wan',
-    'st_at3px', 'st_at4pn', 'st_at4px', 'st_atupx', 'st_pkdpx',
-    'st_kao'
-]
 
 from setuptools import setup
 from setuptools_rust import Binding, RustExtension
@@ -18,7 +13,7 @@ with open(path.join(this_directory, 'README.rst'), encoding='utf-8') as f:
 setup(
     name="skytemple-rust",
     version=__version__,
-    rust_extensions=[RustExtension(f"skytemple_rust.{ x }", binding=Binding.PyO3) for x in all_libs],
+    rust_extensions=[RustExtension(f"skytemple_rust", binding=Binding.PyO3)],
     packages=["skytemple_rust"],
     package_data={"skytemple_rust": ["py.typed", "*.pyi"]},
     description='Binary Rust extension for skytemple-files',

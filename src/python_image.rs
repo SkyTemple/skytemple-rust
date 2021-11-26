@@ -1,3 +1,4 @@
+/// This crate converts our image models from/into PIL images for Python.
 /*
  * Copyright 2021-2021 Parakoopa and the SkyTemple Contributors
  *
@@ -16,45 +17,39 @@
  * You should have received a copy of the GNU General Public License
  * along with SkyTemple.  If not, see <https://www.gnu.org/licenses/>.
  */
-use image::{DynamicImage, ImageFormat};
+use bytes::Bytes;
 use pyo3::{exceptions, IntoPy, PyObject, Python};
 use pyo3::prelude::*;
-use pyo3::types::{PyBytes, PyDict, PyTuple};
-use crate::image::InWrappedImage;
-use crate::image::OutWrappedImage;
+use pyo3::types::PyTuple;
+use crate::image::{InWrappedImage, Raster};
+use crate::image::IndexedImage;
 
-fn in_from_py<'a>(img: &'a InWrappedImage, py: Python<'a>) -> PyResult<&'a PyBytes> {
-    let bytesio = PyModule::import(py, "io")?
-        .getattr("BytesIO")?;
-    let arr = bytesio
-        .getattr("__new__")?
-        .call1(PyTuple::new(py, vec![bytesio]))?;
-    let args = PyTuple::new(py, vec![arr]);
-    let kwargs = PyDict::new(py);
-    kwargs.set_item("format", "PNG")?;
-    img.0.getattr("save")?.call(args, Option::Some(kwargs))?;
-    let raw: &PyBytes = arr.getattr("getvalue")?.call0()?.cast_as()?;
-    Ok(raw)
-}
-
-fn out_to_py<'a>(img: &'a OutWrappedImage, py: Python<'a>) -> PyResult<PyObject> {
-    let mut src: Vec<u8> = Vec::new();
-    match img.0.write_to(&mut src, ImageFormat::Png) {
-        Ok(_) => (),
-        Err(e) => return Err(exceptions::PyRuntimeError::new_err(format!("{:?}", e)))
+fn in_from_py(img: InWrappedImage, py: Python) -> PyResult<(Vec<u8>, Vec<u8>, usize, usize)> {
+    if img.0.getattr(py, "mode")?.extract::<&str>(py)? != "P" {
+        return Err(exceptions::PyValueError::new_err("Expected an indexed image."))
     }
-    let bytesio = PyModule::import(py, "io")?.getattr("BytesIO")?;
-    let buff = bytesio.getattr("__new__")?.call1(PyTuple::new(py, vec![bytesio]))?;
-    buff.getattr("__init__")?.call1(PyTuple::new(py, vec![PyBytes::new(py, &*src)]))?;
-    let img = PyModule::import(py, "PIL.Image")?
-        .getattr("open")?
-        .call1(PyTuple::new(py, vec![buff]))?;
-    Ok(img.to_object(py))
+    let args = PyTuple::new(py, ["raw", "P"]);
+    let bytes: Vec<u8> = img.0.getattr(py, "tobytes")?.call1(py, args)?.extract(py)?;
+    let pal: Vec<u8> = img.0.getattr(py, "palette")?.getattr(py, "palette")?.extract(py)?;
+    Ok((bytes, pal, img.0.getattr(py, "width")?.extract(py)?, img.0.getattr(py, "height")?.extract(py)?))
 }
 
-impl IntoPy<PyObject> for OutWrappedImage {
+fn out_to_py(img: IndexedImage, py: Python) -> PyResult<PyObject> {
+    let args = PyTuple::new(py, [
+        "P".into_py(py), PyTuple::new(py, [img.0.1, img.0.2]).into_py(py), img.0.0.into_py(py),
+        "raw".into_py(py), "P".into_py(py), 0.into_py(py), 1.into_py(py)
+    ]);
+    let out_img = PyModule::import(py, "PIL.Image")?
+        .getattr("frombuffer")?
+        .call1(args)?;
+    let args = PyTuple::new(py, [img.1.into_py(py)]);
+    out_img.getattr("putpalette")?.call1(args)?;
+    Ok(out_img.to_object(py))
+}
+
+impl IntoPy<PyObject> for IndexedImage {
     fn into_py(self, py: Python) -> PyObject {
-        match out_to_py(&self, py) {
+        match out_to_py(self, py) {
             Ok(d) => d,
             Err(e) => {
                 println!("skytemple-rust: Critical error during image conversion:");
@@ -65,27 +60,17 @@ impl IntoPy<PyObject> for OutWrappedImage {
     }
 }
 
-impl InWrappedImage<'_> {
-    pub fn unwrap(&self) -> PyResult<DynamicImage> {
-        let mut ret: Option<DynamicImage> = Option::None;
-        let mut err: Option<PyErr> = Option::None;
-        Python::with_gil(|py| {
-            match in_from_py(self, py) {
-                Ok(x) => {
-                    match image::load_from_memory_with_format(x.as_bytes(), ImageFormat::Png) {
-                        Ok(x) => ret = Option::Some(x),
-                        Err(e) => err = Option::Some(exceptions::PyRuntimeError::new_err(format!("Internal error converting an image: {:?}", e)))
-                    }
-                },
-                Err(e) => err = Option::Some(e)
-            }
-        });
-        match ret {
-            Some(d) => Ok(d),
-            None => match err {
-                Some(e) => Err(e),
-                None => Err(exceptions::PyRuntimeError::new_err("Unexpected image conversion error."))
-            }
+impl InWrappedImage {
+    pub fn extract(self, py: Python) -> PyResult<IndexedImage> {
+        match in_from_py(self, py) {
+            Ok((raster, pal, width, height)) => {
+                Ok(IndexedImage(Raster(
+                    Bytes::from(raster), width, height),
+                    Bytes::from(pal)
+                ))
+            },
+            Err(e) => Err(e)
         }
     }
 }
+

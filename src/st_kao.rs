@@ -17,55 +17,95 @@
  * along with SkyTemple.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+use arr_macro::arr;
+use std::io::Cursor;
 use std::vec;
-use crate::image::InWrappedImage;
-use crate::image::OutWrappedImage;
+use bytes::Buf;
+use crate::image::{IndexedImage, InWrappedImage, Tile, TiledImage};
 use crate::python::*;
-#[cfg(not(feature = "no-python"))]
+#[cfg(feature = "python")]
 use pyo3::PyIterProtocol;
-#[cfg(not(feature = "no-python"))]
+#[cfg(feature = "python")]
 use pyo3::iter::IterNextOutput;
+use crate::st_at_common::{COMMON_AT_MUST_COMPRESS_3, CommonAt};
 
 #[pyclass(module = "st_kao")]
 #[derive(Clone)]
 pub struct KaoImage {
+    pal_data: Vec<u8>,
+    compressed_img_data: Vec<u8>
 }
 
 impl KaoImage {
-    fn new(source: InWrappedImage) -> PyResult<Self> {
-        todo!()
+    const KAO_IMG_PAL_B_SIZE: usize = 48;  // Size of KaoImage palette block in bytes (16*3)
+    const TILE_DIM: usize = 8;
+    const IMG_DIM: usize = 40;
+
+    pub fn new(raw_data: &[u8]) -> PyResult<Self> {
+        let cont_len: usize;
+        if let Some(x) = CommonAt::cont_size(&raw_data[Self::KAO_IMG_PAL_B_SIZE..], 0) {
+            cont_len = x as usize;
+        } else {
+            return Err(exceptions::PyValueError::new_err("Invalid Kao image data; image not an AT container."));
+        }
+        // palette size + at container size
+        Ok(Self {
+            pal_data: Vec::from(&raw_data[..Self::KAO_IMG_PAL_B_SIZE]),
+            compressed_img_data: Vec::from(&raw_data[Self::KAO_IMG_PAL_B_SIZE..Self::KAO_IMG_PAL_B_SIZE + cont_len])
+        })
     }
-    fn create_from_raw(cimg: &[u8], pal: &[u8]) -> PyResult<Self> {
-        todo!()
+    pub fn new_from_img(source: IndexedImage) -> PyResult<Self> {
+        let (pal, img) = Self::bitmap_to_kao(source)?;
+        Ok(Self {
+            compressed_img_data: img,
+            pal_data: pal
+        })
+    }
+    pub fn create_from_raw(cimg: &[u8], pal: &[u8]) -> PyResult<Self> {
+        Ok(Self {
+            pal_data: Vec::from(pal),
+            compressed_img_data: Vec::from(cimg)
+        })
+    }
+
+    fn bitmap_to_kao(source: IndexedImage) -> PyResult<(Vec<u8>, Vec<u8>)> {
+        let (pal, img) = TiledImage::native_to_tiled_seq(source, Self::TILE_DIM, Self::IMG_DIM)?;
+        Ok((Tile::unpack(pal), CommonAt::compress(&*img, COMMON_AT_MUST_COMPRESS_3.iter())?))
     }
 }
 
 #[pymethods]
 impl KaoImage {
-    #[cfg(not(feature = "no-python"))]
+    #[cfg(feature = "python")]
     #[classmethod]
     #[pyo3(name = "create_from_raw")]
     fn _create_from_raw(_cls: &PyType, cimg: &[u8], pal: &[u8]) -> PyResult<Self> {
         Self::create_from_raw(cimg, pal)
     }
-    fn get(&self) -> PyResult<OutWrappedImage> {
-        todo!()
+    pub fn get(&self) -> PyResult<IndexedImage> {
+        TiledImage::tiled_to_native_seq(
+            Tile::pack4bpp(CommonAt::decompress(&*self.compressed_img_data)?.into_iter()),
+            &self.pal_data, Self::TILE_DIM, Self::IMG_DIM
+        )
     }
-    fn size(&self) -> PyResult<u32> {
-        todo!()
+    pub fn size(&self) -> PyResult<usize> {
+        Ok(Self::KAO_IMG_PAL_B_SIZE + self.compressed_img_data.len())
     }
-    fn set(&mut self, img: InWrappedImage) -> PyResult<()> {
-        todo!()
+    pub fn set(&mut self, py: Python, source: InWrappedImage) -> PyResult<()> {
+        let (pal, img) = Self::bitmap_to_kao(source.extract(py)?)?;
+        self.pal_data = pal;
+        self.compressed_img_data = img;
+        Ok(())
     }
-    fn raw(&self) -> PyResult<(&[u8], &[u8])> {
-        todo!()
+    pub fn raw(&self) -> PyResult<(&[u8], &[u8])> {
+        Ok((&self.compressed_img_data[..], &self.pal_data[..]))
     }
 }
 
 #[pyclass(module = "st_kao")]
 #[derive(Clone)]
 pub struct Kao {
-    portraits: Vec<Vec<Option<KaoImage>>>
+    portraits: Vec<[Option<KaoImage>; Self::PORTRAIT_SLOTS]>
 }
 
 impl Kao {
@@ -89,13 +129,43 @@ impl Kao {
     const PORTRAIT_SLOTS: usize = 40;
 
     #[new]
-    pub fn new(data: &[u8]) -> PyResult<Self> {
-        todo!()
+    #[allow(clippy::needless_range_loop)]
+    pub fn new(raw_data: &[u8]) -> PyResult<Self> {
+        let mut data = Cursor::new(raw_data);
+        let mut portraits: Vec<[Option<KaoImage>; Self::PORTRAIT_SLOTS]> = Vec::with_capacity(1600);
+        // First 160 bytes are padding
+        data.advance(160);
+        let mut first_pointer = 0;
+        while first_pointer == 0 || data.position() < first_pointer {
+            let mut species: [Option<KaoImage>; Self::PORTRAIT_SLOTS] = arr![None; 40];
+            for i in 0..Self::PORTRAIT_SLOTS {
+                let pointer = data.get_i32_le();
+                if pointer > 0 {
+                    if first_pointer == 0 {
+                        first_pointer = pointer as u64;
+                    }
+                    species[i] = Some(KaoImage::new(&raw_data[pointer as usize..])?);
+                }
+            }
+            portraits.push(species);
+        }
+        if data.position() > first_pointer {
+            return Err(exceptions::PyValueError::new_err("Corrupt KAO TOC."));
+        }
+        Ok(Self { portraits })
     }
-    pub fn expand(&mut self, new_size: u32) -> PyResult<()> {
-        todo!()
+    pub fn expand(&mut self, new_size: usize) -> PyResult<()> {
+        if new_size < self.portraits.len() {
+            return Err(exceptions::PyValueError::new_err(format!(
+                "Can't reduce size from {} to {}", self.portraits.len(), new_size
+            )));
+        }
+        for _ in self.portraits.len()..new_size {
+            self.portraits.push(arr![None; 40]);
+        }
+        Ok(())
     }
-    #[cfg(not(feature = "no-python"))]
+    #[cfg(feature = "python")]
     #[pyo3(name = "get")]
     pub fn _get(slf: PyRef<Self>, index: usize, subindex: usize) -> PyResult<PyObject> {
         Ok(slf.get(index, subindex)?.to_owned().into_py(slf.py()))
@@ -114,12 +184,12 @@ impl Kao {
             format!("The index requested must be between 0 and {}", self.portraits.len())
         ))
     }
-    pub fn set_from_img(&mut self, index: usize, subindex: usize, img: InWrappedImage) -> PyResult<()> {
+    pub fn set_from_img(&mut self, py: Python, index: usize, subindex: usize, img: InWrappedImage) -> PyResult<()> {
         if index <= self.portraits.len() {
             if subindex < Self::PORTRAIT_SLOTS as usize {
                 match self.portraits[index][subindex].as_mut() {
-                    Some(x) => x.set(img)?,
-                    None => self.portraits[index][subindex] = Some(KaoImage::new(img)?)
+                    Some(x) => x.set(py, img)?,
+                    None => self.portraits[index][subindex] = Some(KaoImage::new_from_img(img.extract(py)?)?)
                 }
                 return Ok(())
             }
@@ -137,16 +207,16 @@ impl Kao {
         }
         Ok(())
     }
-    #[cfg(feature = "no-python")]
+    #[cfg(not(feature = "python"))]
     pub fn iter(&self, index: u32, subindex: u32) -> PyResult<KaoIterator> {
-        let mut reff = Box::new(self.portraits.clone().into_iter()
+        let mut reference = Box::new(self.portraits.clone().into_iter()
             .map(
-                |s| s.into_iter()
+                |s| s.to_vec().into_iter()
             ));
-        let first = reff.next();
+        let iter_outer = reference.next();
         Ok(KaoIterator {
-            reference: reff,
-            iter_outer: first,
+            reference,
+            iter_outer,
             i_outer: 0,
             i_inner: -1
         })
@@ -154,17 +224,17 @@ impl Kao {
 }
 
 #[pyproto]
-#[cfg(not(feature = "no-python"))]
+#[cfg(feature = "python")]
 impl PyIterProtocol for Kao {
     fn __iter__(slf: PyRef<Self>) -> PyResult<Py<KaoIterator>> {
-        let mut reff = Box::new(slf.portraits.clone().into_iter()
+        let mut reference = Box::new(slf.portraits.clone().into_iter()
             .map(
-                |s| s.into_iter()
+                |s| s.to_vec().into_iter()
             ));
-        let first = reff.next();
+        let iter_outer = reference.next();
         Py::new(slf.py(), KaoIterator {
-            reference: reff,
-            iter_outer: first,
+            reference,
+            iter_outer,
             i_outer: 0,
             i_inner: -1
         })
@@ -199,7 +269,7 @@ impl Iterator for KaoIterator {
 }
 
 #[pyproto]
-#[cfg(not(feature = "no-python"))]
+#[cfg(feature = "python")]
 impl PyIterProtocol for KaoIterator {
     fn __iter__(slf: PyRef<Self>) -> PyRef<Self> {
         slf
@@ -228,12 +298,14 @@ impl KaoWriter {
     }
 }
 
-#[cfg(not(feature = "no-python"))]
-#[pymodule]
-fn st_kao(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
+#[cfg(feature = "python")]
+pub(crate) fn create_st_kao_module(py: Python) -> PyResult<(&str, &PyModule)> {
+    let name: &'static str = "skytemple_rust.st_kao";
+    let m = PyModule::new(py, name)?;
     m.add_class::<KaoImage>()?;
     m.add_class::<Kao>()?;
     m.add_class::<KaoWriter>()?;
     m.add_class::<KaoIterator>()?;
-    Ok(())
+
+    Ok((name, m))
 }

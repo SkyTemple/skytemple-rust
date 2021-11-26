@@ -22,11 +22,13 @@ extern crate skytemple_rust_macros;
 use std::error::Error;
 use std::fmt::{Display, Formatter};
 use std::io;
-use image::DynamicImage;
 pub use skytemple_rust_macros::*;
-use crate::image::InWrappedImage;
+use crate::image::{IndexedImage, InWrappedImage};
 
 pub type PyResult<T> = Result<T, PyErr>;
+
+/// Dummy. Just pass this when you don't use Python.
+pub struct Python;
 
 #[derive(Debug)]
 #[allow(dead_code)]
@@ -56,7 +58,7 @@ impl From<io::Error> for PyErr {
 impl Error for PyErr {}
 
 impl InWrappedImage {
-    pub fn unwrap(self) -> PyResult<DynamicImage> {
+    pub fn extract(self, _py: Python) -> PyResult<IndexedImage> {
         Ok(self.0)
     }
 }

@@ -345,8 +345,9 @@ fn convert_error(err: lib::WanError) -> PyErr {
     }
 }
 
-#[pymodule]
-fn pmd_wan(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
+pub(crate) fn create_pmd_wan_module(py: Python) -> PyResult<(&str, &PyModule)> {
+    let name: &'static str = "skytemple_rust.pmd_wan";
+    let m = PyModule::new(py, name)?;
     m.add_class::<WanImage>()?;
     m.add_class::<ImageStore>()?;
     m.add_class::<Image>()?;
@@ -360,5 +361,5 @@ fn pmd_wan(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     m.add_class::<Palette>()?;
     m.add_class::<SpriteType>()?;
 
-    Ok(())
+    Ok((name, m))
 }

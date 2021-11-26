@@ -19,19 +19,19 @@
 pub struct StBytes(pub Vec<u8>);
 
 use bytes::{Bytes, BytesMut};
-#[cfg(not(feature = "no-python"))]
+#[cfg(feature = "python")]
 pub use pyo3::exceptions;
-#[cfg(not(feature = "no-python"))]
+#[cfg(feature = "python")]
 pub use pyo3::prelude::*;
-#[cfg(not(feature = "no-python"))]
+#[cfg(feature = "python")]
 use pyo3::types::PyBytes;
-#[cfg(not(feature = "no-python"))]
+#[cfg(feature = "python")]
 pub use pyo3::types::PyType;
-#[cfg(not(feature = "no-python"))]
+#[cfg(feature = "python")]
 pub use crate::python_image::*;
 
 /** Export Vec<u8> as bytes */
-#[cfg(not(feature = "no-python"))]
+#[cfg(feature = "python")]
 impl IntoPy<PyObject> for StBytes {
     fn into_py(self, py: Python) -> PyObject {
         PyBytes::new(py, &self.0).into()
@@ -52,6 +52,11 @@ impl From<BytesMut> for StBytes {
         Self(v.to_vec())
     }
 }
+impl From<StBytes> for Vec<u8> {
+    fn from(v: StBytes) -> Self {
+        v.0
+    }
+}
 
-#[cfg(feature = "no-python")]
+#[cfg(not(feature = "python"))]
 pub use crate::no_python::*;

@@ -32,13 +32,16 @@ pub struct Atupx {
 impl CompressionContainer for Atupx {}
 
 impl Atupx {
-    fn compress(data: &[u8]) -> PyResult<Self> {
+    pub fn compress(data: &[u8]) -> PyResult<Self> {
         let nine = Custom999Compressor::run(&mut Bytes::copy_from_slice(data));
         Ok(Self {
             len_comp: nine.len() as u16 + Self::DATA_START,
             data: nine.into(),
             len_decomp: data.len() as u32
         })
+    }
+    pub fn matches(data: &[u8], ) -> bool {
+        &data[0..5] == Self::MAGIC
     }
 }
 
@@ -60,23 +63,23 @@ impl Atupx {
     pub fn decompress(&self) -> PyResult<StBytes> {
         Ok(Custom999Decompressor::run(&self.data, self.len_comp).into())
     }
-    pub fn to_bytes(&self) -> PyResult<StBytes> {
+    pub fn to_bytes(&self) -> StBytes {
         let mut res = BytesMut::with_capacity(self.len_comp as usize);
         res.put(Bytes::from_static(Self::MAGIC));
         res.put_u16_le(self.len_comp);
         res.put_u32_le(self.len_decomp);
         res.put(self.data.clone());
         assert_eq!(self.len_comp as usize, res.len());
-        Ok(res.into())
+        res.into()
     }
-    #[cfg(not(feature = "no-python"))]
+    #[cfg(feature = "python")]
     #[classmethod]
     #[args(byte_offset = 0)]
     #[pyo3(name = "cont_size")]
     fn _cont_size(_cls: &PyType, data: &[u8], byte_offset: usize) -> u16 {
-        Self::cont_size(&mut Bytes::copy_from_slice(data), byte_offset)
+        Self::cont_size(&mut <&[u8]>::clone(&data), byte_offset)
     }
-    #[cfg(not(feature = "no-python"))]
+    #[cfg(feature = "python")]
     #[classmethod]
     #[pyo3(name = "compress")]
     fn _compress(_cls: &PyType, data: &[u8]) -> PyResult<Self> {
@@ -84,9 +87,11 @@ impl Atupx {
     }
 }
 
-#[cfg(not(feature = "no-python"))]
-#[pymodule]
-fn st_atupx(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
+#[cfg(feature = "python")]
+pub(crate) fn create_st_atupx_module(py: Python) -> PyResult<(&str, &PyModule)> {
+    let name: &'static str = "skytemple_rust.st_atupx";
+    let m = PyModule::new(py, name)?;
     m.add_class::<Atupx>()?;
-    Ok(())
+
+    Ok((name, m))
 }
