@@ -17,7 +17,7 @@
  * along with SkyTemple.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-use std::iter::{FromIterator, Map};
+use std::iter::FromIterator;
 use std::slice::ChunksExact;
 use std::vec::IntoIter;
 use bytes::{Buf, Bytes};
@@ -115,8 +115,8 @@ impl Iterator for FourBppIterator {
 pub type TilesGenerator<G> = Vec<PixelGenerator<G>>;
 pub type Tile = Vec<u8>;
 pub type Tiles = Vec<Tile>;
-pub type TiledImageDataSeq = (Tiles, Bytes);
-pub type TiledImageData = (Tiles, Bytes, Vec<TilemapEntry>);
+pub type TiledImageDataSeq = (Tiles, Vec<u8>);
+pub type TiledImageData = (Tiles, Vec<u8>, Vec<TilemapEntry>);
 
 #[derive(Default)]
 struct BuiltTile(usize, Tile);
@@ -137,23 +137,18 @@ impl TiledImage {
     ) -> PyResult<TiledImageDataSeq>
     {
         let (ptiledata, paldata, _) = Self::native_to_tiled(
-            n_img, 16, 1, tile_dim, img_width, img_height, 1, 0
+            n_img, 16, tile_dim, img_width, img_height, 1, 0
         )?;
-        Ok((ptiledata, paldata))
+        Ok((ptiledata, (&paldata[0..16 * 3]).to_vec()))
     }
 
     /// Note: Output images are 4bpp
     #[allow(clippy::too_many_arguments)]
     pub fn native_to_tiled(
-        n_img: IndexedImage, single_palette_size: u8, max_nb_palettes: usize,
-        tile_dim: usize, img_width: usize, img_height: usize, chunk_dim: usize, palette_offset: usize
+        n_img: IndexedImage, single_palette_size: u8, tile_dim: usize,
+        img_width: usize, img_height: usize, chunk_dim: usize, palette_offset: usize
     ) -> PyResult<TiledImageData>
     {
-        //--tiling_width=chunk_dim
-        //--tiling_height=chunk_dim
-        //--force_import=false
-        //--optimize=true
-        let max_len_pal: usize = single_palette_size as usize * max_nb_palettes;
         if n_img.0.1 != img_width || n_img.0.2 != img_height {
             return Err(exceptions::PyValueError::new_err(
                 format!("Can not convert PIL image to PMD tiled image: Image dimensions must be {}x{}px.", img_width, img_height)
@@ -255,7 +250,7 @@ impl TiledImage {
             )));
         }
 
-        Ok((final_tiles_with_sum.into_iter().map(|x| x.1).collect(), n_img.1, chunks))
+        Ok((final_tiles_with_sum.into_iter().map(|x| x.1).collect(), n_img.1.to_vec(), chunks))
     }
 
     pub fn tiled_to_native_seq<J>(
@@ -313,8 +308,8 @@ impl TiledImage {
 
     /// Search for the tile, or a flipped version of it, in tiles and return the index and flipped state
     /// Increases performance by comparing the bytes sum of each tile before actually compare them
-    fn _search_for_tile_with_sum(tiles: &Vec<BuiltTile>, needle: &BuiltTile, tile_dim: usize) -> (Option<usize>, bool, bool) {
-        for (i, candidate) in tiles.into_iter().enumerate() {
+    fn _search_for_tile_with_sum(tiles: &[BuiltTile], needle: &BuiltTile, tile_dim: usize) -> (Option<usize>, bool, bool) {
+        for (i, candidate) in tiles.iter().enumerate() {
             if candidate.0 == needle.0 {
                 if candidate.1 == needle.1 {
                     return (Some(i), false, false);
@@ -335,7 +330,7 @@ impl TiledImage {
     /// Flip all pixels in tile on the x-axis
     fn _flip_tile_x(tile: &Tile, tile_dim: usize) -> Tile {
         let mut tile_flipped: Tile = init_default_vec(tile.len());
-        for (i, b) in tile.into_iter().enumerate() {
+        for (i, b) in tile.iter().enumerate() {
             let row_idx = i * 2 % tile_dim;
             let col_idx = i * 2 / tile_dim;
             tile_flipped[(col_idx * tile_dim + (tile_dim - 1 - row_idx)) / 2] = (b & 0x0F) << 4 | (b & 0xF0) >> 4;
@@ -346,7 +341,7 @@ impl TiledImage {
     /// Flip all pixels in tile on the y-axis
     fn _flip_tile_y(tile: &Tile, tile_dim: usize) -> Tile {
         let mut tile_flipped: Tile = init_default_vec(tile.len());
-        for (i, b) in tile.into_iter().enumerate() {
+        for (i, b) in tile.iter().enumerate() {
             let row_idx = i * 2 % tile_dim;
             let col_idx = i * 2 / tile_dim;
             tile_flipped[((tile_dim - 1 - col_idx) * tile_dim + row_idx) / 2] = *b;

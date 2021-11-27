@@ -82,7 +82,7 @@ impl At4pn {
 
 #[cfg(feature = "python")]
 pub(crate) fn create_st_at4pn_module(py: Python) -> PyResult<(&str, &PyModule)> {
-    let name: &'static str = "skytemple_rust.st_a4pn";
+    let name: &'static str = "skytemple_rust.st_at4pn";
     let m = PyModule::new(py, name)?;
     m.add_class::<At4pn>()?;
 

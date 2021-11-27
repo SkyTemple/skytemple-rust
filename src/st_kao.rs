@@ -20,7 +20,7 @@
 use arr_macro::arr;
 use std::io::Cursor;
 use std::vec;
-use bytes::Buf;
+use bytes::{Buf, BufMut};
 use crate::image::{IndexedImage, InWrappedImage, PixelGenerator, TiledImage};
 use crate::python::*;
 #[cfg(feature = "python")]
@@ -56,6 +56,7 @@ impl KaoImage {
     }
     pub fn new_from_img(source: IndexedImage) -> PyResult<Self> {
         let (pal, img) = Self::bitmap_to_kao(source)?;
+        assert_eq!(Self::KAO_IMG_PAL_B_SIZE, pal.len());
         Ok(Self {
             compressed_img_data: img,
             pal_data: pal
@@ -66,6 +67,10 @@ impl KaoImage {
             pal_data: Vec::from(pal),
             compressed_img_data: Vec::from(cimg)
         })
+    }
+
+    pub fn iter(&self) -> impl Iterator<Item=u8> {
+        self.pal_data.clone().into_iter().chain(self.compressed_img_data.clone().into_iter())
     }
 
     fn bitmap_to_kao(source: IndexedImage) -> PyResult<(Vec<u8>, Vec<u8>)> {
@@ -93,6 +98,7 @@ impl KaoImage {
     }
     pub fn set(&mut self, py: Python, source: InWrappedImage) -> PyResult<()> {
         let (pal, img) = Self::bitmap_to_kao(source.extract(py)?)?;
+        assert_eq!(Self::KAO_IMG_PAL_B_SIZE, pal.len());
         self.pal_data = pal;
         self.compressed_img_data = img;
         Ok(())
@@ -111,6 +117,7 @@ pub struct Kao {
 #[pymethods]
 impl Kao {
     const PORTRAIT_SLOTS: usize = 40;
+    const TOC_PADDING: usize = 160;
 
     #[new]
     #[allow(clippy::needless_range_loop)]
@@ -118,7 +125,7 @@ impl Kao {
         let mut data = Cursor::new(raw_data);
         let mut portraits: Vec<[Option<Py<KaoImage>>; Self::PORTRAIT_SLOTS]> = Vec::with_capacity(1600);
         // First 160 bytes are padding
-        data.advance(160);
+        data.advance(Self::TOC_PADDING);
         let mut first_pointer = 0;
         while first_pointer == 0 || data.position() < first_pointer {
             let mut species: [Option<Py<KaoImage>>; Self::PORTRAIT_SLOTS] = arr![None; 40];
@@ -276,17 +283,43 @@ impl PyIterProtocol for KaoIterator {
 
 #[pyclass(module = "st_kao")]
 #[derive(Clone)]
-pub struct KaoWriter {
-}
+pub struct KaoWriter; // No fields.
 
 #[pymethods]
 impl KaoWriter {
+    #[allow(clippy::new_without_default)]
     #[new]
-    pub fn new() -> PyResult<Self> {
-        todo!()
+    pub fn new() -> Self {
+        Self
     }
-    pub fn write(&self, model: Kao) -> PyResult<&[u8]> {
-        todo!()
+    pub fn write(&self, model: Kao, py: Python) -> PyResult<Py<PyBytes>> {
+        let toc_len = Kao::TOC_PADDING + (model.portraits.len() * Kao::PORTRAIT_SLOTS * 4);
+        let mut toc: Vec<u8> = Vec::with_capacity(toc_len);
+        toc.put_slice(&[0; Kao::TOC_PADDING]);
+        let mut current_image_end = toc_len as i32;
+        let mut portrait_data = model.portraits
+            .into_iter()
+            .flatten()
+            .filter_map(|opt| {
+                match opt {
+                    None => {
+                        // Write TOC
+                        toc.put_i32_le(-current_image_end);
+                        None
+                    },
+                    Some(v) => {
+                        // Write TOC
+                        toc.put_i32_le(current_image_end);
+                        let data: Vec<u8> = v.extract::<KaoImage>(py).unwrap().iter().collect();
+                        current_image_end += data.len() as i32;
+                        Some(data)
+                    }
+                }
+            })
+            .flatten()
+            .collect::<Vec<u8>>();
+        toc.append(&mut portrait_data);
+        Ok(Py::from(PyBytes::new(py, &toc)))
     }
 }
 

@@ -24,7 +24,7 @@ pub use pyo3::exceptions;
 #[cfg(feature = "python")]
 pub use pyo3::prelude::*;
 #[cfg(feature = "python")]
-use pyo3::types::PyBytes;
+pub use pyo3::types::PyBytes;
 #[cfg(feature = "python")]
 pub use pyo3::types::PyType;
 #[cfg(feature = "python")]
