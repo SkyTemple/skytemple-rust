@@ -28,6 +28,7 @@ use crate::image::{IndexedImage, InWrappedImage};
 pub type PyResult<T> = Result<T, PyErr>;
 
 /// Dummy. Just pass this when you don't use Python.
+#[derive(Copy, Clone)]
 pub struct Python;
 
 #[derive(Debug)]
@@ -60,6 +61,27 @@ impl Error for PyErr {}
 impl InWrappedImage {
     pub fn extract(self, _py: Python) -> PyResult<IndexedImage> {
         Ok(self.0)
+    }
+}
+
+/// This would normally be a reference to an object on the Python heap.
+/// If not using Python, this is a container that clones(!) instead.
+///
+/// TODO: If we could somehow turn this into a "reference generator" that'd be great.
+///
+/// NOTE FOR CONTRIBUTORS:
+///   Make sure your implementations are compatible with this restricted version of Py.
+#[derive(Clone)]
+pub struct Py<T>(T) where T: Clone;
+impl<T> Py<T> where T: Clone {
+    pub fn new(_: Python, obj: T) -> PyResult<Self> {
+        Ok(Py(obj))
+    }
+    pub fn extract<U>(&self, _: Python) -> PyResult<T> {  // where T: U (!!)
+        Ok(self.0.clone())
+    }
+    pub fn clone_ref(&self, _: Python) -> Self {
+        self.clone()
     }
 }
 

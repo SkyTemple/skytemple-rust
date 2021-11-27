@@ -21,7 +21,7 @@ use arr_macro::arr;
 use std::io::Cursor;
 use std::vec;
 use bytes::Buf;
-use crate::image::{IndexedImage, InWrappedImage, Tile, TiledImage};
+use crate::image::{IndexedImage, InWrappedImage, PixelGenerator, TiledImage};
 use crate::python::*;
 #[cfg(feature = "python")]
 use pyo3::PyIterProtocol;
@@ -69,8 +69,8 @@ impl KaoImage {
     }
 
     fn bitmap_to_kao(source: IndexedImage) -> PyResult<(Vec<u8>, Vec<u8>)> {
-        let (pal, img) = TiledImage::native_to_tiled_seq(source, Self::TILE_DIM, Self::IMG_DIM)?;
-        Ok((Tile::unpack(pal), CommonAt::compress(&*img, COMMON_AT_MUST_COMPRESS_3.iter())?))
+        let (img, pal) = TiledImage::native_to_tiled_seq(source, Self::TILE_DIM, Self::IMG_DIM, Self::IMG_DIM)?;
+        Ok((pal.to_vec(), CommonAt::compress(&TiledImage::unpack_tiles::<Vec<u8>>(img), COMMON_AT_MUST_COMPRESS_3.iter())?))
     }
 }
 
@@ -84,8 +84,8 @@ impl KaoImage {
     }
     pub fn get(&self) -> PyResult<IndexedImage> {
         TiledImage::tiled_to_native_seq(
-            Tile::pack4bpp(CommonAt::decompress(&*self.compressed_img_data)?.into_iter()),
-            &self.pal_data, Self::TILE_DIM, Self::IMG_DIM
+            PixelGenerator::pack4bpp(&CommonAt::decompress(&self.compressed_img_data)?, Self::TILE_DIM),
+            &self.pal_data, Self::TILE_DIM, Self::IMG_DIM, Self::IMG_DIM
         )
     }
     pub fn size(&self) -> PyResult<usize> {
@@ -105,23 +105,7 @@ impl KaoImage {
 #[pyclass(module = "st_kao")]
 #[derive(Clone)]
 pub struct Kao {
-    portraits: Vec<[Option<KaoImage>; Self::PORTRAIT_SLOTS]>
-}
-
-impl Kao {
-    pub fn get(&self, index: usize, subindex: usize) -> PyResult<&Option<KaoImage>> {
-        if index <= self.portraits.len() {
-            if subindex < Self::PORTRAIT_SLOTS {
-                return Ok(&self.portraits[index][subindex])
-            }
-            return Err(exceptions::PyValueError::new_err(
-                format!("The subindex requested must be between 0 and {}", Self::PORTRAIT_SLOTS)
-            ))
-        }
-        Err(exceptions::PyValueError::new_err(
-            format!("The index requested must be between 0 and {}", self.portraits.len())
-        ))
-    }
+    portraits: Vec<[Option<Py<KaoImage>>; Self::PORTRAIT_SLOTS]>
 }
 
 #[pymethods]
@@ -130,21 +114,21 @@ impl Kao {
 
     #[new]
     #[allow(clippy::needless_range_loop)]
-    pub fn new(raw_data: &[u8]) -> PyResult<Self> {
+    pub fn new(raw_data: &[u8], py: Python) -> PyResult<Self> {
         let mut data = Cursor::new(raw_data);
-        let mut portraits: Vec<[Option<KaoImage>; Self::PORTRAIT_SLOTS]> = Vec::with_capacity(1600);
+        let mut portraits: Vec<[Option<Py<KaoImage>>; Self::PORTRAIT_SLOTS]> = Vec::with_capacity(1600);
         // First 160 bytes are padding
         data.advance(160);
         let mut first_pointer = 0;
         while first_pointer == 0 || data.position() < first_pointer {
-            let mut species: [Option<KaoImage>; Self::PORTRAIT_SLOTS] = arr![None; 40];
+            let mut species: [Option<Py<KaoImage>>; Self::PORTRAIT_SLOTS] = arr![None; 40];
             for i in 0..Self::PORTRAIT_SLOTS {
                 let pointer = data.get_i32_le();
                 if pointer > 0 {
                     if first_pointer == 0 {
                         first_pointer = pointer as u64;
                     }
-                    species[i] = Some(KaoImage::new(&raw_data[pointer as usize..])?);
+                    species[i] = Some(Py::new(py, KaoImage::new(&raw_data[pointer as usize..])?)?);
                 }
             }
             portraits.push(species);
@@ -165,12 +149,20 @@ impl Kao {
         }
         Ok(())
     }
-    #[cfg(feature = "python")]
-    #[pyo3(name = "get")]
-    pub fn _get(slf: PyRef<Self>, index: usize, subindex: usize) -> PyResult<PyObject> {
-        Ok(slf.get(index, subindex)?.to_owned().into_py(slf.py()))
+    pub fn get(&self, py: Python, index: usize, subindex: usize) -> PyResult<Option<Py<KaoImage>>> {
+        if index < self.portraits.len() {
+            if subindex < Self::PORTRAIT_SLOTS {
+                return return_option(py, &self.portraits[index][subindex]);
+            }
+            return Err(exceptions::PyValueError::new_err(
+                format!("The subindex requested must be between 0 and {}", Self::PORTRAIT_SLOTS)
+            ))
+        }
+        Err(exceptions::PyValueError::new_err(
+            format!("The index requested must be between 0 and {}", self.portraits.len())
+        ))
     }
-    pub fn set(&mut self, index: usize, subindex: usize, img: KaoImage) -> PyResult<()> {
+    pub fn set(&mut self, index: usize, subindex: usize, img: Py<KaoImage>) -> PyResult<()> {
         if index <= self.portraits.len() {
             if subindex < Self::PORTRAIT_SLOTS as usize {
                 self.portraits[index][subindex] = Some(img);
@@ -188,8 +180,8 @@ impl Kao {
         if index <= self.portraits.len() {
             if subindex < Self::PORTRAIT_SLOTS as usize {
                 match self.portraits[index][subindex].as_mut() {
-                    Some(x) => x.set(py, img)?,
-                    None => self.portraits[index][subindex] = Some(KaoImage::new_from_img(img.extract(py)?)?)
+                    Some(x) => x.extract::<KaoImage>(py)?.set(py, img)?,
+                    None => self.portraits[index][subindex] = Some(Py::new(py, KaoImage::new_from_img(img.extract(py)?)?)?)
                 }
                 return Ok(())
             }
@@ -243,14 +235,14 @@ impl PyIterProtocol for Kao {
 
 #[pyclass(module = "st_kao", unsendable)]
 pub struct KaoIterator {
-    reference: Box<dyn Iterator<Item=std::vec::IntoIter<Option<KaoImage>>>>,
-    iter_outer: Option<vec::IntoIter<Option<KaoImage>>>,
+    reference: Box<dyn Iterator<Item=std::vec::IntoIter<Option<Py<KaoImage>>>>>,
+    iter_outer: Option<vec::IntoIter<Option<Py<KaoImage>>>>,
     i_outer: u32,
     i_inner: i32
 }
 
 impl Iterator for KaoIterator {
-    type Item = (u32, u32, Option<KaoImage>);
+    type Item = (u32, u32, Option<Py<KaoImage>>);
 
     fn next(&mut self) -> Option<Self::Item> {
         self.iter_outer.as_ref()?;
@@ -274,7 +266,7 @@ impl PyIterProtocol for KaoIterator {
     fn __iter__(slf: PyRef<Self>) -> PyRef<Self> {
         slf
     }
-    fn __next__(mut slf: PyRefMut<Self>) -> IterNextOutput<(u32, u32, Option<KaoImage>), &'static str> {
+    fn __next__(mut slf: PyRefMut<Self>) -> IterNextOutput<(u32, u32, Option<Py<KaoImage>>), &'static str> {
         match slf.next() {
             Some(x) => IterNextOutput::Yield(x),
             None => IterNextOutput::Return("")

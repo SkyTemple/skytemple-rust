@@ -60,3 +60,9 @@ impl From<StBytes> for Vec<u8> {
 
 #[cfg(not(feature = "python"))]
 pub use crate::no_python::*;
+
+#[inline]
+// Clonability is required for non-Python use cases.
+pub(crate) fn return_option<T>(py: Python, opt: &Option<Py<T>>) -> PyResult<Option<Py<T>>> where T: Clone {
+    Ok(opt.as_ref().map(|x| x.clone_ref(py)))
+}

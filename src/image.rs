@@ -17,13 +17,16 @@
  * along with SkyTemple.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+use std::iter::{FromIterator, Map};
+use std::slice::ChunksExact;
 use std::vec::IntoIter;
-use bytes::{Buf, Bytes, BytesMut};
+use bytes::{Buf, Bytes};
 use log::warn;
 
 use crate::python::*;
+use crate::util::init_default_vec;
 
-pub struct Raster(pub Bytes, pub usize, pub usize);  // data, width, height
+pub struct Raster(pub Vec<u8>, pub usize, pub usize);  // data, width, height
 pub type Palette = Bytes;
 
 #[cfg(feature = "python")]
@@ -36,13 +39,13 @@ pub struct InWrappedImage(pub IndexedImage);
 pub struct IndexedImage(pub Raster, pub Palette);
 
 #[derive(PartialEq, Eq, Debug)]
-pub struct TilemapEntry(u16, bool, bool, u8);  // idx, flip_x, flip_y, pal_idx
+pub struct TilemapEntry(usize, bool, bool, u8);  // idx, flip_x, flip_y, pal_idx
 
 impl From<usize> for TilemapEntry {
     fn from(entry: usize) -> Self {
         TilemapEntry(
             // 0000 0011 1111 1111, tile index
-            (entry & 0x3FF) as u16,
+            entry & 0x3FF,
             // 0000 0100 0000 0000, hflip
             (entry & 0x400) > 0,
             // 0000 1000 0000 0000, vflip
@@ -55,24 +58,28 @@ impl From<usize> for TilemapEntry {
 
 impl From<TilemapEntry> for usize {
     fn from(entry: TilemapEntry) -> Self {
-        (entry.0 & 0x3FF) as usize +
-            (if entry.1 { 1 } else { 0 } << 10) as usize +
-            (if entry.2 { 1 } else { 0 } << 11) as usize +
+        (entry.0 & 0x3FF) +
+            (if entry.1 { 1 } else { 0 } << 10) +
+            (if entry.2 { 1 } else { 0 } << 11) +
             ((entry.3 as usize & 0x3F) << 12) as usize
     }
 }
 
-pub struct Tile<T>(pub T) where T: Iterator<Item = u8>;
+pub struct PixelGenerator<T>(pub T) where T: Iterator<Item = u8>;
 
-impl Tile<FourBppIterator> {
-    pub fn pack4bpp<J>(tiledata: J) -> Vec<Self> where J: Iterator<Item = u8> {
-        todo!()
+impl PixelGenerator<FourBppIterator> {
+    pub fn pack4bpp(tiledata: &[u8], tile_dim: usize) -> Vec<Self> {
+        let chunks: ChunksExact<u8> = tiledata.chunks_exact(tile_dim * tile_dim / 2);
+        assert_eq!(chunks.remainder().len(), 0);
+        chunks.map(|x| PixelGenerator(FourBppIterator::new(x.to_vec()))).collect()
     }
 }
 
-impl<T> Tile<T> where T: Iterator<Item = u8> {
-    pub fn unpack(us: Vec<Self>) -> Vec<u8> {
-        todo!()
+impl PixelGenerator<IntoIter<u8>> {
+    pub fn pack8bpp(tiledata: &[u8], tile_dim: usize) -> Vec<Self> {
+        let chunks: ChunksExact<u8> = tiledata.chunks_exact(tile_dim * tile_dim);
+        assert_eq!(chunks.remainder().len(), 0);
+        chunks.map(|x| PixelGenerator(x.to_vec().into_iter())).collect()
     }
 }
 
@@ -105,184 +112,175 @@ impl Iterator for FourBppIterator {
     }
 }
 
-pub type TiledImageDataSeq = (Vec<Tile<IntoIter<u8>>>, Vec<u8>);
-pub type TiledImageData = (Vec<Tile<IntoIter<u8>>>, Vec<u8>, Vec<TilemapEntry>);
+pub type TilesGenerator<G> = Vec<PixelGenerator<G>>;
+pub type Tile = Vec<u8>;
+pub type Tiles = Vec<Tile>;
+pub type TiledImageDataSeq = (Tiles, Bytes);
+pub type TiledImageData = (Tiles, Bytes, Vec<TilemapEntry>);
+
+#[derive(Default)]
+struct BuiltTile(usize, Tile);
+
 pub struct TiledImage {}
 
 impl TiledImage {
+    pub fn unpack_tiles<T>(tiles: Tiles) -> T
+        where
+            T: FromIterator<u8>
+    {
+        tiles.into_iter().flatten().collect()
+    }
+    
+    /// Note: Output images are 4bpp
     pub fn native_to_tiled_seq(
-        n_img: IndexedImage, tile_dim: usize, img_dim: usize
+        n_img: IndexedImage, tile_dim: usize, img_width: usize, img_height: usize
     ) -> PyResult<TiledImageDataSeq>
     {
-        let (ptiledata, paldata, _) = Self::native_to_tiled(n_img, 16, 1, tile_dim, img_dim, 1, 0)?;
+        let (ptiledata, paldata, _) = Self::native_to_tiled(
+            n_img, 16, 1, tile_dim, img_width, img_height, 1, 0
+        )?;
         Ok((ptiledata, paldata))
     }
 
+    /// Note: Output images are 4bpp
+    #[allow(clippy::too_many_arguments)]
     pub fn native_to_tiled(
-        n_img: IndexedImage, single_palette_size: usize, max_nb_palettes: usize,
-        tile_dim: usize, img_dim: usize, chunk_dim: usize, palette_offset: usize
+        n_img: IndexedImage, single_palette_size: u8, max_nb_palettes: usize,
+        tile_dim: usize, img_width: usize, img_height: usize, chunk_dim: usize, palette_offset: usize
     ) -> PyResult<TiledImageData>
     {
-        //--img_width=img_dim
-        //--img_height=img_dim
         //--tiling_width=chunk_dim
         //--tiling_height=chunk_dim
         //--force_import=false
         //--optimize=true
+        let max_len_pal: usize = single_palette_size as usize * max_nb_palettes;
+        if n_img.0.1 != img_width || n_img.0.2 != img_height {
+            return Err(exceptions::PyValueError::new_err(
+                format!("Can not convert PIL image to PMD tiled image: Image dimensions must be {}x{}px.", img_width, img_height)
+            ));
+        }
 
-        //     max_len_pal = single_palette_size * max_nb_palettes
-        //     if pil.mode != 'P':
-        //         raise ValueError(_('Can not convert PIL image to PMD tiled image: Must be indexed image (=using a palette)'))
-        //     if pil.palette.mode != 'RGB' \
-        //             or len(pil.palette.palette) > max_len_pal * 3 \
-        //             or len(pil.palette.palette) % single_palette_size * 3 != 0:
-        //         raise ValueError(f(_('Can not convert PIL image to PMD tiled image: '
-        //                              'Palette must contain max {max_len_pal} RGB colors '
-        //                              'and be divisible by {single_palette_size}.')))
-        //     if pil.width != img_width or pil.height != img_height:
-        //         raise ValueError(f(_('Can not convert PIL image to PMD tiled image: '
-        //                              'Image dimensions must be {img_width}x{img_height}px.')))
-        //
-        //     # Build new palette
-        //     new_palette = memoryview(pil.palette.palette)
-        //     palettes: List[List[int]] = []
-        //     for i, col in enumerate(new_palette):
-        //         if i % (single_palette_size * 3) == 0:
-        //             cur_palette: List[int] = []
-        //             palettes.append(cur_palette)
-        //         cur_palette.append(col)
-        //
-        //     raw_pil_image = pil.tobytes('raw', 'P')
-        //     number_of_tiles = int(len(raw_pil_image) / tile_dim / tile_dim)
-        //
-        //     tiles_with_sum: List[Tuple[int, bytearray]] = [None for __ in range(0, number_of_tiles)]
-        //     tilemap: List[TilemapEntry] = [None for __ in range(0, number_of_tiles)]
-        //     the_two_px_to_write = [0, 0]
-        //
-        //     # Set inside the loop:
-        //     tile_palette_indices = [None for __ in range(0, number_of_tiles)]
-        //
-        //     already_initialised_tiles = []
-        //
-        //     for idx, pix in enumerate(raw_pil_image):
-        //         pix = pix + palette_offset * single_palette_size
-        //         # Only calculate position for first pixel in two pixel pair (it's always the even one)
-        //         if idx % 2 == 0:
-        //             x = idx % img_width
-        //             y = int(idx / img_width)
-        //
-        //             # I'm so sorry for this, if someone wants to rewrite this, please go ahead!
-        //             chunk_x = math.floor(x / (tile_dim * tiling_width))
-        //             chunk_y = math.floor(y / (tile_dim * tiling_height))
-        //             tiles_up_to_current_chunk_y = int(img_width / tile_dim * chunk_y * tiling_height)
-        //
-        //             tile_x = (chunk_x * tiling_width * tiling_height) + (math.floor(x / tile_dim) - (chunk_x * tiling_width))
-        //             tile_y = (chunk_y * tiling_height) + (math.floor(y / tile_dim) - (chunk_y * tiling_height))
-        //             tile_id = tiles_up_to_current_chunk_y + ((tile_y - tiling_height * chunk_y) * tiling_width) + tile_x
-        //
-        //             in_tile_x = x - tile_dim * math.floor(x / tile_dim)
-        //             in_tile_y = y - tile_dim * math.floor(y / tile_dim)
-        //             idx_in_tile = in_tile_y * tile_dim + in_tile_x
-        //
-        //             nidx = int(idx_in_tile / 2)
-        //             #print(f"{idx}@{x}x{y}: {tile_id} : [chunk {chunk_x}x{chunk_y}] "
-        //             #      f"{tile_x}x{tile_y} -- {idx_in_tile} : {in_tile_x}x{in_tile_y} = {nidx}")
-        //
-        //             if tile_id not in already_initialised_tiles:
-        //                 already_initialised_tiles.append(tile_id)
-        //                 # Begin a new tile
-        //                 tiles_with_sum[tile_id] = [0, bytearray(int(tile_dim * tile_dim / 2))]
-        //                 # Get the palette index from the first pixel
-        //                 tile_palette_indices[tile_id] = math.floor(pix / single_palette_size)
-        //
-        //         # The "real" value is the value of the color in the currently used palette of the tile
-        //         real_pix = pix - (tile_palette_indices[tile_id] * single_palette_size)
-        //         if real_pix > (single_palette_size - 1) or real_pix < 0:
-        //             # The color is out of range!
-        //             if not force_import:
-        //                 raise ValueError(f(_("Can not convert PIL image to PMD tiled image: "
-        //                                      "The color {pix} (from palette {math.floor(pix / single_palette_size)}) used by "
-        //                                      "pixel {x+(idx % 2)}x{y} in tile {tile_id} ({tile_x}x{tile_y} is out of range. "
-        //                                      "Expected are colors from palette {tile_palette_indices[tile_id]} ("
-        //                                      "{tile_palette_indices[tile_id] * single_palette_size} - "
-        //                                      "{(tile_palette_indices[tile_id]+1) * single_palette_size - 1}).")))
-        //             # Just set the color to 0 instead if invalid...
-        //             else:
-        //                 logger.warning(f(_("Can not convert PIL image to PMD tiled image: "
-        //                                    "The color {pix} (from palette {math.floor(pix / single_palette_size)}) used by "
-        //                                    "pixel {x+(idx % 2)}x{y} in tile {tile_id} ({tile_x}x{tile_y} is out of range. "
-        //                                    "Expected are colors from palette {tile_palette_indices[tile_id]} ("
-        //                                    "{tile_palette_indices[tile_id] * single_palette_size} - "
-        //                                    "{(tile_palette_indices[tile_id]+1) * single_palette_size - 1}).")))
-        //             real_pix = 0
-        //
-        //         # We store 2 bytes as one... in LE
-        //         the_two_px_to_write[idx % 2] = real_pix
-        //
-        //         # Only store when we are on the second pixel
-        //         if idx % 2 == 1:
-        //             # Little endian:
-        //             tiles_with_sum[tile_id][0] += (the_two_px_to_write[0] + the_two_px_to_write[1])
-        //             tiles_with_sum[tile_id][1][nidx] = the_two_px_to_write[0] + (the_two_px_to_write[1] << 4)
-        //
-        //     final_tiles_with_sum: List[Tuple[int, bytearray]] = []
-        //     len_final_tiles = 0
-        //     # Create tilemap and optimize tiles list
-        //     for tile_id, tile_with_sum in enumerate(tiles_with_sum):
-        //         reusable_tile_idx = None
-        //         flip_x = False
-        //         flip_y = False
-        //         if optimize:
-        //             reusable_tile_idx, flip_x, flip_y = search_for_tile_with_sum(final_tiles_with_sum, tile_with_sum, tile_dim)
-        //         if reusable_tile_idx is not None:
-        //             tile_id_to_use = reusable_tile_idx
-        //         else:
-        //             final_tiles_with_sum.append(tile_with_sum)
-        //             tile_id_to_use = len_final_tiles
-        //             len_final_tiles += 1
-        //         tilemap[tile_id] = TilemapEntry(
-        //             idx=tile_id_to_use,
-        //             pal_idx=tile_palette_indices[tile_id],
-        //             flip_x=flip_x,
-        //             flip_y=flip_y,
-        //             ignore_too_large=True
-        //         )
-        //     if len_final_tiles > 1024:
-        //         raise ValueError(f(_("An image selected to import is too complex. It has too many unique tiles "
-        //                              "({len_final_tiles}, max allowed are 1024).\nTry to have less unique tiles. Unique tiles "
-        //                              "are 8x8 sections of the images that can't be found anywhere else in the image (including "
-        //                              "flipped or with a different sub-palette).")))
-        //     final_tiles: List[bytearray] = []
-        //     for s, tile in final_tiles_with_sum:
-        //         final_tiles.append(tile)
-        //     return final_tiles, tilemap, palettes
-        todo!()
+        let number_of_tiles = (img_width * img_height) / tile_dim / tile_dim;
+        
+        let mut tiles_with_sum: Vec<BuiltTile> = init_default_vec(number_of_tiles);
+        let mut chunks: Vec<TilemapEntry> = Vec::with_capacity(number_of_tiles);
+        let mut the_two_px_to_write: [u8; 2] = [0, 0];
+        let mut tile_palette_indices: Vec<u8> = init_default_vec(number_of_tiles);
+        let mut already_initialised_tiles: Vec<usize> = Vec::with_capacity(number_of_tiles);
+
+        let mut x = 0;
+        let mut y = 0;
+        let mut tile_x = 0;
+        let mut tile_y = 0;
+        let mut tile_id = 0;
+        let mut nidx = 0;
+        for (idx, pix) in n_img.0.0.into_iter().enumerate() {
+            let pix: usize = pix as usize + palette_offset * single_palette_size as usize;
+            // Only calculate position for first pixel in two pixel pair (it's always the even one)
+            if idx % 2 == 0 {
+                // I'm (still :( ) so sorry for this, if someone wants to rewrite this, please go ahead!
+                x = idx % img_width;
+                y = idx / img_width;
+                let chunk_x = x / (tile_dim * chunk_dim);
+                let chunk_y = y / (tile_dim * chunk_dim);
+                let tiles_up_to_current_chunk_y = img_width / tile_dim * chunk_y * chunk_dim;
+                
+                tile_x = (chunk_x * chunk_dim * chunk_dim) + ((x / tile_dim) - (chunk_x * chunk_dim));
+                tile_y = (chunk_y * chunk_dim) + ((y / tile_dim) - (chunk_y * chunk_dim));
+                tile_id = tiles_up_to_current_chunk_y + ((tile_y - chunk_dim * chunk_y) * chunk_dim) + tile_x;
+                
+                let in_tile_x = x - tile_dim * (x / tile_dim);
+                let in_tile_y = y - tile_dim * (y / tile_dim);
+                let idx_in_tile = in_tile_y * tile_dim + in_tile_x;
+                
+                nidx = idx_in_tile / 2;
+                
+                if !already_initialised_tiles.contains(&tile_id) {
+                    already_initialised_tiles.push(tile_id);
+                    // Begin a new tile
+                    tiles_with_sum[tile_id] = BuiltTile(0, init_default_vec(tile_dim * tile_dim / 2));
+                    // Get the palette index from the first pixel
+                    tile_palette_indices[tile_id] = (pix / single_palette_size as usize) as u8;
+                }
+            }
+            // The "real" value is the value of the color in the currently used palette of the tile
+            let mut real_pix: i64 = pix as i64 - (tile_palette_indices[tile_id] as i64 * single_palette_size as i64);
+            if real_pix > (single_palette_size - 1) as i64 || real_pix < 0 {
+                warn!("Can not convert PIL image to PMD tiled image: \
+                      The color {} (from palette {}) used by \
+                      pixel {}x{} in tile {} ({}x{} is out of range. \
+                      Expected are colors from palette {} ({} - {}).",
+                      pix, pix / single_palette_size as usize, x+(idx % 2), y, tile_id, tile_x, tile_y,
+                      tile_palette_indices[tile_id], tile_palette_indices[tile_id] * single_palette_size,
+                      (tile_palette_indices[tile_id] + 1) * (single_palette_size - 1)
+                );
+                real_pix = 0
+            }
+
+            // We store 2 bytes as one... in LE
+            the_two_px_to_write[idx % 2] = real_pix as u8;
+            if idx % 2 == 1 {
+                // Only store when we are on the second pixel
+                tiles_with_sum[tile_id].0 += (the_two_px_to_write[0] + the_two_px_to_write[1]) as usize;
+                tiles_with_sum[tile_id].1[nidx] = the_two_px_to_write[0] + (the_two_px_to_write[1] << 4)
+            }
+        }
+
+        let mut final_tiles_with_sum: Vec<BuiltTile> = Vec::with_capacity(number_of_tiles);
+        // Create tilemap and optimize tiles list
+        tiles_with_sum
+            .into_iter()
+            .enumerate()
+            .for_each(|(tile_id, built_tile)| {
+                let (reusable_tile_idx, flip_x, flip_y) = Self::_search_for_tile_with_sum(&final_tiles_with_sum, &built_tile, tile_dim);
+
+                let tile_id_to_use = match reusable_tile_idx {
+                    Some(x) => x,
+                    None => {
+                        final_tiles_with_sum.push(built_tile);
+                        final_tiles_with_sum.len() - 1
+                    }
+                };
+                chunks.push(TilemapEntry(tile_id_to_use, flip_x, flip_y, tile_palette_indices[tile_id]))
+            });
+
+        if final_tiles_with_sum.len() > 1024 {
+            // TODO: Localization!
+            return Err(exceptions::PyValueError::new_err(format!(
+                "An image selected to import is too complex. It has too many unique tiles \
+                ({}, max allowed are 1024).\nTry to have less unique tiles. Unique tiles \
+                are 8x8 sections of the images that can't be found anywhere else in the image (including \
+                flipped or with a different sub-palette).",
+                final_tiles_with_sum.len()
+            )));
+        }
+
+        Ok((final_tiles_with_sum.into_iter().map(|x| x.1).collect(), n_img.1, chunks))
     }
 
-
-
     pub fn tiled_to_native_seq<J>(
-        tiledata: Vec<Tile<J>>, paldata: &[u8], tile_dim: usize, img_dim: usize
+        tiledata: TilesGenerator<J>, paldata: &[u8], tile_dim: usize, img_width: usize, img_height: usize
     ) -> PyResult<IndexedImage>
         where
             J: Iterator<Item = u8> + Clone
     {
+        let number_chunks = img_width * img_height / tile_dim / tile_dim;
         Self::tiled_to_native(
-            (0..).into_iter().map(|i| TilemapEntry(i, false, false, 0)),
-            tiledata, paldata, tile_dim, img_dim, 1
+            (0..number_chunks).into_iter().map(|i| TilemapEntry(i, false, false, 0)),
+            tiledata, paldata, tile_dim, img_width, img_height, 1
         )
     }
 
     pub fn tiled_to_native<I, J>(
-        chunks: I, tiledata: Vec<Tile<J>>, paldata: &[u8], tile_dim: usize, img_dim: usize, chunk_dim: usize
+        chunks: I, tiledata: TilesGenerator<J>, paldata: &[u8], tile_dim: usize, img_width: usize, img_height: usize, chunk_dim: usize
     ) -> PyResult<IndexedImage>
         where
             I: Iterator<Item = TilemapEntry>,
             J: Iterator<Item = u8> + Clone
     {
-        let img_width_in_tiles = img_dim / tile_dim;
+        let img_width_in_tiles = img_width / tile_dim;
 
-        let mut imagedata = BytesMut::with_capacity(img_dim * img_dim);
+        let mut imagedata = init_default_vec(img_width * img_height);
         for (i, chunk_spec) in chunks.enumerate() {
             let tiles_in_chunks = chunk_dim * chunk_dim;
             let chunk_x: usize = (i / tiles_in_chunks) % (img_width_in_tiles / chunk_dim);
@@ -305,11 +303,55 @@ impl TiledImage {
                 );
                 let real_x = tile_x * tile_dim + x_in_tile;
                 let real_y = tile_y * tile_dim + y_in_tile;
-                imagedata[idx] = pal_start_offset + col;
+                imagedata[real_y * img_width + real_x] = pal_start_offset + col;
             }
         }
 
-        Ok(IndexedImage(Raster(imagedata.freeze(), img_dim, img_dim), paldata.to_vec().into()))
+        assert_eq!(img_width * img_height, imagedata.len());
+        Ok(IndexedImage(Raster(imagedata, img_width, img_height), paldata.to_vec().into()))
+    }
+
+    /// Search for the tile, or a flipped version of it, in tiles and return the index and flipped state
+    /// Increases performance by comparing the bytes sum of each tile before actually compare them
+    fn _search_for_tile_with_sum(tiles: &Vec<BuiltTile>, needle: &BuiltTile, tile_dim: usize) -> (Option<usize>, bool, bool) {
+        for (i, candidate) in tiles.into_iter().enumerate() {
+            if candidate.0 == needle.0 {
+                if candidate.1 == needle.1 {
+                    return (Some(i), false, false);
+                }
+                let x_flipped = Self::_flip_tile_x(&candidate.1, tile_dim);
+                if x_flipped == needle.1 {
+                    return (Some(i), true, false);
+                } else if Self::_flip_tile_y(&candidate.1, tile_dim) == needle.1 {
+                    return  (Some(i), false, true);
+                } else if Self::_flip_tile_y(&x_flipped, tile_dim) == needle.1 {
+                    return (Some(i), true, true);
+                }
+            }
+        }
+        (None, false, false)
+    }
+
+    /// Flip all pixels in tile on the x-axis
+    fn _flip_tile_x(tile: &Tile, tile_dim: usize) -> Tile {
+        let mut tile_flipped: Tile = init_default_vec(tile.len());
+        for (i, b) in tile.into_iter().enumerate() {
+            let row_idx = i * 2 % tile_dim;
+            let col_idx = i * 2 / tile_dim;
+            tile_flipped[(col_idx * tile_dim + (tile_dim - 1 - row_idx)) / 2] = (b & 0x0F) << 4 | (b & 0xF0) >> 4;
+        }
+        tile_flipped
+    }
+
+    /// Flip all pixels in tile on the y-axis
+    fn _flip_tile_y(tile: &Tile, tile_dim: usize) -> Tile {
+        let mut tile_flipped: Tile = init_default_vec(tile.len());
+        for (i, b) in tile.into_iter().enumerate() {
+            let row_idx = i * 2 % tile_dim;
+            let col_idx = i * 2 / tile_dim;
+            tile_flipped[((tile_dim - 1 - col_idx) * tile_dim + row_idx) / 2] = *b;
+        }
+        tile_flipped
     }
 
     /// Returns the flipped x and y position for a pixel in a fixed size image.

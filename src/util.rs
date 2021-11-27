@@ -23,3 +23,7 @@ pub fn slice_to_array<const N: usize>(slice: &[u8]) -> [u8; N] {
     arr.copy_from_slice(slice);
     arr
 }
+
+pub fn init_default_vec<T>(size: usize) -> Vec<T> where T: Default {
+    (0..size).into_iter().map(|_| Default::default()).collect()
+}

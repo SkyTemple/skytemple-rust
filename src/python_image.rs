@@ -18,9 +18,10 @@
  * along with SkyTemple.  If not, see <https://www.gnu.org/licenses/>.
  */
 use bytes::Bytes;
+use log::error;
 use pyo3::{exceptions, IntoPy, PyObject, Python};
 use pyo3::prelude::*;
-use pyo3::types::PyTuple;
+use pyo3::types::{PyBytes, PyTuple};
 use crate::image::{InWrappedImage, Raster};
 use crate::image::IndexedImage;
 
@@ -35,8 +36,9 @@ fn in_from_py(img: InWrappedImage, py: Python) -> PyResult<(Vec<u8>, Vec<u8>, us
 }
 
 fn out_to_py(img: IndexedImage, py: Python) -> PyResult<PyObject> {
+    let bytes: &PyBytes = PyBytes::new(py, &img.0.0);
     let args = PyTuple::new(py, [
-        "P".into_py(py), PyTuple::new(py, [img.0.1, img.0.2]).into_py(py), img.0.0.into_py(py),
+        "P".into_py(py), PyTuple::new(py, [img.0.1, img.0.2]).into_py(py), bytes.into_py(py),
         "raw".into_py(py), "P".into_py(py), 0.into_py(py), 1.into_py(py)
     ]);
     let out_img = PyModule::import(py, "PIL.Image")?
@@ -52,7 +54,7 @@ impl IntoPy<PyObject> for IndexedImage {
         match out_to_py(self, py) {
             Ok(d) => d,
             Err(e) => {
-                println!("skytemple-rust: Critical error during image conversion:");
+                error!("skytemple-rust: Critical error during image conversion:");
                 e.print(py);
                 py.None()
             }
@@ -65,7 +67,7 @@ impl InWrappedImage {
         match in_from_py(self, py) {
             Ok((raster, pal, width, height)) => {
                 Ok(IndexedImage(Raster(
-                    Bytes::from(raster), width, height),
+                    raster, width, height),
                     Bytes::from(pal)
                 ))
             },
