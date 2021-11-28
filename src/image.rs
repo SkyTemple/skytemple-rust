@@ -124,6 +124,7 @@ struct BuiltTile(usize, Tile);
 pub struct TiledImage {}
 
 impl TiledImage {
+    #[inline]
     pub fn unpack_tiles<T>(tiles: Tiles) -> T
         where
             T: FromIterator<u8>

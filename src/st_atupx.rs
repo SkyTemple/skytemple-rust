@@ -33,7 +33,7 @@ impl CompressionContainer for Atupx {}
 
 impl Atupx {
     pub fn compress(data: &[u8]) -> PyResult<Self> {
-        let nine = Custom999Compressor::run(&mut Bytes::copy_from_slice(data));
+        let nine = Custom999Compressor::run(Bytes::copy_from_slice(data));
         Ok(Self {
             len_comp: nine.len() as u16 + Self::DATA_START,
             data: nine.into(),
@@ -47,7 +47,7 @@ impl Atupx {
 
 #[pymethods]
 impl Atupx {
-    const DATA_START: u16 = 0x14;
+    const DATA_START: u16 = 0xb;
     const MAGIC: &'static [u8; 5] = b"ATUPX";
 
     #[new]
@@ -61,7 +61,7 @@ impl Atupx {
         })
     }
     pub fn decompress(&self) -> PyResult<StBytes> {
-        Ok(Custom999Decompressor::run(&self.data, self.len_comp).into())
+        Ok(Custom999Decompressor::run(&*self.data, self.len_decomp as usize).into())
     }
     pub fn to_bytes(&self) -> StBytes {
         let mut res = BytesMut::with_capacity(self.len_comp as usize);

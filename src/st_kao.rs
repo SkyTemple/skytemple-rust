@@ -17,8 +17,11 @@
  * along with SkyTemple.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+use std::collections::hash_map::Entry;
+use std::collections::HashMap;
 use arr_macro::arr;
 use std::io::Cursor;
+use std::mem::swap;
 use std::vec;
 use bytes::{Buf, BufMut};
 use crate::image::{IndexedImage, InWrappedImage, PixelGenerator, TiledImage};
@@ -75,7 +78,98 @@ impl KaoImage {
 
     fn bitmap_to_kao(source: IndexedImage) -> PyResult<(Vec<u8>, Vec<u8>)> {
         let (img, pal) = TiledImage::native_to_tiled_seq(source, Self::TILE_DIM, Self::IMG_DIM, Self::IMG_DIM)?;
-        Ok((pal.to_vec(), CommonAt::compress(&TiledImage::unpack_tiles::<Vec<u8>>(img), COMMON_AT_MUST_COMPRESS_3.iter())?))
+        let (img, pal) = Self::reorder_palette(TiledImage::unpack_tiles::<Vec<u8>>(img), pal);
+        let compressed_img = CommonAt::compress(&img, COMMON_AT_MUST_COMPRESS_3.iter())?;
+        // Check image size
+        if compressed_img.len() > 800 {
+            return Err(exceptions::PyValueError::new_err(format!(
+                "This portrait does not compress well, the result size is greater than 800 bytes ({} bytes total).\n\
+                If you haven't done already, try applying the 'ProvideATUPXSupport' to install an optimized compression algorithm, \
+                which might be able to better compress this image.",
+                compressed_img.len()
+            )));
+        }
+        Ok((pal.to_vec(), compressed_img))
+    }
+
+    /// Tries to reorder the palette to have a more favorable data
+    /// configuration for the PX algorithm
+    fn reorder_palette(in_img: Vec<u8>, in_pal: Vec<u8>) -> (Vec<u8>, Vec<u8>) {
+        let mut pairs: HashMap<(u8, u8), usize> = HashMap::with_capacity(in_img.len());
+        for x in 0..in_img.len()-1 {
+            let l = [in_img[x] % 16, in_img[x] / 16, in_img[x+1] % 16, in_img[x+1] / 16];
+            let count_l0 = l.iter().filter(|&x| *x == l[0]).count();
+            if count_l0 == 3 || (count_l0 == 1 || l.iter().filter(|&x| *x == l[1]).count() == 3) {
+                let mut a = l[0];
+                let mut b = l[0];
+                for v in l {
+                    if v != a {
+                        b = v;
+                        break;
+                    }
+                }
+                if a >= b {
+                    swap(&mut a, &mut b);
+                }
+                match pairs.entry((a, b)) {
+                    Entry::Occupied(mut e) => e.insert(e.get() + 1),
+                    Entry::Vacant(e) => *e.insert(1)
+                };
+            }
+        }
+        let mut new_order: Vec<i16> = Vec::with_capacity(pairs.len() * 4);
+        new_order.push(0);
+        let mut sorted_pairs = pairs.into_iter().collect::<Vec<((u8, u8), usize)>>();
+        sorted_pairs.sort_by_key(|((_k1,_k2), v)| *v);
+        for ((k0, k1), _) in sorted_pairs.into_iter().rev() {
+            let k0_in_no = new_order.contains(&(k0 as i16));
+            let k1_in_no = new_order.contains(&(k1 as i16));
+            if k0_in_no && k1_in_no {
+                continue;
+            }
+            if k0_in_no || k1_in_no {
+                let to_check: i16;
+                let to_add: i16;
+                if k0_in_no {
+                    to_check = k0 as i16;
+                    to_add = k1 as i16;
+                } else {
+                    to_check = k1 as i16;
+                    to_add = k0 as i16;
+                }
+                let i = new_order.iter().position(|&r| r == to_check).unwrap();
+                if i > 0 {
+                    if new_order[i - 1] == -1 {
+                        new_order.insert(i, to_add)
+                    }
+                    if new_order.len() == i + 1 || new_order[i + 1] == -1 {
+                        new_order.insert(i+1, to_add)
+                    }
+                }
+            } else {
+                new_order.push(-1);
+                new_order.push(k0 as i16);
+                new_order.push(k1 as i16);
+            }
+        }
+        new_order = new_order.into_iter().filter(|x| *x != -1).collect();
+        for x in 0..16 {
+            if !new_order.contains(&x) {
+                new_order.push(x);
+            }
+        }
+        (
+            in_img.into_iter()
+                .map(|v|
+                     ((new_order.iter().position(|x| *x as u8 == v % 16).unwrap()) +
+                        (new_order.iter().position(|x| *x as u8 == v / 16).unwrap()) * 16) as u8
+                ).collect::<Vec<u8>>(),
+            new_order.into_iter()
+                .map(|v| &in_pal[(v*3) as usize..(v*3+3) as usize])
+                .flatten()
+                .copied()
+                .collect::<Vec<u8>>()
+        )
     }
 }
 
