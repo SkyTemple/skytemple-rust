@@ -64,6 +64,19 @@ impl InWrappedImage {
     }
 }
 
+pub trait PyWrapable {}
+
+/// Wrapper around Vec<u8> used to tell Pyo3 that this is a bytes object for Python
+#[derive(Clone)]
+pub struct PyBytes(Vec<u8>);
+
+impl PyWrapable for PyBytes {}
+impl PyBytes {
+    pub fn new(_: Python, from: &[u8]) -> Self {
+        Self(from.to_vec())
+    }
+}
+
 /// This would normally be a reference to an object on the Python heap.
 /// If not using Python, this is a container that clones(!) instead.
 ///
@@ -75,13 +88,18 @@ impl InWrappedImage {
 pub struct Py<T>(T) where T: Clone;
 impl<T> Py<T> where T: Clone {
     pub fn new(_: Python, obj: T) -> PyResult<Self> {
-        Ok(Py(obj))
+        Ok(Self(obj))
     }
     pub fn extract<U>(&self, _: Python) -> PyResult<T> {  // where T: U (!!)
         Ok(self.0.clone())
     }
     pub fn clone_ref(&self, _: Python) -> Self {
         self.clone()
+    }
+}
+impl <T> Py<T> where T: PyWrapable + Clone {
+    pub fn from(obj: T) -> Self {
+        Self(obj)
     }
 }
 
