@@ -301,7 +301,7 @@ impl Kao {
         Ok(())
     }
     #[cfg(not(feature = "python"))]
-    pub fn iter(&self, index: u32, subindex: u32) -> PyResult<KaoIterator> {
+    pub fn iter(&self) -> PyResult<KaoIterator> {
         let mut reference = Box::new(self.portraits.clone().into_iter()
             .map(
                 |s| s.to_vec().into_iter()
