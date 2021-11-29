@@ -67,7 +67,9 @@ impl Pkdpx {
         })
     }
     pub fn decompress(&self) -> PyResult<StBytes> {
-        Ok(PxDecompressor::run(&self.data, self.flags.as_ref(), self.len_comp)?.into())
+        let res = PxDecompressor::run(&self.data[..(self.len_comp - Self::DATA_START) as usize], self.flags.as_ref(), self.len_comp)?;
+        assert_eq!(self.len_decomp as usize, res.len());
+        Ok(res.into())
     }
     pub fn to_bytes(&self) -> StBytes {
         let mut res = BytesMut::with_capacity(self.len_comp as usize);

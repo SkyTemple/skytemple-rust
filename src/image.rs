@@ -97,7 +97,7 @@ impl Iterator for FourBppIterator {
     type Item = u8;
 
     fn next(&mut self) -> Option<Self::Item> {
-        if !self.0.has_remaining() {
+        if !self.2 && !self.0.has_remaining() {
             return None;
         }
         if self.2 {

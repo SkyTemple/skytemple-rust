@@ -280,10 +280,7 @@ impl Kao {
     pub fn set_from_img(&mut self, py: Python, index: usize, subindex: usize, img: InWrappedImage) -> PyResult<()> {
         if index <= self.portraits.len() {
             if subindex < Self::PORTRAIT_SLOTS as usize {
-                match self.portraits[index][subindex].as_mut() {
-                    Some(x) => x.extract::<KaoImage>(py)?.set(py, img)?,
-                    None => self.portraits[index][subindex] = Some(Py::new(py, KaoImage::new_from_img(img.extract(py)?)?)?)
-                }
+                self.portraits[index][subindex] = Some(Py::new(py, KaoImage::new_from_img(img.extract(py)?)?)?);
                 return Ok(())
             }
             return Err(exceptions::PyValueError::new_err(

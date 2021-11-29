@@ -501,10 +501,10 @@ pub struct PxDecompressor<'a, F: Buf> {
     flags: &'a [u8]
 }
 
-impl<'a> PxDecompressor<'a, Bytes> {
-    pub fn run(buffer: &'a Bytes, flags: &'a [u8], max_size: u16) -> PyResult<impl Buf + Into<StBytes>> {
+impl<'a, F> PxDecompressor<'a, F> where F: Buf + Clone {
+    pub fn run(buffer: F, flags: &'a [u8], max_size: u16) -> PyResult<Bytes> {
         let mut slf = Self {
-            buffer: buffer.clone(),
+            buffer,
             output: BytesMut::with_capacity(max_size as usize),
             flags
         };

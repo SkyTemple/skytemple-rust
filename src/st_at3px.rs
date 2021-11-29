@@ -65,7 +65,7 @@ impl At3px {
         })
     }
     pub fn decompress(&self) -> PyResult<StBytes> {
-        Ok(PxDecompressor::run(&self.data, self.flags.as_ref(), self.len_comp)?.into())
+        Ok(PxDecompressor::run(&self.data[..(self.len_comp - Self::DATA_START) as usize], self.flags.as_ref(), self.len_comp)?.into())
     }
     pub fn to_bytes(&self) -> StBytes {
         let mut res = BytesMut::with_capacity(self.len_comp as usize);
