@@ -26,17 +26,72 @@ use log::warn;
 use crate::python::*;
 use crate::util::init_default_vec;
 
+// ---
+
 pub struct Raster(pub Vec<u8>, pub usize, pub usize);  // data, width, height
 pub type Palette = Bytes;
+pub struct IndexedImage(pub Raster, pub Palette);
+
+pub type TilesGenerator<G> = Vec<PixelGenerator<G>>;
+pub type Tile = Vec<u8>;
+pub type Tiles = Vec<Tile>;
+pub type TiledImageDataSeq<T/*: AsRef<[Tile]>*/> = (T, Vec<u8>);
+pub type TiledImageData = (Tiles, Vec<u8>, Vec<TilemapEntry>);
+
+// ---
+
+pub trait InIndexedImage<'py>: Sized {
+    const MAX_COLORS: usize;
+    #[cfg(feature = "python")]
+    fn unwrap_py(self) -> PyObject;
+    #[cfg(feature = "python")]
+    fn extract(self, py: Python<'py>) -> PyResult<IndexedImage> {
+        match in_from_py(self, py) {
+            Ok((raster, pal, width, height)) => {
+                Ok(IndexedImage(Raster(
+                    raster, width, height),
+                                Bytes::from(pal)
+                ))
+            },
+            Err(e) => Err(e)
+        }
+    }
+    #[cfg(not(feature = "python"))]
+    fn extract(self, _py: Python) -> PyResult<IndexedImage>;
+}
 
 #[cfg(feature = "python")]
 #[derive(FromPyObject)]
-pub struct InWrappedImage(pub PyObject); // PIL Image
+pub struct In16ColIndexedImage(pub PyObject); // PIL Image
+#[cfg(feature = "python")]
+#[derive(FromPyObject)]
+pub struct In256ColIndexedImage(pub PyObject); // PIL Image
 
 #[cfg(not(feature = "python"))]
-pub struct InWrappedImage(pub IndexedImage);
+pub struct In16ColIndexedImage(pub IndexedImage);
+#[cfg(not(feature = "python"))]
+pub struct In256ColIndexedImage(pub IndexedImage);
 
-pub struct IndexedImage(pub Raster, pub Palette);
+impl InIndexedImage<'_> for In16ColIndexedImage {
+    const MAX_COLORS: usize = 16;
+    #[cfg(feature = "python")]
+    fn unwrap_py(self) -> PyObject { self.0 }
+    #[cfg(not(feature = "python"))]
+    fn extract(self, _py: Python) -> PyResult<IndexedImage> {
+        Ok(self.0)
+    }
+}
+impl InIndexedImage<'_> for In256ColIndexedImage {
+    const MAX_COLORS: usize = 256;
+    #[cfg(feature = "python")]
+    fn unwrap_py(self) -> PyObject { self.0 }
+    #[cfg(not(feature = "python"))]
+    fn extract(self, _py: Python) -> PyResult<IndexedImage> {
+        Ok(self.0)
+    }
+}
+
+// ---
 
 #[derive(PartialEq, Eq, Debug)]
 pub struct TilemapEntry(usize, bool, bool, u8);  // idx, flip_x, flip_y, pal_idx
@@ -65,6 +120,8 @@ impl From<TilemapEntry> for usize {
     }
 }
 
+// ---
+
 pub struct PixelGenerator<T>(pub T) where T: Iterator<Item = u8>;
 
 impl PixelGenerator<FourBppIterator> {
@@ -82,6 +139,8 @@ impl PixelGenerator<IntoIter<u8>> {
         chunks.map(|x| PixelGenerator(x.to_vec().into_iter())).collect()
     }
 }
+
+// ---
 
 /// Iterates a byte buffer one nibble at a time (low nibble first)
 #[derive(Clone)]
@@ -112,14 +171,38 @@ impl Iterator for FourBppIterator {
     }
 }
 
-pub type TilesGenerator<G> = Vec<PixelGenerator<G>>;
-pub type Tile = Vec<u8>;
-pub type Tiles = Vec<Tile>;
-pub type TiledImageDataSeq = (Tiles, Vec<u8>);
-pub type TiledImageData = (Tiles, Vec<u8>, Vec<TilemapEntry>);
+// ---
+
+/// Yields tiles using a tilemap
+pub struct ChunkBasedImageIterator(Tiles, IntoIter<TilemapEntry>, usize);  // tiles, chunks (tilemap), tile_dim
+
+impl ChunkBasedImageIterator {
+    pub fn new(tiles: Tiles, chunks: Vec<TilemapEntry>, tile_dim: usize) -> Self {
+        Self(tiles, chunks.into_iter(), tile_dim)
+    }
+}
+
+impl Iterator for ChunkBasedImageIterator {
+    type Item = Tile;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.1.next().map(|e| {
+            let tile = &self.0[e.0];
+            let ftile;
+            if !e.1 && !e.2 { ftile = tile.clone(); }
+            else if e.1 { ftile = flip_tile_x(tile, self.2); }
+            else { ftile = flip_tile_y(tile, self.2); }
+            apply_palette_shift(ftile, e.3)
+        })
+    }
+}
+
+// ---
 
 #[derive(Default)]
 struct BuiltTile(usize, Tile);
+
+// ---
 
 pub struct TiledImage {}
 
@@ -135,19 +218,28 @@ impl TiledImage {
     /// Note: Output images are 4bpp
     pub fn native_to_tiled_seq(
         n_img: IndexedImage, tile_dim: usize, img_width: usize, img_height: usize
-    ) -> PyResult<TiledImageDataSeq>
+    ) -> PyResult<TiledImageDataSeq<Tiles>>
     {
+        // "slow" but "direct"/"clean" way:
+        //let (ptiledata, paldata, chunks) = Self::native_to_tiled(
+        //    n_img, 16, tile_dim, img_width, img_height, 1, 0, true
+        //)?;
+        //Ok((ChunkBasedImageIterator::new(ptiledata, chunks, tile_dim), (&paldata[0..16 * 3]).to_vec()))
+
+        // optimized (by not "optimizing" duplicate tiles, thus getting all of them sequentially directly):
         let (ptiledata, paldata, _) = Self::native_to_tiled(
-            n_img, 16, tile_dim, img_width, img_height, 1, 0
+            n_img, 16, tile_dim, img_width, img_height, 1, 0, false
         )?;
-        Ok((ptiledata, (&paldata[0..16 * 3]).to_vec()))
+        Ok((ptiledata, paldata))
     }
 
     /// Note: Output images are 4bpp
+    /// Note: If optimize_chunks is false, an empty chunk list is returned. Please use native_to_tiled_seq instead.
     #[allow(clippy::too_many_arguments)]
     pub fn native_to_tiled(
         n_img: IndexedImage, single_palette_size: u8, tile_dim: usize,
-        img_width: usize, img_height: usize, chunk_dim: usize, palette_offset: usize
+        img_width: usize, img_height: usize, chunk_dim: usize, palette_offset: usize,
+        optimize_chunks: bool
     ) -> PyResult<TiledImageData>
     {
         if n_img.0.1 != img_width || n_img.0.2 != img_height {
@@ -222,24 +314,28 @@ impl TiledImage {
             }
         }
 
-        let mut final_tiles_with_sum: Vec<BuiltTile> = Vec::with_capacity(number_of_tiles);
-        // Create tilemap and optimize tiles list
-        tiles_with_sum
-            .into_iter()
-            .enumerate()
-            .for_each(|(tile_id, built_tile)| {
-                let (reusable_tile_idx, flip_x, flip_y) = Self::_search_for_tile_with_sum(&final_tiles_with_sum, &built_tile, tile_dim);
+        let mut final_tiles_with_sum: Vec<BuiltTile>;
+        if optimize_chunks {
+            // Create tilemap and optimize tiles list
+            final_tiles_with_sum = Vec::with_capacity(number_of_tiles);
+            tiles_with_sum
+                .into_iter()
+                .enumerate()
+                .for_each(|(tile_id, built_tile)| {
+                    let (reusable_tile_idx, flip_x, flip_y) = Self::_search_for_tile_with_sum(&final_tiles_with_sum, &built_tile, tile_dim);
 
-                let tile_id_to_use = match reusable_tile_idx {
-                    Some(x) => x,
-                    None => {
-                        final_tiles_with_sum.push(built_tile);
-                        final_tiles_with_sum.len() - 1
-                    }
-                };
-                chunks.push(TilemapEntry(tile_id_to_use, flip_x, flip_y, tile_palette_indices[tile_id]))
-            });
-
+                    let tile_id_to_use = match reusable_tile_idx {
+                        Some(x) => x,
+                        None => {
+                            final_tiles_with_sum.push(built_tile);
+                            final_tiles_with_sum.len() - 1
+                        }
+                    };
+                    chunks.push(TilemapEntry(tile_id_to_use, flip_x, flip_y, tile_palette_indices[tile_id]))
+                });
+        } else {
+            final_tiles_with_sum = tiles_with_sum;
+        }
         if final_tiles_with_sum.len() > 1024 {
             // TODO: Localization!
             return Err(exceptions::PyValueError::new_err(format!(
@@ -315,39 +411,17 @@ impl TiledImage {
                 if candidate.1 == needle.1 {
                     return (Some(i), false, false);
                 }
-                let x_flipped = Self::_flip_tile_x(&candidate.1, tile_dim);
+                let x_flipped = flip_tile_x(&candidate.1, tile_dim);
                 if x_flipped == needle.1 {
                     return (Some(i), true, false);
-                } else if Self::_flip_tile_y(&candidate.1, tile_dim) == needle.1 {
+                } else if flip_tile_y(&candidate.1, tile_dim) == needle.1 {
                     return  (Some(i), false, true);
-                } else if Self::_flip_tile_y(&x_flipped, tile_dim) == needle.1 {
+                } else if flip_tile_y(&x_flipped, tile_dim) == needle.1 {
                     return (Some(i), true, true);
                 }
             }
         }
         (None, false, false)
-    }
-
-    /// Flip all pixels in tile on the x-axis
-    fn _flip_tile_x(tile: &Tile, tile_dim: usize) -> Tile {
-        let mut tile_flipped: Tile = init_default_vec(tile.len());
-        for (i, b) in tile.iter().enumerate() {
-            let row_idx = i * 2 % tile_dim;
-            let col_idx = i * 2 / tile_dim;
-            tile_flipped[(col_idx * tile_dim + (tile_dim - 1 - row_idx)) / 2] = (b & 0x0F) << 4 | (b & 0xF0) >> 4;
-        }
-        tile_flipped
-    }
-
-    /// Flip all pixels in tile on the y-axis
-    fn _flip_tile_y(tile: &Tile, tile_dim: usize) -> Tile {
-        let mut tile_flipped: Tile = init_default_vec(tile.len());
-        for (i, b) in tile.iter().enumerate() {
-            let row_idx = i * 2 % tile_dim;
-            let col_idx = i * 2 / tile_dim;
-            tile_flipped[((tile_dim - 1 - col_idx) * tile_dim + row_idx) / 2] = *b;
-        }
-        tile_flipped
     }
 
     /// Returns the flipped x and y position for a pixel in a fixed size image.
@@ -356,4 +430,33 @@ impl TiledImage {
     fn _px_pos_flipped(x: usize, y: usize, w: usize, h: usize, flip_x: bool, flip_y: bool) -> (usize, usize) {
         (if flip_x {w - x - 1} else {x}, if flip_y { h - y - 1} else {y})
     }
+}
+
+// ---
+
+/// Flip all pixels in tile on the x-axis
+pub fn flip_tile_x(tile: &Tile, tile_dim: usize) -> Tile {
+    let mut tile_flipped: Tile = init_default_vec(tile.len());
+    for (i, b) in tile.iter().enumerate() {
+        let row_idx = i * 2 % tile_dim;
+        let col_idx = i * 2 / tile_dim;
+        tile_flipped[(col_idx * tile_dim + (tile_dim - 1 - row_idx)) / 2] = (b & 0x0F) << 4 | (b & 0xF0) >> 4;
+    }
+    tile_flipped
+}
+
+/// Flip all pixels in tile on the y-axis
+pub fn flip_tile_y(tile: &Tile, tile_dim: usize) -> Tile {
+    let mut tile_flipped: Tile = init_default_vec(tile.len());
+    for (i, b) in tile.iter().enumerate() {
+        let row_idx = i * 2 % tile_dim;
+        let col_idx = i * 2 / tile_dim;
+        tile_flipped[((tile_dim - 1 - col_idx) * tile_dim + row_idx) / 2] = *b;
+    }
+    tile_flipped
+}
+
+/// Shift all color values by 16 * palette_num
+pub fn apply_palette_shift(tile: Tile, palette: u8) -> Tile {
+    tile.into_iter().map(|x| x + (16 * palette)).collect()
 }

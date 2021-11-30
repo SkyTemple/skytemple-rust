@@ -23,7 +23,6 @@ use std::error::Error;
 use std::fmt::{Display, Formatter};
 use std::io;
 pub use skytemple_rust_macros::*;
-use crate::image::{IndexedImage, InWrappedImage};
 
 pub type PyResult<T> = Result<T, PyErr>;
 
@@ -57,12 +56,6 @@ impl From<io::Error> for PyErr {
 }
 
 impl Error for PyErr {}
-
-impl InWrappedImage {
-    pub fn extract(self, _py: Python) -> PyResult<IndexedImage> {
-        Ok(self.0)
-    }
-}
 
 pub trait PyWrapable {}
 

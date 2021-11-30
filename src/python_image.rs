@@ -17,25 +17,38 @@
  * You should have received a copy of the GNU General Public License
  * along with SkyTemple.  If not, see <https://www.gnu.org/licenses/>.
  */
-use bytes::Bytes;
 use log::error;
 use pyo3::{exceptions, IntoPy, PyObject, Python};
 use pyo3::prelude::*;
-use pyo3::types::{PyBytes, PyTuple};
-use crate::image::{InWrappedImage, Raster};
+use pyo3::types::{PyBytes, PyIterator, PyTuple};
+use crate::image::InIndexedImage;
 use crate::image::IndexedImage;
 
-fn in_from_py(img: InWrappedImage, py: Python) -> PyResult<(Vec<u8>, Vec<u8>, usize, usize)> {
-    if img.0.getattr(py, "mode")?.extract::<&str>(py)? != "P" {
+pub fn in_from_py<'py, T>(img: T, py: Python<'py>) -> PyResult<(Vec<u8>, Vec<u8>, usize, usize)> where T: InIndexedImage<'py> {
+    // TODO
+    let mut iimg = img.unwrap_py();
+    if iimg.getattr(py, "mode")?.extract::<&str>(py)? == "P" {
+        if T::MAX_COLORS == 16 {
+            // Quantize
+            iimg = pil_simple_quant(py, iimg)?;
+        }
+        // Otherwise we don't support checking further..., we will assume all goes well.
+        // TODO: Maybe support in the future via (automatic) Tilequant?
+    } else if T::MAX_COLORS == 16 {
+        // Quantize
+        iimg = pil_simple_quant(py, iimg)?;
+    } else {
+        // Otherwise we don't support checking further..., input image must be indexed
+        // TODO: Maybe support in the future via (automatic) Tilequant?
         return Err(exceptions::PyValueError::new_err("Expected an indexed image."))
     }
     let args = PyTuple::new(py, ["raw", "P"]);
-    let bytes: Vec<u8> = img.0.getattr(py, "tobytes")?.call1(py, args)?.extract(py)?;
-    let pal: Vec<u8> = img.0.getattr(py, "palette")?.getattr(py, "palette")?.extract(py)?;
-    Ok((bytes, pal, img.0.getattr(py, "width")?.extract(py)?, img.0.getattr(py, "height")?.extract(py)?))
+    let bytes: Vec<u8> = iimg.getattr(py, "tobytes")?.call1(py, args)?.extract(py)?;
+    let pal: Vec<u8> = iimg.getattr(py, "palette")?.getattr(py, "palette")?.extract(py)?;
+    Ok((bytes, pal, iimg.getattr(py, "width")?.extract(py)?, iimg.getattr(py, "height")?.extract(py)?))
 }
 
-fn out_to_py(img: IndexedImage, py: Python) -> PyResult<PyObject> {
+pub fn out_to_py(img: IndexedImage, py: Python) -> PyResult<PyObject> {
     let bytes: &PyBytes = PyBytes::new(py, &img.0.0);
     let args = PyTuple::new(py, [
         "P".into_py(py), PyTuple::new(py, [img.0.1, img.0.2]).into_py(py), bytes.into_py(py),
@@ -62,17 +75,53 @@ impl IntoPy<PyObject> for IndexedImage {
     }
 }
 
-impl InWrappedImage {
-    pub fn extract(self, py: Python) -> PyResult<IndexedImage> {
-        match in_from_py(self, py) {
-            Ok((raster, pal, width, height)) => {
-                Ok(IndexedImage(Raster(
-                    raster, width, height),
-                    Bytes::from(pal)
-                ))
-            },
-            Err(e) => Err(e)
+/// Simple single-palette image quantization. Reduces to 15 colors and adds one transparent color at index 0.
+/// The transparent (alpha=0) pixels in the input image are converted to that color (if can_have_transparency=True).
+/// If you need to do tiled multi-palette quantization, use Tilequant instead!
+fn pil_simple_quant(py: Python, mut pil_img: PyObject) -> PyResult<PyObject> {
+    if pil_img.getattr(py, "mode")?.extract::<&str>(py)? != "RGBA" {
+        let args = PyTuple::new(py, ["RGBA"]);
+        pil_img = pil_img.getattr(py, "convert")?.call1(py, args)?;
+    }
+    let transparency_map: Vec<bool> = PyIterator::from_object(py, &pil_img.getattr(py, "getdata")?.call0(py)?)?
+        .map(|x| Ok(x?.extract::<&PyTuple>()?.get_item(3)?.extract::<usize>()? == 0))
+        .collect::<PyResult<Vec<bool>>>()?;
+    let args = PyTuple::new(py, [15.into_py(py), py.None(), 0.into_py(py), py.None(), 0.into_py(py)]);
+    pil_img = pil_img.getattr(py, "quantize")?.call1(py, args)?;
+    // Get the original palette and add the transparent color
+    let args = PyTuple::new(py, [
+        [Ok(0), Ok(0), Ok(0)]
+            .into_iter()
+            .chain(
+                PyIterator::from_object(py, &pil_img.getattr(py, "getpalette")?.call0(py)?)?
+                    .take(762)
+                    .map(|x| x?.extract::<u8>()
+            )).collect::<PyResult<Vec<u8>>>()?
+            .into_py(py)
+    ]);
+    pil_img.getattr(py, "putpalette")?.call1(
+        py, args
+    )?;
+    // Shift up all pixel values by 1 and add the transparent pixels
+    let pixels = pil_img.getattr(py, "load")?.call0(py)?;
+    let mut k = 0;
+    for j in 0..(pil_img.getattr(py, "height")?.extract(py)?) {
+        for i in 0..(pil_img.getattr(py, "width")?.extract(py)?) {
+            if transparency_map[k] {
+                let args = PyTuple::new(py, [PyTuple::new(py, [i, j]).into_py(py), 0.into_py(py)]);
+                pixels.getattr(py, "__setitem__")?.call1(py, args)?;
+            } else {
+                let inner_args = PyTuple::new(py, [
+                    PyTuple::new(py, [i, j])
+                ]);
+                let args = PyTuple::new(py, [
+                    PyTuple::new(py, [i, j]).into_py(py),
+                    (pixels.getattr(py, "__getitem__")?.call1(py, inner_args)?.extract::<usize>(py)? + 1).into_py(py)
+                ]);
+                pixels.getattr(py, "__setitem__")?.call1(py, args)?;
+            }
+            k += 1
         }
     }
+    Ok(pil_img)
 }
-

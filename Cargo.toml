@@ -2,7 +2,7 @@
 name = "skytemple_rust"
 version = "1.4.0"
 authors = ["Marco 'Capypara' Köpcke <hello@capypara.de>"]
-edition = "2018"
+edition = "2021"
 repository = "https://github.com/SkyTemple/skytemple-rust"
 license = "GPL-3.0-or-later"
 

@@ -24,7 +24,7 @@ use std::io::Cursor;
 use std::mem::swap;
 use std::vec;
 use bytes::{Buf, BufMut};
-use crate::image::{IndexedImage, InWrappedImage, PixelGenerator, TiledImage};
+use crate::image::{In16ColIndexedImage, IndexedImage, InIndexedImage, PixelGenerator, TiledImage};
 use crate::python::*;
 #[cfg(feature = "python")]
 use pyo3::PyIterProtocol;
@@ -176,6 +176,11 @@ impl KaoImage {
 #[pymethods]
 impl KaoImage {
     #[cfg(feature = "python")]
+    #[pyo3(name = "clone")]
+    fn _clone(&self) -> Self {
+        self.clone()
+    }
+    #[cfg(feature = "python")]
     #[classmethod]
     #[pyo3(name = "create_from_raw")]
     fn _create_from_raw(_cls: &PyType, cimg: &[u8], pal: &[u8]) -> PyResult<Self> {
@@ -190,7 +195,7 @@ impl KaoImage {
     pub fn size(&self) -> PyResult<usize> {
         Ok(Self::KAO_IMG_PAL_B_SIZE + self.compressed_img_data.len())
     }
-    pub fn set(&mut self, py: Python, source: InWrappedImage) -> PyResult<()> {
+    pub fn set(&mut self, py: Python, source: In16ColIndexedImage) -> PyResult<()> {
         let (pal, img) = Self::bitmap_to_kao(source.extract(py)?)?;
         assert_eq!(Self::KAO_IMG_PAL_B_SIZE, pal.len());
         self.pal_data = pal;
@@ -239,6 +244,9 @@ impl Kao {
         }
         Ok(Self { portraits })
     }
+    pub fn n_entries(&self) -> usize {
+        self.portraits.len()
+    }
     pub fn expand(&mut self, new_size: usize) -> PyResult<()> {
         if new_size < self.portraits.len() {
             return Err(exceptions::PyValueError::new_err(format!(
@@ -277,7 +285,7 @@ impl Kao {
             format!("The index requested must be between 0 and {}", self.portraits.len())
         ))
     }
-    pub fn set_from_img(&mut self, py: Python, index: usize, subindex: usize, img: InWrappedImage) -> PyResult<()> {
+    pub fn set_from_img(&mut self, py: Python, index: usize, subindex: usize, img: In16ColIndexedImage) -> PyResult<()> {
         if index <= self.portraits.len() {
             if subindex < Self::PORTRAIT_SLOTS as usize {
                 self.portraits[index][subindex] = Some(Py::new(py, KaoImage::new_from_img(img.extract(py)?)?)?);
