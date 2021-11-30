@@ -1,4 +1,4 @@
-__version__ = '0.0.1.post0'
+__version__ = '1.4.0'
 
 from setuptools import setup
 from setuptools_rust import Binding, RustExtension
@@ -13,10 +13,13 @@ with open(path.join(this_directory, 'README.rst'), encoding='utf-8') as f:
 setup(
     name="skytemple-rust",
     version=__version__,
-    rust_extensions=[RustExtension("skytemple_rust.pmd_wan", binding=Binding.PyO3)],
+    rust_extensions=[RustExtension(f"skytemple_rust", binding=Binding.PyO3)],
     packages=["skytemple_rust"],
     package_data={"skytemple_rust": ["py.typed", "*.pyi"]},
     description='Binary Rust extension for skytemple-files',
+    requirements=[
+        #'Pillow >= 6.1.0',
+    ],
     long_description=long_description,
     long_description_content_type='text/x-rst',
     url='https://github.com/SkyTemple/skytemple-rust/',
@@ -25,10 +28,9 @@ setup(
         'Programming Language :: Python',
         'Programming Language :: Rust',
         'License :: OSI Approved :: MIT License',
-        'Programming Language :: Python :: 3.6',
-        'Programming Language :: Python :: 3.7',
         'Programming Language :: Python :: 3.8',
-        'Programming Language :: Python :: 3.9'
+        'Programming Language :: Python :: 3.9',
+        'Programming Language :: Python :: 3.10',
     ],
     # rust extensions are not zip safe, just like C-extensions.
     zip_safe=False,

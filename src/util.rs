@@ -17,24 +17,13 @@
  * along with SkyTemple.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-pub(crate) mod util;
-pub mod python;
-pub mod image;
-#[cfg(not(feature = "python"))]
-pub mod no_python;
-#[cfg(feature = "python")]
-mod python_image;
-#[cfg(feature = "python")]
-mod python_module;
+#[inline]
+pub fn slice_to_array<const N: usize>(slice: &[u8]) -> [u8; N] {
+    let mut arr: [u8; N] = [0; N];
+    arr.copy_from_slice(slice);
+    arr
+}
 
-pub mod compression;
-pub mod st_at_common;
-pub mod st_at3px;
-pub mod st_at4pn;
-pub mod st_at4px;
-pub mod st_atupx;
-pub mod st_pkdpx;
-pub mod st_kao;
-
-#[cfg(feature = "python")]
-pub mod pmd_wan;
+pub fn init_default_vec<T>(size: usize) -> Vec<T> where T: Default {
+    (0..size).into_iter().map(|_| Default::default()).collect()
+}

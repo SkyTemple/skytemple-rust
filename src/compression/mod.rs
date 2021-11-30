@@ -16,25 +16,5 @@
  * You should have received a copy of the GNU General Public License
  * along with SkyTemple.  If not, see <https://www.gnu.org/licenses/>.
  */
-
-pub(crate) mod util;
-pub mod python;
-pub mod image;
-#[cfg(not(feature = "python"))]
-pub mod no_python;
-#[cfg(feature = "python")]
-mod python_image;
-#[cfg(feature = "python")]
-mod python_module;
-
-pub mod compression;
-pub mod st_at_common;
-pub mod st_at3px;
-pub mod st_at4pn;
-pub mod st_at4px;
-pub mod st_atupx;
-pub mod st_pkdpx;
-pub mod st_kao;
-
-#[cfg(feature = "python")]
-pub mod pmd_wan;
+pub mod custom_999;
+pub mod px;
