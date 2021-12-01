@@ -39,7 +39,7 @@ for gptrn in glob(WAN_FILE_PATTERN):
                     except ValueError as e:
                         print(f"Error converting {basename}/{mfg_i}/{mf_i}: {e}", file=sys.stderr)
         except ValueError as e:
-            print(f"Error converting {basename}/{mfg_i}/{mf_i}: {e}", file=sys.stderr)*/
+            print(f"Error converting {basename}/{mfg_i}/{mf_i}: {e}", file=sys.stderr)
 
 with open(PACK_FILE, 'rb') as f:
     bin_pack = FileType.BIN_PACK.deserialize(f.read())

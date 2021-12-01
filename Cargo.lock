@@ -472,9 +472,9 @@ dependencies = [
 
 [[package]]
 name = "pmd_wan"
-version = "2.0.1"
+version = "3.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "abeb8656bbfa97242675eddd8637af9f2efd319e53c36636c08e0bccd9616a53"
+checksum = "7f4623f3ffa6f09691fc9141fc1d585bd18daf9db14091d7082f8895c4a5f96e"
 dependencies = [
  "anyhow",
  "binread",
@@ -637,6 +637,7 @@ checksum = "d29ab0c6d3fc0ee92fe66e2d99f700eab17a8d57d1c1d3b748380fb20baa78cd"
 name = "skytemple_rust"
 version = "1.4.0"
 dependencies = [
+ "anyhow",
  "arr_macro",
  "bytes",
  "log",

@@ -17,11 +17,15 @@
  * along with SkyTemple.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-use pyo3::prelude::*;
 use pmd_wan as lib;
-use std::io::Cursor;
 use pmd_wan::WanError;
 use pyo3::exceptions;
+use pyo3::prelude::*;
+use std::convert::TryInto;
+use std::io::Cursor;
+
+use crate::image::{In16ColIndexedImage, InIndexedImage};
+use crate::python::StBytes;
 
 /// A PMD2 WAN sprite.
 #[pyclass(module = "pmd_wan")]
@@ -45,7 +49,7 @@ struct WanImage {
     #[pyo3(get)]
     pub unk_1: u32,
     #[pyo3(get)]
-    pub unk2: u16
+    pub unk2: u16,
 }
 
 #[pyclass(module = "pmd_wan")]
@@ -67,15 +71,20 @@ pub struct ImageBytes {
 #[pymethods]
 impl ImageBytes {
     pub fn decode_image(&self, resolution: &Resolution) -> PyResult<Vec<u8>> {
-        lib::decode_image_pixel(&self.mixed_pixels, &lib::Resolution {
-            x: resolution.x,
-            y: resolution.y
-        }).map_err(|err| convert_decode_image_error(err))
+        lib::decode_image_pixel(
+            &self.mixed_pixels,
+            &lib::Resolution {
+                x: resolution.x,
+                y: resolution.y,
+            },
+        )
+        .map_err(|err| convert_decode_image_error(err))
     }
 
     pub fn to_image(&self, palette: &Palette, metaframe: &MetaFrame) -> PyResult<Vec<u8>> {
         let decoded = self.decode_image(&metaframe.resolution)?;
-        let mut target: Vec<u8> = Vec::with_capacity(metaframe.resolution.x as usize* metaframe.resolution.y as usize);
+        let mut target: Vec<u8> =
+            Vec::with_capacity(metaframe.resolution.x as usize * metaframe.resolution.y as usize);
         for pixel in decoded {
             if pixel == 0 {
                 target.extend(&[0, 0, 0, 0])
@@ -86,10 +95,13 @@ impl ImageBytes {
                         let mut v = v.clone();
                         v[3] = v[3].saturating_mul(2);
                         target.extend(v)
-                    },
-                    None => return Err(exceptions::PyValueError::new_err(
-                        format!("An image reference the non-existing color with the id {}", color_id)
-                    )),
+                    }
+                    None => {
+                        return Err(exceptions::PyValueError::new_err(format!(
+                            "An image reference the non-existing color with the id {}",
+                            color_id
+                        )))
+                    }
                 }
             }
         }
@@ -100,8 +112,6 @@ impl ImageBytes {
 #[pyclass(module = "pmd_wan")]
 #[derive(Clone)]
 pub struct MetaFrameStore {
-    #[pyo3(get)]
-    pub meta_frames: Vec<MetaFrame>,
     #[pyo3(get)]
     pub meta_frame_groups: Vec<MetaFrameGroup>,
 }
@@ -114,15 +124,15 @@ pub struct MetaFrame {
     #[pyo3(get)]
     pub unk2: u16,
     #[pyo3(get)]
-    pub unk3: bool,
+    pub unk3_4: Option<(bool, bool)>,
+    #[pyo3(get)]
+    pub unk5: bool,
     #[pyo3(get)]
     pub image_index: usize,
     #[pyo3(get)]
     pub offset_y: i8,
     #[pyo3(get)]
     pub offset_x: i16,
-    #[pyo3(get)]
-    pub is_last: bool,
     #[pyo3(get)]
     pub v_flip: bool,
     #[pyo3(get)]
@@ -139,7 +149,7 @@ pub struct MetaFrame {
 #[derive(Clone)]
 pub struct MetaFrameGroup {
     #[pyo3(get)]
-    pub meta_frames_id: Vec<usize>,
+    pub meta_frames: Vec<MetaFrame>,
 }
 
 #[pyclass(module = "pmd_wan")]
@@ -199,20 +209,29 @@ pub struct SpriteType {
     #[pyo3(get)]
     name: &'static str,
     #[pyo3(get)]
-    value: u8
+    value: u8,
 }
 
 #[allow(non_upper_case_globals)]
 #[pymethods]
 impl SpriteType {
     #[classattr]
-    const PropsUI: SpriteType = SpriteType { name: "PropsUI", value: 0 };
+    const PropsUI: SpriteType = SpriteType {
+        name: "PropsUI",
+        value: 0,
+    };
 
     #[classattr]
-    const Chara: SpriteType = SpriteType { name: "Chara", value: 1 };
+    const Chara: SpriteType = SpriteType {
+        name: "Chara",
+        value: 1,
+    };
 
     #[classattr]
-    const Unknown: SpriteType = SpriteType { name: "Unknown", value: 3 };
+    const Unknown: SpriteType = SpriteType {
+        name: "Unknown",
+        value: 3,
+    };
 
     #[new]
     fn new(value: u8) -> PyResult<Self> {
@@ -220,7 +239,7 @@ impl SpriteType {
             0 => Ok(SpriteType::PropsUI),
             1 => Ok(SpriteType::Chara),
             3 => Ok(SpriteType::Unknown),
-            _ => Err(convert_error(WanError::TypeOfSpriteUnknown(value as u16)))
+            _ => Err(convert_error(WanError::TypeOfSpriteUnknown(value as u16))),
         }
     }
 
@@ -237,27 +256,26 @@ impl SpriteType {
     }
 }
 
-fn wrap_vec<T, U>(vector: &[T], convert_cb: fn (&T) -> U) -> Vec<U> {
+fn wrap_vec<T, U>(vector: &[T], convert_cb: fn(&T) -> U) -> Vec<U> {
     vector.iter().map(convert_cb).collect()
 }
 
 fn wrap_image_store(lib_ent: &lib::ImageStore) -> ImageStore {
     ImageStore {
-        images: wrap_vec(&lib_ent.images, |img| { wrap_image(img) })
+        images: wrap_vec(&lib_ent.images, |img| wrap_image(img)),
     }
 }
 
 fn wrap_image(lib_ent: &lib::ImageBytes) -> ImageBytes {
     ImageBytes {
         mixed_pixels: lib_ent.mixed_pixels.clone(),
-        z_index: lib_ent.z_index
+        z_index: lib_ent.z_index,
     }
 }
 
 fn wrap_meta_frame_store(lib_ent: &lib::MetaFrameStore) -> MetaFrameStore {
     MetaFrameStore {
-        meta_frames: wrap_vec(&lib_ent.meta_frames, |x| { wrap_meta_frame(x) }),
-        meta_frame_groups: wrap_vec(&lib_ent.meta_frame_groups, |x| { wrap_meta_frame_group(x) }),
+        meta_frame_groups: wrap_vec(&lib_ent.meta_frame_groups, |x| wrap_meta_frame_group(x)),
     }
 }
 
@@ -265,11 +283,11 @@ fn wrap_meta_frame(lib_ent: &lib::MetaFrame) -> MetaFrame {
     MetaFrame {
         unk1: lib_ent.unk1,
         unk2: lib_ent.unk2,
-        unk3: lib_ent.unk3,
+        unk3_4: lib_ent.unk3_4,
+        unk5: lib_ent.unk5,
         image_index: lib_ent.image_index,
         offset_y: lib_ent.offset_y,
         offset_x: lib_ent.offset_x,
-        is_last: lib_ent.is_last,
         v_flip: lib_ent.v_flip,
         h_flip: lib_ent.h_flip,
         is_mosaic: lib_ent.is_mosaic,
@@ -280,30 +298,27 @@ fn wrap_meta_frame(lib_ent: &lib::MetaFrame) -> MetaFrame {
 
 fn wrap_meta_frame_group(lib_ent: &lib::MetaFrameGroup) -> MetaFrameGroup {
     MetaFrameGroup {
-        meta_frames_id: lib_ent.meta_frames_id.clone()
+        meta_frames: wrap_vec(&lib_ent.meta_frames, |x| wrap_meta_frame(x)),
     }
 }
 
-fn wrap_resolution(lib_ent: &lib::Resolution<u8>) -> Resolution {
+fn wrap_resolution(lib_ent: &lib::Resolution) -> Resolution {
     Resolution {
         x: lib_ent.x,
-        y: lib_ent.y
+        y: lib_ent.y,
     }
 }
 
 fn wrap_anim_store(lib_ent: &lib::AnimStore) -> AnimStore {
     AnimStore {
-        anim_groups: wrap_vec(
-            &lib_ent.anim_groups,
-            |x| wrap_vec(x, |y| wrap_animation(y))
-        ),
-        copied_on_previous: lib_ent.copied_on_previous.clone()
+        anim_groups: wrap_vec(&lib_ent.anim_groups, |x| wrap_vec(x, |y| wrap_animation(y))),
+        copied_on_previous: lib_ent.copied_on_previous.clone(),
     }
 }
 
 fn wrap_animation(lib_ent: &lib::Animation) -> Animation {
     Animation {
-        frames: wrap_vec(&lib_ent.frames, |x| { wrap_animation_frame(x) })
+        frames: wrap_vec(&lib_ent.frames, |x| wrap_animation_frame(x)),
     }
 }
 
@@ -321,7 +336,7 @@ fn wrap_animation_frame(lib_ent: &lib::AnimationFrame) -> AnimationFrame {
 
 fn wrap_palette(lib_ent: &lib::Palette) -> Palette {
     Palette {
-        palette: lib_ent.palette.clone()
+        palette: lib_ent.palette.clone(),
     }
 }
 
@@ -348,30 +363,83 @@ impl WanImage {
                 is_256_color: lib_img.is_256_color,
                 sprite_type: convert_sprite_type(&lib_img.sprite_type),
                 unk_1: lib_img.unk_1,
-                unk2: lib_img.unk2
+                unk2: lib_img.unk2,
             }),
-            Err(err) => Err(convert_error(err))
+            Err(err) => Err(convert_error(err)),
         }
-
     }
 }
 
 fn convert_error(err: lib::WanError) -> PyErr {
     match err {
-        WanError::IOError(_) => 
-            exceptions::PyIOError::new_err(
-                "an io error happened"
-            ),
-        err =>
-            exceptions::PyValueError::new_err(
-                format!("{}", err)
-            ),
+        WanError::IOError(_) => exceptions::PyIOError::new_err("an io error happened"),
+        err => exceptions::PyValueError::new_err(format!("{}", err)),
     }
 }
+
 fn convert_decode_image_error(err: lib::DecodeImageError) -> PyErr {
-    exceptions::PyValueError::new_err(
-        format!("{}", err)
-    )
+    exceptions::PyValueError::new_err(format!("{}", err))
+}
+
+fn convert_anyhow_error(err: anyhow::Error) -> PyErr {
+    exceptions::PyValueError::new_err(format!("{:?}", err))
+}
+
+#[pyfunction]
+pub fn encode_image_to_static_wan_file(py: Python, image: PyObject) -> PyResult<StBytes> {
+    let indexed_image = In16ColIndexedImage(image).extract(py)?;
+    let mut palette = Vec::new();
+
+    // input palette always have 255 colours
+    for color in indexed_image.1.chunks_exact(3).take(16) {
+        //no panic: color is always of length 3
+        palette.push([color[0], color[1], color[2], 128]);
+    }
+
+    let mut wanimage = lib::WanImage {
+        image_store: lib::ImageStore { images: Vec::new() },
+        meta_frame_store: lib::MetaFrameStore::default(),
+        anim_store: lib::AnimStore::default(),
+        palette: lib::Palette {
+            palette
+        },
+        raw_particule_table: Vec::new(),
+        is_256_color: false,
+        sprite_type: lib::SpriteType::PropsUI,
+        unk_1: 0,
+        unk2: 0,
+    };
+
+    let meta_frame_group_id = lib::insert_frame_in_wanimage(
+        indexed_image.0.0.clone(),
+        indexed_image.0.1.try_into().map_err(|_| exceptions::PyValueError::new_err("The image is far too wide"))?,
+        indexed_image.0.2.try_into().map_err(|_| exceptions::PyValueError::new_err("The image is far too high"))?,
+        &mut wanimage,
+        0,
+    ).map_err(convert_anyhow_error)?;
+
+    if let Some(meta_frame_group_id) = meta_frame_group_id {
+        wanimage.anim_store.anim_groups.push(vec![
+            lib::Animation {
+                frames: vec![lib::AnimationFrame {
+                    duration: 1,
+                    flag: 0,
+                    frame_id: meta_frame_group_id as u16,
+                    offset_x: 0,
+                    offset_y: 0,
+                    shadow_offset_x: 0,
+                    shadow_offset_y: 0
+                }]
+            }
+        ]);
+
+        let mut buffer = Vec::new();
+        let mut cursor = Cursor::new(&mut buffer);
+        wanimage.create_wan(&mut cursor).map_err(convert_anyhow_error)?;
+        return Ok(StBytes::from(buffer))
+    } else {
+        Err(exceptions::PyValueError::new_err("The image doesn't contain any visible pixel"))
+    }
 }
 
 pub(crate) fn create_pmd_wan_module(py: Python) -> PyResult<(&str, &PyModule)> {
@@ -389,6 +457,7 @@ pub(crate) fn create_pmd_wan_module(py: Python) -> PyResult<(&str, &PyModule)> {
     m.add_class::<AnimationFrame>()?;
     m.add_class::<Palette>()?;
     m.add_class::<SpriteType>()?;
+    m.add_function(wrap_pyfunction!(encode_image_to_static_wan_file, m)?)?;
 
     Ok((name, m))
 }

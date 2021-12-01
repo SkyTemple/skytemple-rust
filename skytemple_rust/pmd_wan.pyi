@@ -16,7 +16,7 @@
 #  along with SkyTemple.  If not, see <https://www.gnu.org/licenses/>.
 
 from typing import List, Tuple, Optional
-
+from PIL.Image import Image
 
 class WanImage:
     image_store: ImageStore
@@ -38,20 +38,22 @@ class ImageBytes:
     mixed_pixels: List[int]
     z_index: int
 
+    def decode_image(self, resolution: Resolution) -> List[int]: ...
+
+    def to_image(self, palette: Palette, metaframe: MetaFrame) -> List[int]: ...
+
 
 class MetaFrameStore:
-    meta_frames: List[MetaFrame]
     meta_frame_groups: List[MetaFrameGroup]
 
 
 class MetaFrame:
     unk1: int
     unk2: int
-    unk3: bool
+    unk3_4: Optional[Tuple[bool, bool]]
     image_index: int
     offset_y: int
     offset_x: int
-    is_last: bool
     v_flip: bool
     h_flip: bool
     is_mosaic: bool
@@ -60,7 +62,7 @@ class MetaFrame:
 
 
 class MetaFrameGroup:
-    meta_frames_id: List[int]
+    meta_frames: List[MetaFrame]
 
 
 class Resolution:
@@ -95,7 +97,7 @@ class SpriteType:
     PropsUI: SpriteType
     Chara: SpriteType
     Unknown: SpriteType
-
     name: str
     value: int
 
+def encode_image_to_static_wan_file(image: Image) -> bytes: ...
