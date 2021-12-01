@@ -44,26 +44,57 @@ struct WanImage {
     pub sprite_type: SpriteType,
     #[pyo3(get)]
     pub unk_1: u32,
+    #[pyo3(get)]
+    pub unk2: u16
 }
 
 #[pyclass(module = "pmd_wan")]
 #[derive(Clone)]
 struct ImageStore {
     #[pyo3(get)]
-    pub images: Vec<Image>,
+    pub images: Vec<ImageBytes>,
 }
 
 #[pyclass(module = "pmd_wan")]
 #[derive(Clone)]
-pub struct Image {
+pub struct ImageBytes {
     #[pyo3(get)]
-    pub img: Vec<u8>,
-    #[pyo3(get)]
-    pub width: u32,
-    #[pyo3(get)]
-    pub height: u32,
+    pub mixed_pixels: Vec<u8>,
     #[pyo3(get)]
     pub z_index: u32,
+}
+
+#[pymethods]
+impl ImageBytes {
+    pub fn decode_image(&self, resolution: &Resolution) -> PyResult<Vec<u8>> {
+        lib::decode_image_pixel(&self.mixed_pixels, &lib::Resolution {
+            x: resolution.x,
+            y: resolution.y
+        }).map_err(|err| convert_decode_image_error(err))
+    }
+
+    pub fn to_image(&self, palette: &Palette, metaframe: &MetaFrame) -> PyResult<Vec<u8>> {
+        let decoded = self.decode_image(&metaframe.resolution)?;
+        let mut target: Vec<u8> = Vec::with_capacity(metaframe.resolution.x as usize* metaframe.resolution.y as usize);
+        for pixel in decoded {
+            if pixel == 0 {
+                target.extend(&[0, 0, 0, 0])
+            } else {
+                let color_id = metaframe.pal_idx as usize * 16 + pixel as usize;
+                match palette.palette.get(color_id) {
+                    Some(v) => {
+                        let mut v = v.clone();
+                        v[3] = v[3].saturating_mul(2);
+                        target.extend(v)
+                    },
+                    None => return Err(exceptions::PyValueError::new_err(
+                        format!("An image reference the non-existing color with the id {}", color_id)
+                    )),
+                }
+            }
+        }
+        Ok(target)
+    }
 }
 
 #[pyclass(module = "pmd_wan")]
@@ -87,9 +118,9 @@ pub struct MetaFrame {
     #[pyo3(get)]
     pub image_index: usize,
     #[pyo3(get)]
-    pub offset_y: i32,
+    pub offset_y: i8,
     #[pyo3(get)]
-    pub offset_x: i32,
+    pub offset_x: i16,
     #[pyo3(get)]
     pub is_last: bool,
     #[pyo3(get)]
@@ -101,7 +132,7 @@ pub struct MetaFrame {
     #[pyo3(get)]
     pub pal_idx: u16,
     #[pyo3(get)]
-    pub resolution: Option<Resolution>,
+    pub resolution: Resolution,
 }
 
 #[pyclass(module = "pmd_wan")]
@@ -124,11 +155,9 @@ pub struct Resolution {
 #[derive(Clone)]
 pub struct AnimStore {
     #[pyo3(get)]
-    pub animations: Vec<Animation>,
-    #[pyo3(get)]
     pub copied_on_previous: Option<Vec<bool>>, //indicate if a sprite can copy on the previous. Will always copy if possible if None
     #[pyo3(get)]
-    pub anim_groups: Vec<Option<(usize, usize)>>, //usize1 = start, usize2 = length
+    pub anim_groups: Vec<Vec<Animation>>, //usize1 = start, usize2 = length
 }
 
 #[pyclass(module = "pmd_wan")]
@@ -161,7 +190,7 @@ pub struct AnimationFrame {
 #[derive(Clone)]
 pub struct Palette {
     #[pyo3(get)]
-    pub palette: Vec<(u8, u8, u8, u8)>,
+    pub palette: Vec<[u8; 4]>,
 }
 
 #[pyclass(module = "pmd_wan")]
@@ -218,11 +247,9 @@ fn wrap_image_store(lib_ent: &lib::ImageStore) -> ImageStore {
     }
 }
 
-fn wrap_image(lib_ent: &lib::Image) -> Image {
-    Image {
-        img: lib_ent.img.to_vec(),
-        width: lib_ent.img.width(),
-        height: lib_ent.img.height(),
+fn wrap_image(lib_ent: &lib::ImageBytes) -> ImageBytes {
+    ImageBytes {
+        mixed_pixels: lib_ent.mixed_pixels.clone(),
         z_index: lib_ent.z_index
     }
 }
@@ -235,12 +262,6 @@ fn wrap_meta_frame_store(lib_ent: &lib::MetaFrameStore) -> MetaFrameStore {
 }
 
 fn wrap_meta_frame(lib_ent: &lib::MetaFrame) -> MetaFrame {
-    let resolution;
-    if let Some(v) = lib_ent.resolution {
-        resolution = Option::Some(wrap_resolution(&v));
-    } else {
-        resolution = Option::None;
-    }
     MetaFrame {
         unk1: lib_ent.unk1,
         unk2: lib_ent.unk2,
@@ -253,7 +274,7 @@ fn wrap_meta_frame(lib_ent: &lib::MetaFrame) -> MetaFrame {
         h_flip: lib_ent.h_flip,
         is_mosaic: lib_ent.is_mosaic,
         pal_idx: lib_ent.pal_idx,
-        resolution,
+        resolution: wrap_resolution(&lib_ent.resolution),
     }
 }
 
@@ -272,8 +293,10 @@ fn wrap_resolution(lib_ent: &lib::Resolution<u8>) -> Resolution {
 
 fn wrap_anim_store(lib_ent: &lib::AnimStore) -> AnimStore {
     AnimStore {
-        animations: wrap_vec(&lib_ent.animations, |x| { wrap_animation(x) }),
-        anim_groups: lib_ent.anim_groups.clone(),
+        anim_groups: wrap_vec(
+            &lib_ent.anim_groups,
+            |x| wrap_vec(x, |y| wrap_animation(y))
+        ),
         copied_on_previous: lib_ent.copied_on_previous.clone()
     }
 }
@@ -325,6 +348,7 @@ impl WanImage {
                 is_256_color: lib_img.is_256_color,
                 sprite_type: convert_sprite_type(&lib_img.sprite_type),
                 unk_1: lib_img.unk_1,
+                unk2: lib_img.unk2
             }),
             Err(err) => Err(convert_error(err))
         }
@@ -344,13 +368,18 @@ fn convert_error(err: lib::WanError) -> PyErr {
             ),
     }
 }
+fn convert_decode_image_error(err: lib::DecodeImageError) -> PyErr {
+    exceptions::PyValueError::new_err(
+        format!("{}", err)
+    )
+}
 
 pub(crate) fn create_pmd_wan_module(py: Python) -> PyResult<(&str, &PyModule)> {
     let name: &'static str = "skytemple_rust.pmd_wan";
     let m = PyModule::new(py, name)?;
     m.add_class::<WanImage>()?;
     m.add_class::<ImageStore>()?;
-    m.add_class::<Image>()?;
+    m.add_class::<ImageBytes>()?;
     m.add_class::<MetaFrameStore>()?;
     m.add_class::<MetaFrame>()?;
     m.add_class::<MetaFrameGroup>()?;

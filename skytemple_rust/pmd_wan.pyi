@@ -27,16 +27,15 @@ class WanImage:
     is_256_color: bool
     sprite_type: SpriteType
     unk_1: int
+    unk2: int
 
 
 class ImageStore:
-    images: List[Image]
+    images: List[ImageBytes]
 
 
-class Image:
-    img: List[int]
-    width: int
-    height: int
+class ImageBytes:
+    mixed_pixels: List[int]
     z_index: int
 
 
@@ -57,7 +56,7 @@ class MetaFrame:
     h_flip: bool
     is_mosaic: bool
     pal_idx: int
-    resolution: Optional[Resolution]
+    resolution: Resolution
 
 
 class MetaFrameGroup:
@@ -70,9 +69,8 @@ class Resolution:
 
 
 class AnimStore:
-    animations: List[Animation]
     copied_on_previous: Optional[List[bool]]
-    anim_groups: List[Optional[Tuple[int, int]]]
+    anim_groups: List[List[Animation]]
 
 
 class Animation:
@@ -90,7 +88,7 @@ class AnimationFrame:
 
 
 class Palette:
-    palette: List[Tuple[int, int, int, int]]
+    palette: List[int]
 
 
 class SpriteType:
