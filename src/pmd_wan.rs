@@ -78,7 +78,7 @@ impl ImageBytes {
                 y: resolution.y,
             },
         )
-        .map_err(|err| convert_decode_image_error(err))
+        .map_err(convert_decode_image_error)
     }
 
     pub fn to_image(&self, palette: &Palette, metaframe: &MetaFrame) -> PyResult<Vec<u8>> {
@@ -92,7 +92,7 @@ impl ImageBytes {
                 let color_id = metaframe.pal_idx as usize * 16 + pixel as usize;
                 match palette.palette.get(color_id) {
                     Some(v) => {
-                        let mut v = v.clone();
+                        let mut v = *v;
                         v[3] = v[3].saturating_mul(2);
                         target.extend(v)
                     }
@@ -262,7 +262,7 @@ fn wrap_vec<T, U>(vector: &[T], convert_cb: fn(&T) -> U) -> Vec<U> {
 
 fn wrap_image_store(lib_ent: &lib::ImageStore) -> ImageStore {
     ImageStore {
-        images: wrap_vec(&lib_ent.images, |img| wrap_image(img)),
+        images: wrap_vec(&lib_ent.images, wrap_image),
     }
 }
 
@@ -275,7 +275,7 @@ fn wrap_image(lib_ent: &lib::ImageBytes) -> ImageBytes {
 
 fn wrap_meta_frame_store(lib_ent: &lib::MetaFrameStore) -> MetaFrameStore {
     MetaFrameStore {
-        meta_frame_groups: wrap_vec(&lib_ent.meta_frame_groups, |x| wrap_meta_frame_group(x)),
+        meta_frame_groups: wrap_vec(&lib_ent.meta_frame_groups, wrap_meta_frame_group),
     }
 }
 
@@ -298,7 +298,7 @@ fn wrap_meta_frame(lib_ent: &lib::MetaFrame) -> MetaFrame {
 
 fn wrap_meta_frame_group(lib_ent: &lib::MetaFrameGroup) -> MetaFrameGroup {
     MetaFrameGroup {
-        meta_frames: wrap_vec(&lib_ent.meta_frames, |x| wrap_meta_frame(x)),
+        meta_frames: wrap_vec(&lib_ent.meta_frames,  wrap_meta_frame),
     }
 }
 
@@ -311,14 +311,14 @@ fn wrap_resolution(lib_ent: &lib::Resolution) -> Resolution {
 
 fn wrap_anim_store(lib_ent: &lib::AnimStore) -> AnimStore {
     AnimStore {
-        anim_groups: wrap_vec(&lib_ent.anim_groups, |x| wrap_vec(x, |y| wrap_animation(y))),
+        anim_groups: wrap_vec(&lib_ent.anim_groups, |x| wrap_vec(x, wrap_animation)),
         copied_on_previous: lib_ent.copied_on_previous.clone(),
     }
 }
 
 fn wrap_animation(lib_ent: &lib::Animation) -> Animation {
     Animation {
-        frames: wrap_vec(&lib_ent.frames, |x| wrap_animation_frame(x)),
+        frames: wrap_vec(&lib_ent.frames, wrap_animation_frame),
     }
 }
 
@@ -436,7 +436,7 @@ pub fn encode_image_to_static_wan_file(py: Python, image: PyObject) -> PyResult<
         let mut buffer = Vec::new();
         let mut cursor = Cursor::new(&mut buffer);
         wanimage.create_wan(&mut cursor).map_err(convert_anyhow_error)?;
-        return Ok(StBytes::from(buffer))
+        Ok(StBytes::from(buffer))
     } else {
         Err(exceptions::PyValueError::new_err("The image doesn't contain any visible pixel"))
     }
