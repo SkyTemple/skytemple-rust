@@ -5,7 +5,7 @@ from glob import glob
 from typing import Optional
 
 from PIL import Image
-from skytemple_rust.pmd_wan import MetaFrame, Image as PmdWanImage, Resolution, MetaFrameGroup
+from skytemple_rust.pmd_wan import MetaFrame, ImageBytes, Resolution, MetaFrameGroup
 
 from skytemple_rust import pmd_wan
 from skytemple_files.common.types.file_types import FileType
@@ -27,12 +27,12 @@ for gptrn in glob(WAN_FILE_PATTERN):
                 os.makedirs(f'/tmp/outimg/{basename}/{mfg_i}', exist_ok=True)
                 for mf_i, meta_frame_id in enumerate(meta_frame_group.meta_frames_id):
                     meta_frame = image.meta_frame_store.meta_frames[meta_frame_id]
-                    meta_frame_img: PmdWanImage = image.image_store.images[meta_frame.image_index]
-                    resolution1: Optional[Resolution] = meta_frame.resolution
+                    meta_frame_img_bytes: ImageBytes = image.image_store.images[meta_frame.image_index]
+                    resolution: Resolution = meta_frame.resolution
                     try:
                         im = Image.frombuffer('RGBA',
-                                              (resolution1.x, resolution1.y),
-                                              bytearray(meta_frame_img.img),
+                                              (resolution.x, resolution.y),
+                                              bytearray(meta_frame_img_bytes.to_image(image.palette, meta_frame)),
                                               'raw', 'RGBA', 0, 1)
 
                         im.save(f'/tmp/outimg/{basename}/{mfg_i}/{mf_i}.png')
@@ -54,13 +54,13 @@ with open(PACK_FILE, 'rb') as f:
             os.makedirs(f'/tmp/outimg/{s_i}/{mfg_i}', exist_ok=True)
             for mf_i, meta_frame_id in enumerate(meta_frame_group.meta_frames_id):
                 meta_frame = image.meta_frame_store.meta_frames[meta_frame_id]
-                meta_frame_img: PmdWanImage = image.image_store.images[meta_frame.image_index]
-                resolution1: Optional[Resolution] = meta_frame.resolution
+                meta_frame_img_bytes: ImageBytes = image.image_store.images[meta_frame.image_index]
+                resolution: Optional[Resolution] = meta_frame.resolution
                 try:
                     im = Image.frombuffer('RGBA',
-                                     (resolution1.x, resolution1.y),
-                                     bytearray(meta_frame_img.img),
-                                     'raw', 'RGBA', 0, 1)
+                                          (resolution.x, resolution.y),
+                                          bytearray(meta_frame_img_bytes.to_image(image.palette, meta_frame)),
+                                          'raw', 'RGBA', 0, 1)
 
                     im.save(f'/tmp/outimg/{s_i}/{mfg_i}/{mf_i}.png')
                 except ValueError as e:
