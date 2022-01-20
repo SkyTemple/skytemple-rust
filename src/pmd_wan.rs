@@ -1,5 +1,5 @@
 /*
- * Copyright 2021-2021 Parakoopa and the SkyTemple Contributors
+ * Copyright 2021-2022 Capypara and the SkyTemple Contributors
  *
  * This file is part of SkyTemple.
  *

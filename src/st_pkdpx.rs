@@ -1,5 +1,5 @@
 /*
- * Copyright 2021-2021 Parakoopa and the SkyTemple Contributors
+ * Copyright 2021-2022 Capypara and the SkyTemple Contributors
  *
  * This file is part of SkyTemple.
  *
@@ -68,7 +68,7 @@ impl Pkdpx {
     }
     pub fn decompress(&self) -> PyResult<StBytes> {
         let res = PxDecompressor::run(&self.data[..(self.len_comp - Self::DATA_START) as usize], self.flags.as_ref(), self.len_comp)?;
-        assert_eq!(self.len_decomp as usize, res.len());
+        debug_assert_eq!(self.len_decomp as usize, res.len());
         Ok(res.into())
     }
     pub fn to_bytes(&self) -> StBytes {
@@ -78,7 +78,7 @@ impl Pkdpx {
         res.put(&self.flags[..]);
         res.put_u32_le(self.len_decomp);
         res.put(self.data.clone());
-        assert_eq!(self.len_comp as usize, res.len());
+        debug_assert_eq!(self.len_comp as usize, res.len());
         res.into()
     }
     #[cfg(feature = "python")]

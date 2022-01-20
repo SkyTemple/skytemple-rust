@@ -1,5 +1,5 @@
 /*
- * Copyright 2021-2021 Parakoopa and the SkyTemple Contributors
+ * Copyright 2021-2022 Capypara and the SkyTemple Contributors
  *
  * This file is part of SkyTemple.
  *
@@ -59,7 +59,7 @@ impl KaoImage {
     }
     pub fn new_from_img(source: IndexedImage) -> PyResult<Self> {
         let (pal, img) = Self::bitmap_to_kao(source)?;
-        assert_eq!(Self::KAO_IMG_PAL_B_SIZE, pal.len());
+        debug_assert_eq!(Self::KAO_IMG_PAL_B_SIZE, pal.len());
         Ok(Self {
             compressed_img_data: img,
             pal_data: pal
@@ -197,7 +197,7 @@ impl KaoImage {
     }
     pub fn set(&mut self, py: Python, source: In16ColIndexedImage) -> PyResult<()> {
         let (pal, img) = Self::bitmap_to_kao(source.extract(py)?)?;
-        assert_eq!(Self::KAO_IMG_PAL_B_SIZE, pal.len());
+        debug_assert_eq!(Self::KAO_IMG_PAL_B_SIZE, pal.len());
         self.pal_data = pal;
         self.compressed_img_data = img;
         Ok(())
@@ -258,7 +258,7 @@ impl Kao {
         }
         Ok(())
     }
-    pub fn get(&self, py: Python, index: usize, subindex: usize) -> PyResult<Option<Py<KaoImage>>> {
+    pub fn get(&self, py: Python, index: usize, subindex: usize) -> PyResult<Option<PyClonedByRef<KaoImage>>> {
         if index < self.portraits.len() {
             if subindex < Self::PORTRAIT_SLOTS {
                 return return_option(py, &self.portraits[index][subindex]);
@@ -386,7 +386,6 @@ pub struct KaoWriter; // No fields.
 
 #[pymethods]
 impl KaoWriter {
-    #[allow(clippy::new_without_default)]
     #[new]
     pub fn new() -> Self {
         Self
@@ -409,7 +408,7 @@ impl KaoWriter {
                     Some(v) => {
                         // Write TOC
                         toc.put_i32_le(current_image_end);
-                        let data: Vec<u8> = v.extract::<KaoImage>(py).unwrap().iter().collect();
+                        let data: Vec<u8> = v.borrow(py).iter().collect();
                         current_image_end += data.len() as i32;
                         Some(data)
                     }

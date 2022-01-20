@@ -1,5 +1,5 @@
 /*
- * Copyright 2021-2021 Parakoopa and the SkyTemple Contributors
+ * Copyright 2021-2022 Capypara and the SkyTemple Contributors
  *
  * This file is part of SkyTemple.
  *
@@ -20,6 +20,7 @@
 pub(crate) mod util;
 pub mod python;
 pub mod image;
+pub mod rom_source;
 #[cfg(not(feature = "python"))]
 pub mod no_python;
 #[cfg(feature = "python")]
@@ -35,6 +36,18 @@ pub mod st_at4px;
 pub mod st_atupx;
 pub mod st_pkdpx;
 pub mod st_kao;
+pub mod st_bg_list_dat;
+pub mod st_bgp;
+pub mod st_bma;
+pub mod st_bpa;
+pub mod st_bpc;
+pub mod st_bpl;
+pub mod st_dbg;
+pub mod st_dma;
+pub mod st_dpc;
+pub mod st_dpci;
+pub mod st_dpl;
+pub mod st_dpla;
 
 #[cfg(feature = "python")]
 pub mod pmd_wan;

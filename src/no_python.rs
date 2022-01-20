@@ -1,5 +1,5 @@
 /*
- * Copyright 2021-2021 Parakoopa and the SkyTemple Contributors
+ * Copyright 2021-2022 Capypara and the SkyTemple Contributors
  *
  * This file is part of SkyTemple.
  *
@@ -61,7 +61,7 @@ pub trait PyWrapable {}
 
 /// Wrapper around Vec<u8> used to tell Pyo3 that this is a bytes object for Python
 #[derive(Clone)]
-pub struct PyBytes(Vec<u8>);
+pub struct PyBytes(pub Vec<u8>);
 
 impl PyWrapable for PyBytes {}
 impl PyBytes {
@@ -70,13 +70,13 @@ impl PyBytes {
     }
 }
 
+pub type PyClonedByRef<'py, T> = &'py Py<T>;
+pub type PyRef<'a, T> = &'a T;
+pub type PyRefMut<'a, T> = &'a mut T;
+
 /// This would normally be a reference to an object on the Python heap.
-/// If not using Python, this is a container that clones(!) instead.
-///
-/// TODO: If we could somehow turn this into a "reference generator" that'd be great.
-///
-/// NOTE FOR CONTRIBUTORS:
-///   Make sure your implementations are compatible with this restricted version of Py.
+/// If not using Python, extract always clones, clone_ref returns a reference to Self,
+/// and borrow and borrow_mut return normal Rust references to T instead.
 #[derive(Clone)]
 pub struct Py<T>(T) where T: Clone;
 impl<T> Py<T> where T: Clone {
@@ -86,8 +86,14 @@ impl<T> Py<T> where T: Clone {
     pub fn extract<U>(&self, _: Python) -> PyResult<T> {  // where T: U (!!)
         Ok(self.0.clone())
     }
-    pub fn clone_ref(&self, _: Python) -> Self {
-        self.clone()
+    pub fn borrow(&self, _: Python) -> &T {
+        &self.0
+    }
+    pub fn borrow_mut(&mut self, _: Python) -> &mut T {
+        &mut self.0
+    }
+    pub fn clone_ref(&self, _: Python) -> &Py<T> {
+        self
     }
 }
 impl <T> Py<T> where T: PyWrapable + Clone {
@@ -113,4 +119,5 @@ pub mod exceptions {
 
     impl_py_exception!(PyValueError);
     impl_py_exception!(PyRuntimeError);
+    impl_py_exception!(PyAssertionError);
 }

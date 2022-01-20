@@ -1,5 +1,5 @@
 /*
- * Copyright 2021-2021 Parakoopa and the SkyTemple Contributors
+ * Copyright 2021-2022 Capypara and the SkyTemple Contributors
  *
  * This file is part of SkyTemple.
  *
@@ -93,7 +93,8 @@ impl InIndexedImage<'_> for In256ColIndexedImage {
 
 // ---
 
-#[derive(PartialEq, Eq, Debug)]
+#[derive(PartialEq, Eq, Debug, Clone)]
+#[pyclass]
 pub struct TilemapEntry(usize, bool, bool, u8);  // idx, flip_x, flip_y, pal_idx
 
 impl From<usize> for TilemapEntry {
@@ -127,7 +128,7 @@ pub struct PixelGenerator<T>(pub T) where T: Iterator<Item = u8>;
 impl PixelGenerator<FourBppIterator> {
     pub fn pack4bpp(tiledata: &[u8], tile_dim: usize) -> Vec<Self> {
         let chunks: ChunksExact<u8> = tiledata.chunks_exact(tile_dim * tile_dim / 2);
-        assert_eq!(chunks.remainder().len(), 0);
+        debug_assert_eq!(chunks.remainder().len(), 0);
         chunks.map(|x| PixelGenerator(FourBppIterator::new(x.to_vec()))).collect()
     }
 }
@@ -135,7 +136,7 @@ impl PixelGenerator<FourBppIterator> {
 impl PixelGenerator<IntoIter<u8>> {
     pub fn pack8bpp(tiledata: &[u8], tile_dim: usize) -> Vec<Self> {
         let chunks: ChunksExact<u8> = tiledata.chunks_exact(tile_dim * tile_dim);
-        assert_eq!(chunks.remainder().len(), 0);
+        debug_assert_eq!(chunks.remainder().len(), 0);
         chunks.map(|x| PixelGenerator(x.to_vec().into_iter())).collect()
     }
 }
@@ -399,7 +400,7 @@ impl TiledImage {
             }
         }
 
-        assert_eq!(img_width * img_height, imagedata.len());
+        debug_assert_eq!(img_width * img_height, imagedata.len());
         Ok(IndexedImage(Raster(imagedata, img_width, img_height), paldata.to_vec().into()))
     }
 

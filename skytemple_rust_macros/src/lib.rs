@@ -19,10 +19,27 @@
 /** Dummy macros for using skytemple_rust without Pyo3 */
 extern crate proc_macro;
 use proc_macro::TokenStream;
+use quote::quote;
+use syn::parse_macro_input;
 
 #[proc_macro_attribute]
 pub fn pyclass(_: TokenStream, item: TokenStream) -> TokenStream {
-    item
+    // We are removing all #[pyo3] inner attributes.
+    let mut class = parse_macro_input!(item as syn::ItemStruct);
+
+    match &mut class.fields {
+        syn::Fields::Named(fields) => fields
+            .named
+            .iter_mut()
+            .for_each(|field| {field.attrs = vec![];}),
+        syn::Fields::Unnamed(fields) => fields
+            .unnamed
+            .iter_mut()
+            .for_each(|field| {field.attrs = vec![];}),
+        syn::Fields::Unit => {}
+    };
+
+    quote!(#class).into()
 }
 
 #[proc_macro_attribute]
@@ -37,5 +54,10 @@ pub fn new(_: TokenStream, item: TokenStream) -> TokenStream {
 
 #[proc_macro_attribute]
 pub fn pyo3(_: TokenStream, item: TokenStream) -> TokenStream {
+    item
+}
+
+#[proc_macro_attribute]
+pub fn args(_: TokenStream, item: TokenStream) -> TokenStream {
     item
 }

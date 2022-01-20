@@ -1,5 +1,5 @@
 /*
- * Copyright 2021-2021 Parakoopa and the SkyTemple Contributors
+ * Copyright 2021-2022 Capypara and the SkyTemple Contributors
  *
  * This file is part of SkyTemple.
  *
@@ -27,6 +27,18 @@ use crate::st_at4pn::create_st_at4pn_module;
 use crate::st_at4px::create_st_at4px_module;
 use crate::st_at_common::create_st_at_common_module;
 use crate::st_atupx::create_st_atupx_module;
+use crate::st_bg_list_dat::create_st_bg_list_dat_module;
+use crate::st_bgp::create_st_bgp_module;
+use crate::st_bma::create_st_bma_module;
+use crate::st_bpa::create_st_bpa_module;
+use crate::st_bpc::create_st_bpc_module;
+use crate::st_bpl::create_st_bpl_module;
+use crate::st_dbg::create_st_dbg_module;
+use crate::st_dma::create_st_dma_module;
+use crate::st_dpc::create_st_dpc_module;
+use crate::st_dpci::create_st_dpci_module;
+use crate::st_dpl::create_st_dpl_module;
+use crate::st_dpla::create_st_dpla_module;
 use crate::st_kao::create_st_kao_module;
 use crate::st_pkdpx::create_st_pkdpx_module;
 
@@ -35,7 +47,7 @@ fn skytemple_rust(py: Python, module: &PyModule) -> PyResult<()> {
     pyo3_log::init();
     info!("Loading skytemple_rust...");
     let sys = py.import("sys")?;
-    let modules: &PyDict = sys.getattr("modules")?.extract()?;
+    let modules: &PyDict = sys.getattr("modules")?.cast_as()?;
     add_submodule(module, create_pmd_wan_module(py)?, modules)?;
     add_submodule(module, create_st_at_common_module(py)?, modules)?;
     add_submodule(module, create_st_at3px_module(py)?, modules)?;
@@ -44,6 +56,18 @@ fn skytemple_rust(py: Python, module: &PyModule) -> PyResult<()> {
     add_submodule(module, create_st_atupx_module(py)?, modules)?;
     add_submodule(module, create_st_pkdpx_module(py)?, modules)?;
     add_submodule(module, create_st_kao_module(py)?, modules)?;
+    add_submodule(module, create_st_bg_list_dat_module(py)?, modules)?;
+    add_submodule(module, create_st_bgp_module(py)?, modules)?;
+    add_submodule(module, create_st_bma_module(py)?, modules)?;
+    add_submodule(module, create_st_bpa_module(py)?, modules)?;
+    add_submodule(module, create_st_bpc_module(py)?, modules)?;
+    add_submodule(module, create_st_bpl_module(py)?, modules)?;
+    add_submodule(module, create_st_dbg_module(py)?, modules)?;
+    add_submodule(module, create_st_dma_module(py)?, modules)?;
+    add_submodule(module, create_st_dpc_module(py)?, modules)?;
+    add_submodule(module, create_st_dpci_module(py)?, modules)?;
+    add_submodule(module, create_st_dpl_module(py)?, modules)?;
+    add_submodule(module, create_st_dpla_module(py)?, modules)?;
 
     Ok(())
 }

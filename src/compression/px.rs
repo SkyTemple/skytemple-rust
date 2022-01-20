@@ -1,5 +1,5 @@
 /*
- * Copyright 2021-2021 Parakoopa and the SkyTemple Contributors
+ * Copyright 2021-2022 Capypara and the SkyTemple Contributors
  *
  * This file is part of SkyTemple.
  *
@@ -177,7 +177,7 @@ impl PxCompressor<Bytes> {
             // Level 0
             // If all else fails, add the byte as-is
             let b = self.in_cur_buffer.get_u8();
-            assert!(myop.typ == Operation::CopyAsis);
+            debug_assert!(myop.typ == Operation::CopyAsis);
             myop.highnybble = (b >> 4) & 0xF;
             myop.lownybble = b & 0xF;
         }
@@ -301,7 +301,7 @@ impl PxCompressor<Bytes> {
                     if candidate + PX_MIN_MATCH_SEQLEN < seqres.length {
                         valid_high_nibble = *candidate;
                     }
-                    assert!(valid_high_nibble <= PX_MAX_MATCH_SEQLEN - PX_MIN_MATCH_SEQLEN);
+                    debug_assert!(valid_high_nibble <= PX_MAX_MATCH_SEQLEN - PX_MIN_MATCH_SEQLEN);
                 }
             }
             let signed_offset = -(current_offset as i64 - seqres.pos as i64);

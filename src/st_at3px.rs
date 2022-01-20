@@ -1,5 +1,5 @@
 /*
- * Copyright 2021-2021 Parakoopa and the SkyTemple Contributors
+ * Copyright 2021-2022 Capypara and the SkyTemple Contributors
  *
  * This file is part of SkyTemple.
  *
@@ -73,7 +73,7 @@ impl At3px {
         res.put_u16_le(self.len_comp);
         res.put(&self.flags[..]);
         res.put(self.data.clone());
-        assert_eq!(self.len_comp as usize, res.len());
+        debug_assert_eq!(self.len_comp as usize, res.len());
         res.into()
     }
     #[cfg(feature = "python")]

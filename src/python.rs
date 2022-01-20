@@ -1,5 +1,5 @@
 /*
- * Copyright 2021-2021 Parakoopa and the SkyTemple Contributors
+ * Copyright 2021-2022 Capypara and the SkyTemple Contributors
  *
  * This file is part of SkyTemple.
  *
@@ -58,11 +58,17 @@ impl From<StBytes> for Vec<u8> {
     }
 }
 
+// The Py::clone_ref method returns a copy of the Py container with Python.
+// Without Python, it returns a reference instead.
+// See no_python module.
+#[cfg(feature = "python")]
+pub type PyClonedByRef<T> = Py<T>;
+
 #[cfg(not(feature = "python"))]
 pub use crate::no_python::*;
 
 #[inline]
 // Clonability is required for non-Python use cases.
-pub(crate) fn return_option<T>(py: Python, opt: &Option<Py<T>>) -> PyResult<Option<Py<T>>> where T: Clone {
+pub(crate) fn return_option<T>(py: Python, opt: &Option<Py<T>>) -> PyResult<Option<PyClonedByRef<T>>> where T: Clone {
     Ok(opt.as_ref().map(|x| x.clone_ref(py)))
 }

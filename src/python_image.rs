@@ -1,6 +1,6 @@
 /// This crate converts our image models from/into PIL images for Python.
 /*
- * Copyright 2021-2021 Parakoopa and the SkyTemple Contributors
+ * Copyright 2021-2022 Capypara and the SkyTemple Contributors
  *
  * This file is part of SkyTemple.
  *
@@ -25,7 +25,6 @@ use crate::image::InIndexedImage;
 use crate::image::IndexedImage;
 
 pub fn in_from_py<'py, T>(img: T, py: Python<'py>) -> PyResult<(Vec<u8>, Vec<u8>, usize, usize)> where T: InIndexedImage<'py> {
-    // TODO
     let mut iimg = img.unwrap_py();
     if iimg.getattr(py, "mode")?.extract::<&str>(py)? == "P" {
         if T::MAX_COLORS == 16 {

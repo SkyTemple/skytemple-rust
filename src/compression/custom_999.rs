@@ -1,5 +1,5 @@
 /*
- * Copyright 2021-2021 Parakoopa and the SkyTemple Contributors
+ * Copyright 2021-2022 Capypara and the SkyTemple Contributors
  *
  * This file is part of SkyTemple.
  *
@@ -176,7 +176,7 @@ impl Custom999Decompressor {
             .chunks(2)
             .map(|x| x[0] + x[1] * 16)
             .collect::<Bytes>();
-        assert_eq!(decompressed_size, decompressed_done.len());
+        debug_assert_eq!(decompressed_size, decompressed_done.len());
         decompressed_done
     }
 }
