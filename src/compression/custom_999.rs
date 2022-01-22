@@ -16,7 +16,7 @@
  * You should have received a copy of the GNU General Public License
  * along with SkyTemple.  If not, see <https://www.gnu.org/licenses/>.
  */
-/// Written by irdkwia, ported by Capyara.
+/// Written by an anonymous contributor, ported by Capyara.
 /// Based on https://github.com/pleonex/tinke/blob/master/Plugins/999HRPERDOOR/999HRPERDOOR/AT6P.cs
 /// To work with the game, a patch is required!
 
@@ -24,7 +24,7 @@ use std::io::Cursor;
 use std::iter::once;
 use std::mem::swap;
 use bytes::{Buf, BufMut, Bytes, BytesMut};
-use crate::python::StBytes;
+use crate::bytes::StBytesMut;
 
 pub struct Custom999Compressor;
 impl Custom999Compressor {
@@ -120,7 +120,7 @@ impl Custom999Compressor {
 
 pub struct Custom999Decompressor;
 impl Custom999Decompressor {
-    pub fn run(compressed_data: &[u8], decompressed_size: usize) -> impl Buf + Into<StBytes> {
+    pub fn run(compressed_data: &[u8], decompressed_size: usize) -> impl Buf + Into<StBytesMut> {
         let mut compressed_cur = Cursor::new(compressed_data);
         let mut decompressed = BytesMut::with_capacity(decompressed_size);
         let mut code = compressed_cur.get_u8();
