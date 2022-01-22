@@ -17,26 +17,28 @@
  * along with SkyTemple.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+use std::fmt::Debug;
 use std::iter::FromIterator;
 use std::slice::ChunksExact;
 use std::vec::IntoIter;
 use bytes::{Buf, Bytes};
 use log::warn;
+use crate::bytes::{StBytes, StBytesMut};
 
 use crate::python::*;
 use crate::util::init_default_vec;
 
 // ---
 
-pub struct Raster(pub Vec<u8>, pub usize, pub usize);  // data, width, height
+pub struct Raster(pub StBytesMut, pub usize, pub usize);  // data, width, height
 pub type Palette = Bytes;
 pub struct IndexedImage(pub Raster, pub Palette);
 
 pub type TilesGenerator<G> = Vec<PixelGenerator<G>>;
-pub type Tile = Vec<u8>;
+pub type Tile = StBytesMut;
 pub type Tiles = Vec<Tile>;
-pub type TiledImageDataSeq<T/*: AsRef<[Tile]>*/> = (T, Vec<u8>);
-pub type TiledImageData = (Tiles, Vec<u8>, Vec<TilemapEntry>);
+pub type TiledImageDataSeq<T/*: AsRef<[Tile]>*/> = (T, StBytesMut);
+pub type TiledImageData = (Tiles, StBytesMut, Vec<TilemapEntry>);
 
 // ---
 
@@ -95,7 +97,7 @@ impl InIndexedImage<'_> for In256ColIndexedImage {
 
 #[derive(PartialEq, Eq, Debug, Clone)]
 #[pyclass]
-pub struct TilemapEntry(usize, bool, bool, u8);  // idx, flip_x, flip_y, pal_idx
+pub struct TilemapEntry(pub usize, pub bool, pub bool, pub u8);  // idx, flip_x, flip_y, pal_idx
 
 impl From<usize> for TilemapEntry {
     fn from(entry: usize) -> Self {
@@ -121,6 +123,49 @@ impl From<TilemapEntry> for usize {
     }
 }
 
+pub trait ProvidesTilemapEntry {
+    fn idx(&self) -> usize;
+    fn flip_x(&self) -> bool;
+    fn flip_y(&self) -> bool;
+    fn pal_idx(&self) -> u8;
+}
+
+impl ProvidesTilemapEntry for TilemapEntry {
+    fn idx(&self) -> usize {
+        self.0
+    }
+
+    fn flip_x(&self) -> bool {
+        self.1
+    }
+
+    fn flip_y(&self) -> bool {
+        self.2
+    }
+
+    fn pal_idx(&self) -> u8 {
+        self.3
+    }
+}
+
+impl ProvidesTilemapEntry for &TilemapEntry {
+    fn idx(&self) -> usize {
+        self.0
+    }
+
+    fn flip_x(&self) -> bool {
+        self.1
+    }
+
+    fn flip_y(&self) -> bool {
+        self.2
+    }
+
+    fn pal_idx(&self) -> u8 {
+        self.3
+    }
+}
+
 // ---
 
 pub struct PixelGenerator<T>(pub T) where T: Iterator<Item = u8>;
@@ -130,6 +175,9 @@ impl PixelGenerator<FourBppIterator> {
         let chunks: ChunksExact<u8> = tiledata.chunks_exact(tile_dim * tile_dim / 2);
         debug_assert_eq!(chunks.remainder().len(), 0);
         chunks.map(|x| PixelGenerator(FourBppIterator::new(x.to_vec()))).collect()
+    }
+    pub fn tiled4bpp(tiledata: &[StBytes]) -> Vec<Self> {
+        tiledata.iter().map(|x| PixelGenerator(FourBppIterator::new(x.0.clone()))).collect()
     }
 }
 
@@ -213,7 +261,7 @@ impl TiledImage {
         where
             T: FromIterator<u8>
     {
-        tiles.into_iter().flatten().collect()
+        tiles.into_iter().flat_map(|x| x.0).collect()
     }
     
     /// Note: Output images are 4bpp
@@ -348,12 +396,12 @@ impl TiledImage {
             )));
         }
 
-        Ok((final_tiles_with_sum.into_iter().map(|x| x.1).collect(), n_img.1.to_vec(), chunks))
+        Ok((final_tiles_with_sum.into_iter().map(|x| x.1).collect(), StBytesMut::from(n_img.1), chunks))
     }
 
     pub fn tiled_to_native_seq<J>(
         tiledata: TilesGenerator<J>, paldata: &[u8], tile_dim: usize, img_width: usize, img_height: usize
-    ) -> PyResult<IndexedImage>
+    ) -> IndexedImage
         where
             J: Iterator<Item = u8> + Clone
     {
@@ -364,16 +412,17 @@ impl TiledImage {
         )
     }
 
-    pub fn tiled_to_native<I, J>(
+    pub fn tiled_to_native<I, J, T> (
         chunks: I, tiledata: TilesGenerator<J>, paldata: &[u8], tile_dim: usize, img_width: usize, img_height: usize, chunk_dim: usize
-    ) -> PyResult<IndexedImage>
+    ) -> IndexedImage
         where
-            I: Iterator<Item = TilemapEntry>,
-            J: Iterator<Item = u8> + Clone
+            I: Iterator<Item = T>,
+            J: Iterator<Item = u8> + Clone,
+            T: ProvidesTilemapEntry + Debug
     {
         let img_width_in_tiles = img_width / tile_dim;
 
-        let mut imagedata = init_default_vec(img_width * img_height);
+        let mut imagedata: StBytesMut = init_default_vec(img_width * img_height);
         for (i, chunk_spec) in chunks.enumerate() {
             let tiles_in_chunks = chunk_dim * chunk_dim;
             let chunk_x: usize = (i / tiles_in_chunks) % (img_width_in_tiles / chunk_dim);
@@ -381,18 +430,18 @@ impl TiledImage {
             let tile_x: usize = (chunk_x * chunk_dim) + (i % chunk_dim);
             let tile_y: usize = (chunk_y * chunk_dim) + ((i / chunk_dim) % chunk_dim);
             let chunk_iter: J;
-            if tiledata.len() <= chunk_spec.0 as usize {
+            if tiledata.len() <= chunk_spec.idx() as usize {
                 warn!("TiledImage: TileMappingEntry {:?} contains invalid tile reference. Replaced with 0.", chunk_spec);
                 chunk_iter = tiledata[0].0.clone();
             } else {
-                chunk_iter = tiledata[chunk_spec.0 as usize].0.clone();
+                chunk_iter = tiledata[chunk_spec.idx() as usize].0.clone();
             }
             // Since our internal image has one big flat palette, we need to calculate the offset to that
-            let pal_start_offset = 16 * chunk_spec.3;
+            let pal_start_offset = 16 * chunk_spec.pal_idx();
             for (idx, col) in chunk_iter.enumerate() {
                 let (x_in_tile, y_in_tile) = Self::_px_pos_flipped(
                     idx % tile_dim, idx / tile_dim, tile_dim, tile_dim,
-                    chunk_spec.1, chunk_spec.2
+                    chunk_spec.flip_x(), chunk_spec.flip_y()
                 );
                 let real_x = tile_x * tile_dim + x_in_tile;
                 let real_y = tile_y * tile_dim + y_in_tile;
@@ -401,7 +450,7 @@ impl TiledImage {
         }
 
         debug_assert_eq!(img_width * img_height, imagedata.len());
-        Ok(IndexedImage(Raster(imagedata, img_width, img_height), paldata.to_vec().into()))
+        IndexedImage(Raster(imagedata, img_width, img_height), paldata.to_vec().into())
     }
 
     /// Search for the tile, or a flipped version of it, in tiles and return the index and flipped state

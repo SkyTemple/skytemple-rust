@@ -18,6 +18,7 @@
  */
 
 pub(crate) mod util;
+pub mod bytes;
 pub mod python;
 pub mod image;
 pub mod rom_source;

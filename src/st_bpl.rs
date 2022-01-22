@@ -19,6 +19,7 @@
 use std::iter::repeat;
 use std::mem::take;
 use bytes::{Buf, BufMut};
+use crate::bytes::StBytes;
 use crate::python::*;
 
 // Length of a palette in colors. Color 0 is auto-generated (transparent)
@@ -88,7 +89,7 @@ impl Bpl {
 #[pymethods]
 impl Bpl {
     #[new]
-    pub fn new(data: &[u8], py: Python) -> PyResult<Self> {
+    pub fn new(data: StBytes, py: Python) -> PyResult<Self> {
         let mut data = &data[..];
         let number_palettes = data.get_u16_le();
         let has_palette_animation = data.get_u16_le() > 0;
@@ -149,6 +150,8 @@ impl Bpl {
             animation_palette
         })
     }
+    /// Replace all palettes with the ones passed in.
+    /// Animated palette is not changed, but the number of spec entries is adjusted.
     pub fn import_palettes(&mut self, palettes: Vec<Vec<u8>>, py: Python) -> PyResult<()> {
         if palettes.len() > BPL_MAX_PAL as usize {
             return Err(exceptions::PyAssertionError::new_err(format!(
@@ -174,6 +177,15 @@ impl Bpl {
         }
         Ok(())
     }
+    /// Returns a modified copy of self.palettes.
+    ///
+    ///  This copy is modified to have colors swapped out for the current frame of palette animation.
+    ///  The information for this is stored in self.animation_specs and the animation palette in
+    ///  self.animation_palette.
+    ///
+    ///  Only available if self.has_palette_animation.
+    ///
+    ///  The maximum number of frames is the length of self.animation_palette.
     pub fn apply_palette_animations(&self, frame: u16, py: Python) -> Vec<Vec<u8>> {
         // TODO: First frame is missing: No change!
         let mut f_palettes = Vec::with_capacity(self.animation_specs.len());
@@ -192,6 +204,7 @@ impl Bpl {
         }
         f_palettes
     }
+    /// Returns whether or not the palette with that index is affected by animation.
     pub fn is_palette_affected_by_animation(&self, pal_idx: usize, py: Python) -> bool {
         if self.has_palette_animation {
             self.animation_specs[pal_idx].borrow(py).number_of_frames > 0
@@ -199,9 +212,11 @@ impl Bpl {
             false
         }
     }
+    /// Gets the actual palettes defined (without dummy grayscale entries).
     pub fn get_real_palettes(&self) -> Vec<Vec<u8>> {
         self.get_real_palettes_slices().to_vec()
     }
+    /// Sets the palette properly, adding dummy grayscale entries if needed.
     pub fn set_palettes(&mut self, palettes: Vec<Vec<u8>>) {
         self.palettes = palettes;
         self.number_palettes = self.palettes.len() as u16;
@@ -219,7 +234,7 @@ impl BplWriter {
     pub fn new() -> Self {
         Self
     }
-    pub fn write(&self, model: Bpl, py: Python) -> PyResult<Py<PyBytes>> {
+    pub fn write(&self, model: Bpl, py: Python) -> PyResult<StBytes> {
         let animation_size = if model.has_palette_animation {
             model.number_palettes as usize * BPL_COL_INDEX_ENTRY_LEN + model.animation_palette.len() * BPL_PAL_ENTRY_LEN
         } else {
@@ -265,7 +280,7 @@ impl BplWriter {
             }
         }
 
-        Ok(Py::from(PyBytes::new(py, &data)))
+        Ok(StBytes::from(data))
     }
 }
 

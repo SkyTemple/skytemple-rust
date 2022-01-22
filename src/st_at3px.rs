@@ -18,6 +18,7 @@
  */
 
 use bytes::{Buf, BufMut, Bytes, BytesMut};
+use crate::bytes::StBytesMut;
 use crate::compression::px::{PxCompLevel, PxCompressor, PxDecompressor};
 use crate::python::*;
 use crate::st_at_common::CompressionContainer;
@@ -64,10 +65,10 @@ impl At3px {
             data: data.to_vec().into(),
         })
     }
-    pub fn decompress(&self) -> PyResult<StBytes> {
+    pub fn decompress(&self) -> PyResult<StBytesMut> {
         Ok(PxDecompressor::run(&self.data[..(self.len_comp - Self::DATA_START) as usize], self.flags.as_ref(), self.len_comp)?.into())
     }
-    pub fn to_bytes(&self) -> StBytes {
+    pub fn to_bytes(&self) -> StBytesMut {
         let mut res = BytesMut::with_capacity(self.len_comp as usize);
         res.put(Bytes::from_static(Self::MAGIC));
         res.put_u16_le(self.len_comp);

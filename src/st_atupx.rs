@@ -18,6 +18,7 @@
  */
 
 use bytes::{Buf, BufMut, Bytes, BytesMut};
+use crate::bytes::StBytesMut;
 use crate::compression::custom_999::{Custom999Compressor, Custom999Decompressor};
 use crate::python::*;
 use crate::st_at_common::CompressionContainer;
@@ -60,10 +61,10 @@ impl Atupx {
             data: data.to_vec().into(),
         })
     }
-    pub fn decompress(&self) -> PyResult<StBytes> {
+    pub fn decompress(&self) -> PyResult<StBytesMut> {
         Ok(Custom999Decompressor::run(&*self.data, self.len_decomp as usize).into())
     }
-    pub fn to_bytes(&self) -> StBytes {
+    pub fn to_bytes(&self) -> StBytesMut {
         let mut res = BytesMut::with_capacity(self.len_comp as usize);
         res.put(Bytes::from_static(Self::MAGIC));
         res.put_u16_le(self.len_comp);

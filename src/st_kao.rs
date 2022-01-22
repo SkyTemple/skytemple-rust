@@ -30,13 +30,14 @@ use crate::python::*;
 use pyo3::PyIterProtocol;
 #[cfg(feature = "python")]
 use pyo3::iter::IterNextOutput;
+use crate::bytes::{StBytes, StBytesMut};
 use crate::st_at_common::{COMMON_AT_MUST_COMPRESS_3, CommonAt};
 
 #[pyclass(module = "st_kao")]
 #[derive(Clone)]
 pub struct KaoImage {
-    pal_data: Vec<u8>,
-    compressed_img_data: Vec<u8>
+    pal_data: StBytesMut,
+    compressed_img_data: StBytesMut
 }
 
 impl KaoImage {
@@ -53,10 +54,11 @@ impl KaoImage {
         }
         // palette size + at container size
         Ok(Self {
-            pal_data: Vec::from(&raw_data[..Self::KAO_IMG_PAL_B_SIZE]),
-            compressed_img_data: Vec::from(&raw_data[Self::KAO_IMG_PAL_B_SIZE..Self::KAO_IMG_PAL_B_SIZE + cont_len])
+            pal_data: StBytesMut::from(&raw_data[..Self::KAO_IMG_PAL_B_SIZE]),
+            compressed_img_data: StBytesMut::from(&raw_data[Self::KAO_IMG_PAL_B_SIZE..Self::KAO_IMG_PAL_B_SIZE + cont_len])
         })
     }
+    /// Create a new KaoImage from image data.
     pub fn new_from_img(source: IndexedImage) -> PyResult<Self> {
         let (pal, img) = Self::bitmap_to_kao(source)?;
         debug_assert_eq!(Self::KAO_IMG_PAL_B_SIZE, pal.len());
@@ -65,20 +67,21 @@ impl KaoImage {
             pal_data: pal
         })
     }
+    /// Create from raw compressed image and palette data.
     pub fn create_from_raw(cimg: &[u8], pal: &[u8]) -> PyResult<Self> {
         Ok(Self {
-            pal_data: Vec::from(pal),
-            compressed_img_data: Vec::from(cimg)
+            pal_data: StBytesMut::from(pal),
+            compressed_img_data: StBytesMut::from(cimg)
         })
     }
 
     pub fn iter(&self) -> impl Iterator<Item=u8> {
-        self.pal_data.clone().into_iter().chain(self.compressed_img_data.clone().into_iter())
+        self.pal_data.0.clone().into_iter().chain(self.compressed_img_data.0.clone().into_iter())
     }
 
-    fn bitmap_to_kao(source: IndexedImage) -> PyResult<(Vec<u8>, Vec<u8>)> {
+    fn bitmap_to_kao(source: IndexedImage) -> PyResult<(StBytesMut, StBytesMut)> {
         let (img, pal) = TiledImage::native_to_tiled_seq(source, Self::TILE_DIM, Self::IMG_DIM, Self::IMG_DIM)?;
-        let (img, pal) = Self::reorder_palette(TiledImage::unpack_tiles::<Vec<u8>>(img), pal);
+        let (img, pal) = Self::reorder_palette(TiledImage::unpack_tiles::<StBytesMut>(img), pal);
         let compressed_img = CommonAt::compress(&img, COMMON_AT_MUST_COMPRESS_3.iter())?;
         // Check image size
         if compressed_img.len() > 800 {
@@ -89,12 +92,12 @@ impl KaoImage {
                 compressed_img.len()
             )));
         }
-        Ok((pal.to_vec(), compressed_img))
+        Ok((pal, compressed_img))
     }
 
     /// Tries to reorder the palette to have a more favorable data
     /// configuration for the PX algorithm
-    fn reorder_palette(in_img: Vec<u8>, in_pal: Vec<u8>) -> (Vec<u8>, Vec<u8>) {
+    fn reorder_palette(in_img: StBytesMut, in_pal: StBytesMut) -> (StBytesMut, StBytesMut) {
         let mut pairs: HashMap<(u8, u8), usize> = HashMap::with_capacity(in_img.len());
         for x in 0..in_img.len()-1 {
             let l = [in_img[x] % 16, in_img[x] / 16, in_img[x+1] % 16, in_img[x+1] / 16];
@@ -163,12 +166,12 @@ impl KaoImage {
                 .map(|v|
                      ((new_order.iter().position(|x| *x as u8 == v % 16).unwrap()) +
                         (new_order.iter().position(|x| *x as u8 == v / 16).unwrap()) * 16) as u8
-                ).collect::<Vec<u8>>(),
+                ).collect::<StBytesMut>(),
             new_order.into_iter()
                 .map(|v| &in_pal[(v*3) as usize..(v*3+3) as usize])
                 .flatten()
                 .copied()
-                .collect::<Vec<u8>>()
+                .collect::<StBytesMut>()
         )
     }
 }
@@ -186,15 +189,17 @@ impl KaoImage {
     fn _create_from_raw(_cls: &PyType, cimg: &[u8], pal: &[u8]) -> PyResult<Self> {
         Self::create_from_raw(cimg, pal)
     }
+    /// Returns the portrait as a PIL image with a 16-color color palette.
     pub fn get(&self) -> PyResult<IndexedImage> {
-        TiledImage::tiled_to_native_seq(
+        Ok(TiledImage::tiled_to_native_seq(
             PixelGenerator::pack4bpp(&CommonAt::decompress(&self.compressed_img_data)?, Self::TILE_DIM),
             &self.pal_data, Self::TILE_DIM, Self::IMG_DIM, Self::IMG_DIM
-        )
+        ))
     }
     pub fn size(&self) -> PyResult<usize> {
         Ok(Self::KAO_IMG_PAL_B_SIZE + self.compressed_img_data.len())
     }
+    /// Sets the portrait using image data with 16-bit color palette as input.
     pub fn set(&mut self, py: Python, source: In16ColIndexedImage) -> PyResult<()> {
         let (pal, img) = Self::bitmap_to_kao(source.extract(py)?)?;
         debug_assert_eq!(Self::KAO_IMG_PAL_B_SIZE, pal.len());
@@ -202,6 +207,7 @@ impl KaoImage {
         self.compressed_img_data = img;
         Ok(())
     }
+    /// Returns raw image data and palettes.
     pub fn raw(&self) -> PyResult<(&[u8], &[u8])> {
         Ok((&self.compressed_img_data[..], &self.pal_data[..]))
     }
@@ -209,6 +215,7 @@ impl KaoImage {
 
 #[pyclass(module = "st_kao")]
 #[derive(Clone)]
+/// A container for portrait images.
 pub struct Kao {
     portraits: Vec<[Option<Py<KaoImage>>; Self::PORTRAIT_SLOTS]>
 }
@@ -220,6 +227,7 @@ impl Kao {
 
     #[new]
     #[allow(clippy::needless_range_loop)]
+    /// Reads a container from the binary KAO format.
     pub fn new(raw_data: &[u8], py: Python) -> PyResult<Self> {
         let mut data = Cursor::new(raw_data);
         let mut portraits: Vec<[Option<Py<KaoImage>>; Self::PORTRAIT_SLOTS]> = Vec::with_capacity(1600);
@@ -244,9 +252,11 @@ impl Kao {
         }
         Ok(Self { portraits })
     }
+    /// Returns the number of entries.
     pub fn n_entries(&self) -> usize {
         self.portraits.len()
     }
+    /// Enlarges the table of contents of the Kao to the new size.
     pub fn expand(&mut self, new_size: usize) -> PyResult<()> {
         if new_size < self.portraits.len() {
             return Err(exceptions::PyValueError::new_err(format!(
@@ -258,6 +268,7 @@ impl Kao {
         }
         Ok(())
     }
+    /// Gets an image from the Kao catalog.
     pub fn get(&self, py: Python, index: usize, subindex: usize) -> PyResult<Option<PyClonedByRef<KaoImage>>> {
         if index < self.portraits.len() {
             if subindex < Self::PORTRAIT_SLOTS {
@@ -271,6 +282,7 @@ impl Kao {
             format!("The index requested must be between 0 and {}", self.portraits.len())
         ))
     }
+    /// Set the KaoImage at the specified location.
     pub fn set(&mut self, index: usize, subindex: usize, img: Py<KaoImage>) -> PyResult<()> {
         if index <= self.portraits.len() {
             if subindex < Self::PORTRAIT_SLOTS as usize {
@@ -285,6 +297,7 @@ impl Kao {
             format!("The index requested must be between 0 and {}", self.portraits.len())
         ))
     }
+    /// Creates a new KaoImage at the specified location from image data.
     pub fn set_from_img(&mut self, py: Python, index: usize, subindex: usize, img: In16ColIndexedImage) -> PyResult<()> {
         if index <= self.portraits.len() {
             if subindex < Self::PORTRAIT_SLOTS as usize {
@@ -299,6 +312,7 @@ impl Kao {
             format!("The index requested must be between 0 and {}", self.portraits.len())
         ))
     }
+    /// Removes a KaoImage, if it exists.
     pub fn delete(&mut self, index: usize, subindex: usize) -> PyResult<()> {
         if index <= self.portraits.len() && subindex < Self::PORTRAIT_SLOTS {
             self.portraits[index][subindex] = None
@@ -306,6 +320,7 @@ impl Kao {
         Ok(())
     }
     #[cfg(not(feature = "python"))]
+    /// Iterates over all KaoImages.
     pub fn iter(&self) -> PyResult<KaoIterator> {
         let mut reference = Box::new(self.portraits.clone().into_iter()
             .map(
@@ -323,6 +338,7 @@ impl Kao {
 
 #[pyproto]
 #[cfg(feature = "python")]
+/// Iterates over all KaoImages.
 impl PyIterProtocol for Kao {
     fn __iter__(slf: PyRef<Self>) -> PyResult<Py<KaoIterator>> {
         let mut reference = Box::new(slf.portraits.clone().into_iter()
@@ -390,7 +406,7 @@ impl KaoWriter {
     pub fn new() -> Self {
         Self
     }
-    pub fn write(&self, model: Kao, py: Python) -> PyResult<Py<PyBytes>> {
+    pub fn write(&self, model: Kao, py: Python) -> PyResult<StBytes> {
         let toc_len = Kao::TOC_PADDING + (model.portraits.len() * Kao::PORTRAIT_SLOTS * 4);
         let mut toc: Vec<u8> = Vec::with_capacity(toc_len);
         toc.put_slice(&[0; Kao::TOC_PADDING]);
@@ -417,7 +433,7 @@ impl KaoWriter {
             .flatten()
             .collect::<Vec<u8>>();
         toc.append(&mut portrait_data);
-        Ok(Py::from(PyBytes::new(py, &toc)))
+        Ok(StBytes::from(portrait_data))
     }
 }
 

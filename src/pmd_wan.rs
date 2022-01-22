@@ -25,7 +25,7 @@ use std::convert::TryInto;
 use std::io::Cursor;
 
 use crate::image::{In16ColIndexedImage, InIndexedImage};
-use crate::python::StBytes;
+use crate::bytes::StBytes;
 
 /// A PMD2 WAN sprite.
 #[pyclass(module = "pmd_wan")]
@@ -411,7 +411,7 @@ pub fn encode_image_to_static_wan_file(py: Python, image: PyObject) -> PyResult<
     };
 
     let meta_frame_group_id = lib::insert_frame_in_wanimage(
-        indexed_image.0.0.clone(),
+        indexed_image.0.0.0.to_vec(),
         indexed_image.0.1.try_into().map_err(|_| exceptions::PyValueError::new_err("The image is far too wide"))?,
         indexed_image.0.2.try_into().map_err(|_| exceptions::PyValueError::new_err("The image is far too high"))?,
         &mut wanimage,

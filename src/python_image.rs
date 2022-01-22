@@ -21,10 +21,11 @@ use log::error;
 use pyo3::{exceptions, IntoPy, PyObject, Python};
 use pyo3::prelude::*;
 use pyo3::types::{PyBytes, PyIterator, PyTuple};
+use crate::bytes::StBytesMut;
 use crate::image::InIndexedImage;
 use crate::image::IndexedImage;
 
-pub fn in_from_py<'py, T>(img: T, py: Python<'py>) -> PyResult<(Vec<u8>, Vec<u8>, usize, usize)> where T: InIndexedImage<'py> {
+pub fn in_from_py<'py, T>(img: T, py: Python<'py>) -> PyResult<(StBytesMut, StBytesMut, usize, usize)> where T: InIndexedImage<'py> {
     let mut iimg = img.unwrap_py();
     if iimg.getattr(py, "mode")?.extract::<&str>(py)? == "P" {
         if T::MAX_COLORS == 16 {
@@ -44,7 +45,10 @@ pub fn in_from_py<'py, T>(img: T, py: Python<'py>) -> PyResult<(Vec<u8>, Vec<u8>
     let args = PyTuple::new(py, ["raw", "P"]);
     let bytes: Vec<u8> = iimg.getattr(py, "tobytes")?.call1(py, args)?.extract(py)?;
     let pal: Vec<u8> = iimg.getattr(py, "palette")?.getattr(py, "palette")?.extract(py)?;
-    Ok((bytes, pal, iimg.getattr(py, "width")?.extract(py)?, iimg.getattr(py, "height")?.extract(py)?))
+    Ok(
+        (StBytesMut::from(bytes), StBytesMut::from(pal),
+         iimg.getattr(py, "width")?.extract(py)?, iimg.getattr(py, "height")?.extract(py)?)
+    )
 }
 
 pub fn out_to_py(img: IndexedImage, py: Python) -> PyResult<PyObject> {

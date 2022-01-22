@@ -24,6 +24,6 @@ pub fn slice_to_array<const N: usize>(slice: &[u8]) -> [u8; N] {
     arr
 }
 
-pub fn init_default_vec<T>(size: usize) -> Vec<T> where T: Default {
+pub fn init_default_vec<U, T>(size: usize) -> U where U: FromIterator<T>, T: Default {
     (0..size).into_iter().map(|_| Default::default()).collect()
 }

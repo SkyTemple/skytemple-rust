@@ -18,6 +18,7 @@
  */
 
 use bytes::{BufMut, Bytes, BytesMut};
+use crate::bytes::StBytesMut;
 use crate::python::*;
 use crate::st_at_common::CompressionContainer;
 
@@ -54,10 +55,10 @@ impl At4pn {
             Ok(Self { data: content.to_vec().into() })
         }
     }
-    pub fn decompress(&self) -> PyResult<StBytes> {
+    pub fn decompress(&self) -> PyResult<StBytesMut> {
         Ok(self.data.clone().into())
     }
-    pub fn to_bytes(&self) -> StBytes {
+    pub fn to_bytes(&self) -> StBytesMut {
         let len = self.data.len();
         let mut res = BytesMut::with_capacity(Self::DATA_START + len);
         res.put(Bytes::from_static(Self::MAGIC));

@@ -17,7 +17,8 @@
  * along with SkyTemple.  If not, see <https://www.gnu.org/licenses/>.
  */
 use std::env;
-use bytes::{Buf};
+use bytes::Buf;
+use crate::bytes::StBytesMut;
 use crate::python::*;
 use crate::st_at3px::At3px;
 use crate::st_at4pn::At4pn;
@@ -49,7 +50,7 @@ pub trait CompressionContainer {
 
 pub struct CommonAt {}
 
-struct CommonAtCompressor(Option<Vec<u8>>, i32);
+struct CommonAtCompressor(Option<StBytesMut>, i32);
 
 impl CommonAt {
     pub fn cont_size(data: &[u8], byte_offset: usize) -> Option<u16> {
@@ -74,7 +75,7 @@ impl CommonAt {
 
     /// Compress with all of the compression algorithms yielded by `compression_type`. Returns
     /// the fastest. Additionally ATUPX is only checked if the environment variable `SKYTEMPLE_ALLOW_ATUPX` is set.
-    pub fn compress<'a, I>(uncompressed_data: &[u8], compression_type: I) -> PyResult<Vec<u8>> where I: Iterator<Item=&'a CommonAtType> {
+    pub fn compress<'a, I>(uncompressed_data: &[u8], compression_type: I) -> PyResult<StBytesMut> where I: Iterator<Item=&'a CommonAtType> {
         let mut meta = CommonAtCompressor(None, -1);
         for t in compression_type {
             match t {
@@ -94,30 +95,30 @@ impl CommonAt {
             None => Err(exceptions::PyValueError::new_err("No usable compression algorithm."))
         }
     }
-    fn compress_try(in_bytes: PyResult<StBytes>, meta: &mut CommonAtCompressor) {
+    fn compress_try(in_bytes: PyResult<StBytesMut>, meta: &mut CommonAtCompressor) {
         if let Ok(in_bytes) = in_bytes {
             if meta.0.is_none() || in_bytes.0.len() < meta.1 as usize {
                 meta.1 = in_bytes.0.len() as i32;
-                meta.0 = Some(in_bytes.0);
+                meta.0 = Some(in_bytes);
             }
         }
     }
 
-    pub fn decompress(compressed_data: &[u8]) -> PyResult<Vec<u8>> {
+    pub fn decompress(compressed_data: &[u8]) -> PyResult<StBytesMut> {
         if At4pn::matches(compressed_data) {
-            return Ok(At4pn::new(compressed_data, false)?.decompress()?.into());
+            return Ok(At4pn::new(compressed_data, false)?.decompress()?);
         }
         if At4px::matches(compressed_data) {
-            return Ok(At4px::new(compressed_data)?.decompress()?.into());
+            return Ok(At4px::new(compressed_data)?.decompress()?);
         }
         if At3px::matches(compressed_data) {
-            return Ok(At3px::new(compressed_data)?.decompress()?.into());
+            return Ok(At3px::new(compressed_data)?.decompress()?);
         }
         if Pkdpx::matches(compressed_data) {
-            return Ok(Pkdpx::new(compressed_data)?.decompress()?.into());
+            return Ok(Pkdpx::new(compressed_data)?.decompress()?);
         }
         if Atupx::matches(compressed_data) {
-            return Ok(Atupx::new(compressed_data)?.decompress()?.into());
+            return Ok(Atupx::new(compressed_data)?.decompress()?);
         }
         Err(exceptions::PyValueError::new_err("Unknown compression container"))
     }
