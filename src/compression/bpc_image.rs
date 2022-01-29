@@ -306,8 +306,8 @@ impl<'a, T> BpcImageDecompressor<'a, T> where T: 'a + AsRef<[u8]> {
                 }
                 return Err(exceptions::PyValueError::new_err(format!(
                     "BPC Image Decompressor: End result length unexpected. \
-                    Should be {}, is {}.\n\n{:?}",
-                    slf.stop_when_size, slf.decompressed_data.len(), slf.decompressed_data
+                    Should be {}, is {}.",
+                    slf.stop_when_size, slf.decompressed_data.len()
                 )))
             }
 
@@ -353,8 +353,8 @@ impl<'a, T> BpcImageDecompressor<'a, T> where T: 'a + AsRef<[u8]> {
             self.handle_leftover(cmd);
         }
 
-        if number_of_bytes_to_output > 0 {
-            self.handle_main_operation(cmd, number_of_bytes_to_output);
+        if number_of_bytes_to_output >= 0 {
+            self.handle_main_operation(cmd, number_of_bytes_to_output as u16);
         }
         Ok(())
     }
@@ -370,9 +370,6 @@ impl<'a, T> BpcImageDecompressor<'a, T> where T: 'a + AsRef<[u8]> {
     }
 
     fn handle_main_operation(&mut self, cmd: u8, number_of_bytes_to_output: u16) {
-        if number_of_bytes_to_output == 0 {
-            return;
-        }
         if Self::is_pattern_op(cmd) {
             // We are writing the stored pattern!
             // Convert current stored pattern in a 2 byte repeating pattern
@@ -399,13 +396,13 @@ impl<'a, T> BpcImageDecompressor<'a, T> where T: 'a + AsRef<[u8]> {
     }
 
     /// Determine the number of bytes to output. This is controlled by the CMD value.
-    fn read_nb_bytes_to_output(&mut self, cmd: u8) -> u16 {
+    fn read_nb_bytes_to_output(&mut self, cmd: u8) -> i32 {
         let mut nb = if CMD__NEXT.contains(&cmd) {
             // Number is encoded in next byte
-            self.compressed_data.get_u8() as u16
+            self.compressed_data.get_u8() as i32
         } else if cmd == CMD_COPY__NEXT__LE_16 {
             // Number is encoded in next two bytes
-            self.compressed_data.get_u16_le()
+            self.compressed_data.get_u16_le() as i32
         } else {
             // Number is in CMD. Depending on the case, we may need to subtract different things.
             let mut nb = cmd;
@@ -418,11 +415,11 @@ impl<'a, T> BpcImageDecompressor<'a, T> where T: 'a + AsRef<[u8]> {
                 nb -= CMD_LOAD_BYTE_AS_PATTERN_AND_CP
             }
 
-            nb as u16
+            nb as i32
         };
 
         // When we currently have a leftover word, we subtract one word to read
-        if self.has_leftover && nb > 0 {
+        if self.has_leftover {
             nb -= 1
         }
         nb
