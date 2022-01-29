@@ -147,16 +147,27 @@ impl Bpa {
         self.number_of_frames = (w / BPA_TILE_DIM) as u16;
         self.number_of_tiles = (h / BPA_TILE_DIM) as u16;
 
-        let (mut tiles, pal) = TiledImage::native_to_tiled_seq(
+        let (mut tiles, _pal) = TiledImage::native_to_tiled_seq(
             image, BPA_TILE_DIM, w, h
         )?;
 
-        self.tiles = (0..self.number_of_tiles)
-            .zip(0..self.number_of_frames)
-            .map(|(tile_idx, frame_idx)| take(&mut tiles[
+        self.tiles = Vec::with_capacity((self.number_of_frames * self.number_of_tiles) as usize);
+        for frame_idx in 0..self.number_of_frames {
+            for tile_idx in 0..self.number_of_tiles {
+                self.tiles.push(take(&mut tiles[
                     (tile_idx * self.number_of_frames + frame_idx) as usize
-                ]).freeze()
-            ).collect();
+                ]).freeze());
+            }
+        }
+
+        #[cfg(debug_assertions)]
+            {
+                assert_eq!((self.number_of_tiles * self.number_of_frames) as usize, tiles.len());
+                assert_eq!((self.number_of_tiles * self.number_of_frames) as usize, self.tiles.len());
+                for tile in &self.tiles {
+                    assert_eq!(BPA_TILE_DIM * BPA_TILE_DIM / 2, tile.len());
+                }
+            }
 
         self._correct_frame_info(py)
     }
@@ -187,11 +198,19 @@ impl Bpa {
                 .map(|y| y.freeze())
             ).collect();
 
+        #[cfg(debug_assertions)]
+            {
+                assert_eq!((self.number_of_tiles * self.number_of_frames) as usize, self.tiles.len());
+                for tile in &self.tiles {
+                    assert_eq!(BPA_TILE_DIM * BPA_TILE_DIM / 2, tile.len());
+                }
+            }
+
         self._correct_frame_info(py)
     }
     /// Returns the tiles for the specified frame. Strips the empty dummy tile image at the beginning.
-    pub fn tiles_for_frame(&self, frame: u16) -> StBytes {
-        self.tiles[(frame * self.number_of_tiles) as usize].clone()
+    pub fn tiles_for_frame(&self, frame: u16) -> Vec<StBytes> {
+        Vec::from(&self.tiles[((frame * self.number_of_tiles) as usize)..((frame + 1) * self.number_of_tiles) as usize])
     }
 
     fn _correct_frame_info(&mut self, py: Python) -> PyResult<()> {

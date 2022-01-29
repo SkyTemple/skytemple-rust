@@ -18,3 +18,6 @@
  */
 pub mod custom_999;
 pub mod px;
+pub mod bpc_image;
+pub mod bpc_tilemap;
+pub mod generic;

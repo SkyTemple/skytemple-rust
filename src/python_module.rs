@@ -41,6 +41,9 @@ use crate::st_dpl::create_st_dpl_module;
 use crate::st_dpla::create_st_dpla_module;
 use crate::st_kao::create_st_kao_module;
 use crate::st_pkdpx::create_st_pkdpx_module;
+use crate::compression::bpc_image::create_st_bpc_image_compression_module;
+use crate::compression::bpc_tilemap::create_st_bpc_tilemap_compression_module;
+use crate::compression::generic::nrl::create_st_generic_nrl_compression_module;
 
 #[pymodule]
 fn skytemple_rust(py: Python, module: &PyModule) -> PyResult<()> {
@@ -68,6 +71,10 @@ fn skytemple_rust(py: Python, module: &PyModule) -> PyResult<()> {
     add_submodule(module, create_st_dpci_module(py)?, modules)?;
     add_submodule(module, create_st_dpl_module(py)?, modules)?;
     add_submodule(module, create_st_dpla_module(py)?, modules)?;
+
+    add_submodule(module, create_st_generic_nrl_compression_module(py)?, modules)?;
+    add_submodule(module, create_st_bpc_image_compression_module(py)?, modules)?;
+    add_submodule(module, create_st_bpc_tilemap_compression_module(py)?, modules)?;
 
     Ok(())
 }

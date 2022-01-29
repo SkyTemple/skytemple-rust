@@ -433,7 +433,7 @@ impl KaoWriter {
             .flatten()
             .collect::<Vec<u8>>();
         toc.append(&mut portrait_data);
-        Ok(StBytes::from(portrait_data))
+        Ok(StBytes::from(toc))
     }
 }
 

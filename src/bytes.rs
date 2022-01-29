@@ -4,10 +4,10 @@ use bytes::buf::IntoIter;
 use pyo3::types::PyList;
 use crate::python::{FromPyObject, IntoPy, PyAny, PyByteArray, PyBytes, PyObject, PyResult, Python};
 
-#[derive(Clone, Default, PartialEq)]
+#[derive(Clone, Default, PartialEq, Debug)]
 pub struct StBytesMut(pub BytesMut);
 
-#[derive(Clone, Default, PartialEq)]
+#[derive(Clone, Default, PartialEq, Debug)]
 pub struct StBytes(pub Bytes);
 
 /** Export Bytes as bytes */
@@ -95,6 +95,12 @@ impl From<BytesMut> for StBytes {
 impl From<StBytes> for Bytes {
     fn from(v: StBytes) -> Self {
         v.0
+    }
+}
+
+impl AsRef<[u8]> for StBytes {
+    fn as_ref(&self) -> &[u8] {
+        self.0.as_ref()
     }
 }
 
