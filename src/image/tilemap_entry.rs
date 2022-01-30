@@ -142,7 +142,7 @@ impl From<InputTilemapEntry> for TilemapEntry {
 #[cfg(not(feature = "python"))]
 impl From<InputTilemapEntry> for TilemapEntry {
     fn from(obj: InputTilemapEntry) -> Self {
-        obj.0.extract(Python)
+        obj.0.extract::<TilemapEntry>(Python).unwrap()
     }
 }
 

@@ -103,7 +103,7 @@ impl Bpc {
         // Depending on the number of layers there are now one or two metadata sections
         // for these layers. The layers are completed by a BMA file that comes with this BPC file!
         // The BMA contains tiling w/h and w/h of the map. See bg_list.dat for mapping.
-        let layers = (0..number_of_layers).map(|_| {
+        let mut layers = (0..number_of_layers).map(|_| {
             // The actual number of tiles is one lower
             let number_tiles = toc_data.get_u16_le() - 1;
             let bpas = [
@@ -135,12 +135,16 @@ impl Bpc {
         }
 
         // Read the first layer tilemap
-        let mut l0borrowed = (&layers[0]).borrow_mut(py);
+        #[cfg(not(feature = "python"))]
+            let mut l0borrowed = layers[0].borrow_mut(py);
+        #[cfg(feature = "python")]
+            let mut l0borrowed = (&layers[0]).borrow_mut(py);
         l0borrowed.tilemap = Self::read_tilemap_data(BpcTilemapDecompressor::run(
             &mut upper_cursor,
             (l0borrowed.chunk_tilemap_len - 1) as usize * (tiling_width * tiling_height) as usize * BPC_TILEMAP_BYTELEN
         ), tiling_width, tiling_height, py)?;
-        drop(l0borrowed);
+        #[cfg(feature = "python")]
+            drop(l0borrowed);
 
         if number_of_layers > 1 {
             let mut lower_cursor = Cursor::new(data);
@@ -161,8 +165,11 @@ impl Bpc {
                 lower_cursor.advance(1)
             }
 
-            // Read the first layer tilemap
-            let mut l1borrowed = (&layers[1]).borrow_mut(py);
+            // Read the second layer tilemap
+            #[cfg(not(feature = "python"))]
+                let mut l1borrowed = layers[1].borrow_mut(py);
+            #[cfg(feature = "python")]
+                let mut l1borrowed = (&layers[1]).borrow_mut(py);
             l1borrowed.tilemap = Self::read_tilemap_data(BpcTilemapDecompressor::run(
                 &mut lower_cursor,
                 (l1borrowed.chunk_tilemap_len - 1) as usize * (tiling_width * tiling_height) as usize * BPC_TILEMAP_BYTELEN
@@ -401,7 +408,7 @@ impl BpcWriter {
         let mut data = BytesMut::with_capacity(length as usize * BPC_TILEMAP_BYTELEN);
         // Skip first chunk (null)
         for entry in layer.tilemap.iter().skip((model.tiling_width * model.tiling_height) as usize) {
-            let entry: TilemapEntry = entry.extract(py)?;
+            let entry = entry.extract::<TilemapEntry>(py)?;
             data.put_u16_le(usize::from(entry) as u16)
         }
 

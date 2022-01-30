@@ -19,7 +19,6 @@
 use std::io::Cursor;
 use std::ops::{Deref, DerefMut};
 use bytes::{Buf, BufMut, Bytes, BytesMut};
-use pyo3::exceptions;
 use crate::bytes::StBytesMut;
 use crate::compression::generic::nrl::{compression_step, decompression_step, NrlRead, NrlWrite};
 use crate::python::*;

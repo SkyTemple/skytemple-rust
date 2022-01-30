@@ -1,7 +1,9 @@
 use bytes::{Bytes, BytesMut};
 use std::ops::{Deref, DerefMut};
 use bytes::buf::IntoIter;
+#[cfg(feature = "python")]
 use pyo3::types::PyList;
+#[cfg(feature = "python")]
 use crate::python::{FromPyObject, IntoPy, PyAny, PyByteArray, PyBytes, PyObject, PyResult, Python};
 
 #[derive(Clone, Default, PartialEq, Debug)]

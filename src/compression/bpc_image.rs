@@ -19,7 +19,6 @@
 use std::io::Cursor;
 use std::mem::swap;
 use bytes::{Buf, BufMut, Bytes, BytesMut};
-use pyo3::exceptions;
 use crate::bytes::StBytesMut;
 use crate::python::*;
 
