@@ -196,7 +196,7 @@ impl Bpl {
                 let pal_for_frame = &self.animation_palette[actual_frame_for_pal as usize];
                 f_palettes.push(
                     repeat(0).take(3)
-                        .chain(pal_for_frame.into_iter().copied()).collect()
+                        .chain(pal_for_frame.iter().copied()).collect()
                 )
             } else {
                 f_palettes.push(self.palettes[i].clone())
@@ -225,7 +225,7 @@ impl Bpl {
 }
 
 #[pyclass(module = "skytemple_rust.st_bpl")]
-#[derive(Clone)]
+#[derive(Clone, Default)]
 pub struct BplWriter;
 
 #[pymethods]
@@ -251,7 +251,7 @@ impl BplWriter {
 
         for palette in model.get_real_palettes_slices() {
             // Palettes [Starts with transparent color! This is removed!]
-            for (i, color) in palette.into_iter().skip(3).enumerate() {
+            for (i, color) in palette.iter().skip(3).enumerate() {
                 data.put_u8(*color);
                 if i % 3 == 2 {
                     // Insert the fourth color

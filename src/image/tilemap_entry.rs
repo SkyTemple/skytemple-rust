@@ -127,7 +127,7 @@ impl<'source> FromPyObject<'source> for InputTilemapEntry {
 
 #[cfg(feature = "python")]
 impl IntoPy<Py<TilemapEntry>> for InputTilemapEntry {
-    fn into_py(self, py: Python) -> Py<TilemapEntry> {
+    fn into_py(self, _py: Python) -> Py<TilemapEntry> {
         self.0
     }
 }

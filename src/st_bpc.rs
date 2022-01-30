@@ -103,6 +103,7 @@ impl Bpc {
         // Depending on the number of layers there are now one or two metadata sections
         // for these layers. The layers are completed by a BMA file that comes with this BPC file!
         // The BMA contains tiling w/h and w/h of the map. See bg_list.dat for mapping.
+        #[allow(unused_mut)]
         let mut layers = (0..number_of_layers).map(|_| {
             // The actual number of tiles is one lower
             let number_tiles = toc_data.get_u16_le() - 1;

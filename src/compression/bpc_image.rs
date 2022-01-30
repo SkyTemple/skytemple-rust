@@ -463,10 +463,7 @@ impl BpcImageCompressionContainer {
             length_decompressed: data.len() as u16, compressed_data
         })
     }
-    pub fn matches(data: &[u8]) -> bool {
-        &data[0..6] == Self::MAGIC
-    }
-    fn cont_size(mut data: Bytes, byte_offset: usize) -> u16 {
+    fn cont_size(data: Bytes, byte_offset: usize) -> u16 {
         (data.len() - byte_offset) as u16
     }
 }

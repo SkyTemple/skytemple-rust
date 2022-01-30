@@ -109,7 +109,7 @@ impl BgList {
 }
 
 #[pyclass(module = "skytemple_rust.st_bg_list_dat")]
-#[derive(Clone)]
+#[derive(Clone, Default)]
 pub struct BgListWriter;
 
 #[pymethods]

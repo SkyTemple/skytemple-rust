@@ -398,7 +398,7 @@ impl PyIterProtocol for KaoIterator {
 }
 
 #[pyclass(module = "skytemple_rust.st_kao")]
-#[derive(Clone)]
+#[derive(Clone, Default)]
 pub struct KaoWriter; // No fields.
 
 #[pymethods]

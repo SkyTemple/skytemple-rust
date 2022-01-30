@@ -88,7 +88,7 @@ impl BpcTilemapCompressor {
         }
 
         // And then all the low bytes (LE)
-        let mut cursor = CompRead(Cursor::new(decompressed_data.clone()));
+        let mut cursor = CompRead(Cursor::new(decompressed_data));
         while cursor.has_remaining() {
             compression_step(&mut cursor, &mut compressed_data);
         }
@@ -206,10 +206,7 @@ impl BpcTilemapCompressionContainer {
             length_decompressed: data.len() as u16, compressed_data
         })
     }
-    pub fn matches(data: &[u8]) -> bool {
-        &data[0..6] == Self::MAGIC
-    }
-    fn cont_size(mut data: Bytes, byte_offset: usize) -> u16 {
+    fn cont_size(data: Bytes, byte_offset: usize) -> u16 {
         (data.len() - byte_offset) as u16
     }
 }

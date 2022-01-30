@@ -245,7 +245,7 @@ impl Bpa {
 }
 
 #[pyclass(module = "skytemple_rust.st_bpa")]
-#[derive(Clone)]
+#[derive(Clone, Default)]
 pub struct BpaWriter;
 
 #[pymethods]

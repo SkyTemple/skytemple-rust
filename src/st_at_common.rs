@@ -106,19 +106,19 @@ impl CommonAt {
 
     pub fn decompress(compressed_data: &[u8]) -> PyResult<StBytesMut> {
         if At4pn::matches(compressed_data) {
-            return Ok(At4pn::new(compressed_data, false)?.decompress()?);
+            return At4pn::new(compressed_data, false)?.decompress();
         }
         if At4px::matches(compressed_data) {
-            return Ok(At4px::new(compressed_data)?.decompress()?);
+            return At4px::new(compressed_data)?.decompress();
         }
         if At3px::matches(compressed_data) {
-            return Ok(At3px::new(compressed_data)?.decompress()?);
+            return At3px::new(compressed_data)?.decompress();
         }
         if Pkdpx::matches(compressed_data) {
-            return Ok(Pkdpx::new(compressed_data)?.decompress()?);
+            return Pkdpx::new(compressed_data)?.decompress();
         }
         if Atupx::matches(compressed_data) {
-            return Ok(Atupx::new(compressed_data)?.decompress()?);
+            return Atupx::new(compressed_data)?.decompress();
         }
         Err(exceptions::PyValueError::new_err("Unknown compression container"))
     }

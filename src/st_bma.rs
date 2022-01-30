@@ -102,7 +102,7 @@ impl Bma {
 }
 
 #[pyclass(module = "skytemple_rust.st_bma")]
-#[derive(Clone)]
+#[derive(Clone, Default)]
 pub struct BmaWriter;
 
 #[pymethods]
