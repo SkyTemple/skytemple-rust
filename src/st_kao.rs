@@ -24,7 +24,8 @@ use std::io::Cursor;
 use std::mem::swap;
 use std::vec;
 use bytes::{Buf, BufMut};
-use crate::image::{In16ColIndexedImage, IndexedImage, InIndexedImage, PixelGenerator, TiledImage};
+use crate::image::{In16ColIndexedImage, IndexedImage, InIndexedImage, PixelGenerator};
+use crate::image::tiled::TiledImage;
 use crate::python::*;
 #[cfg(feature = "python")]
 use pyo3::PyIterProtocol;
@@ -33,7 +34,7 @@ use pyo3::iter::IterNextOutput;
 use crate::bytes::{StBytes, StBytesMut};
 use crate::st_at_common::{COMMON_AT_MUST_COMPRESS_3, CommonAt};
 
-#[pyclass(module = "st_kao")]
+#[pyclass(module = "skytemple_rust.st_kao")]
 #[derive(Clone)]
 pub struct KaoImage {
     pal_data: StBytesMut,
@@ -213,7 +214,7 @@ impl KaoImage {
     }
 }
 
-#[pyclass(module = "st_kao")]
+#[pyclass(module = "skytemple_rust.st_kao")]
 #[derive(Clone)]
 /// A container for portrait images.
 pub struct Kao {
@@ -355,7 +356,7 @@ impl PyIterProtocol for Kao {
     }
 }
 
-#[pyclass(module = "st_kao", unsendable)]
+#[pyclass(module = "skytemple_rust.st_kao", unsendable)]
 pub struct KaoIterator {
     reference: Box<dyn Iterator<Item=std::vec::IntoIter<Option<Py<KaoImage>>>>>,
     iter_outer: Option<vec::IntoIter<Option<Py<KaoImage>>>>,
@@ -396,7 +397,7 @@ impl PyIterProtocol for KaoIterator {
     }
 }
 
-#[pyclass(module = "st_kao")]
+#[pyclass(module = "skytemple_rust.st_kao")]
 #[derive(Clone)]
 pub struct KaoWriter; // No fields.
 

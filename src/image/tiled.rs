@@ -18,207 +18,13 @@
  */
 
 use std::fmt::Debug;
-use std::iter::FromIterator;
-use std::slice::ChunksExact;
 use std::vec::IntoIter;
-use bytes::{Buf, Bytes};
 use log::warn;
-use crate::bytes::{StBytes, StBytesMut};
-
+use crate::bytes::StBytesMut;
 use crate::python::*;
+use crate::image::{IndexedImage, Raster, Tile, TiledImageData, TiledImageDataSeq, Tiles, TilesGenerator};
+use crate::image::tilemap_entry::{ProvidesTilemapEntry, TilemapEntry};
 use crate::util::init_default_vec;
-
-// ---
-
-pub struct Raster(pub StBytesMut, pub usize, pub usize);  // data, width, height
-pub type Palette = Bytes;
-pub struct IndexedImage(pub Raster, pub Palette);
-
-pub type TilesGenerator<G> = Vec<PixelGenerator<G>>;
-pub type Tile = StBytesMut;
-pub type Tiles = Vec<Tile>;
-pub type TiledImageDataSeq<T/*: AsRef<[Tile]>*/> = (T, StBytesMut);
-pub type TiledImageData = (Tiles, StBytesMut, Vec<TilemapEntry>);
-
-// ---
-
-pub trait InIndexedImage<'py>: Sized {
-    const MAX_COLORS: usize;
-    #[cfg(feature = "python")]
-    fn unwrap_py(self) -> PyObject;
-    #[cfg(feature = "python")]
-    fn extract(self, py: Python<'py>) -> PyResult<IndexedImage> {
-        match in_from_py(self, py) {
-            Ok((raster, pal, width, height)) => {
-                Ok(IndexedImage(Raster(
-                    raster, width, height),
-                                Bytes::from(pal)
-                ))
-            },
-            Err(e) => Err(e)
-        }
-    }
-    #[cfg(not(feature = "python"))]
-    fn extract(self, _py: Python) -> PyResult<IndexedImage>;
-}
-
-#[cfg(feature = "python")]
-#[derive(FromPyObject)]
-pub struct In16ColIndexedImage(pub PyObject); // PIL Image
-#[cfg(feature = "python")]
-#[derive(FromPyObject)]
-pub struct In256ColIndexedImage(pub PyObject); // PIL Image
-
-#[cfg(not(feature = "python"))]
-pub struct In16ColIndexedImage(pub IndexedImage);
-#[cfg(not(feature = "python"))]
-pub struct In256ColIndexedImage(pub IndexedImage);
-
-impl InIndexedImage<'_> for In16ColIndexedImage {
-    const MAX_COLORS: usize = 16;
-    #[cfg(feature = "python")]
-    fn unwrap_py(self) -> PyObject { self.0 }
-    #[cfg(not(feature = "python"))]
-    fn extract(self, _py: Python) -> PyResult<IndexedImage> {
-        Ok(self.0)
-    }
-}
-impl InIndexedImage<'_> for In256ColIndexedImage {
-    const MAX_COLORS: usize = 256;
-    #[cfg(feature = "python")]
-    fn unwrap_py(self) -> PyObject { self.0 }
-    #[cfg(not(feature = "python"))]
-    fn extract(self, _py: Python) -> PyResult<IndexedImage> {
-        Ok(self.0)
-    }
-}
-
-// ---
-
-#[derive(PartialEq, Eq, Debug, Clone)]
-#[pyclass]
-pub struct TilemapEntry(pub usize, pub bool, pub bool, pub u8);  // idx, flip_x, flip_y, pal_idx
-
-impl From<usize> for TilemapEntry {
-    fn from(entry: usize) -> Self {
-        TilemapEntry(
-            // 0000 0011 1111 1111, tile index
-            entry & 0x3FF,
-            // 0000 0100 0000 0000, hflip
-            (entry & 0x400) > 0,
-            // 0000 1000 0000 0000, vflip
-            (entry & 0x800) > 0,
-            // 1111 0000 0000 0000, pal index
-            ((entry & 0xF000) >> 12) as u8
-        )
-    }
-}
-
-impl From<TilemapEntry> for usize {
-    fn from(entry: TilemapEntry) -> Self {
-        (entry.0 & 0x3FF) +
-            (if entry.1 { 1 } else { 0 } << 10) +
-            (if entry.2 { 1 } else { 0 } << 11) +
-            ((entry.3 as usize & 0x3F) << 12) as usize
-    }
-}
-
-pub trait ProvidesTilemapEntry {
-    fn idx(&self) -> usize;
-    fn flip_x(&self) -> bool;
-    fn flip_y(&self) -> bool;
-    fn pal_idx(&self) -> u8;
-}
-
-impl ProvidesTilemapEntry for TilemapEntry {
-    fn idx(&self) -> usize {
-        self.0
-    }
-
-    fn flip_x(&self) -> bool {
-        self.1
-    }
-
-    fn flip_y(&self) -> bool {
-        self.2
-    }
-
-    fn pal_idx(&self) -> u8 {
-        self.3
-    }
-}
-
-impl ProvidesTilemapEntry for &TilemapEntry {
-    fn idx(&self) -> usize {
-        self.0
-    }
-
-    fn flip_x(&self) -> bool {
-        self.1
-    }
-
-    fn flip_y(&self) -> bool {
-        self.2
-    }
-
-    fn pal_idx(&self) -> u8 {
-        self.3
-    }
-}
-
-// ---
-
-pub struct PixelGenerator<T>(pub T) where T: Iterator<Item = u8>;
-
-impl PixelGenerator<FourBppIterator> {
-    pub fn pack4bpp(tiledata: &[u8], tile_dim: usize) -> Vec<Self> {
-        let chunks: ChunksExact<u8> = tiledata.chunks_exact(tile_dim * tile_dim / 2);
-        debug_assert_eq!(chunks.remainder().len(), 0);
-        chunks.map(|x| PixelGenerator(FourBppIterator::new(x.to_vec()))).collect()
-    }
-    pub fn tiled4bpp(tiledata: &[StBytes]) -> Vec<Self> {
-        tiledata.iter().map(|x| PixelGenerator(FourBppIterator::new(x.0.clone()))).collect()
-    }
-}
-
-impl PixelGenerator<IntoIter<u8>> {
-    pub fn pack8bpp(tiledata: &[u8], tile_dim: usize) -> Vec<Self> {
-        let chunks: ChunksExact<u8> = tiledata.chunks_exact(tile_dim * tile_dim);
-        debug_assert_eq!(chunks.remainder().len(), 0);
-        chunks.map(|x| PixelGenerator(x.to_vec().into_iter())).collect()
-    }
-}
-
-// ---
-
-/// Iterates a byte buffer one nibble at a time (low nibble first)
-#[derive(Clone)]
-pub struct FourBppIterator(Bytes, u8, bool);  // data, next high nibble, on high nibble
-
-impl FourBppIterator {
-    pub fn new(data: impl Into<Bytes>) -> Self {
-        Self(data.into(), 0, false)
-    }
-}
-
-impl Iterator for FourBppIterator {
-    type Item = u8;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        if !self.2 && !self.0.has_remaining() {
-            return None;
-        }
-        if self.2 {
-            self.2 = false;
-            Some(self.1)
-        } else {
-            self.2 = true;
-            let byte = self.0.get_u8();
-            self.1 = byte >> 4;
-            Some(byte & 0x0f)
-        }
-    }
-}
 
 // ---
 
@@ -251,8 +57,6 @@ impl Iterator for ChunkBasedImageIterator {
 #[derive(Default)]
 struct BuiltTile(usize, Tile);
 
-// ---
-
 pub struct TiledImage {}
 
 impl TiledImage {
@@ -263,7 +67,7 @@ impl TiledImage {
     {
         tiles.into_iter().flat_map(|x| x.0).collect()
     }
-    
+
     /// Note: Output images are 4bpp
     pub fn native_to_tiled_seq(
         n_img: IndexedImage, tile_dim: usize, img_width: usize, img_height: usize
@@ -298,7 +102,7 @@ impl TiledImage {
         }
 
         let number_of_tiles = (img_width * img_height) / tile_dim / tile_dim;
-        
+
         let mut tiles_with_sum: Vec<BuiltTile> = init_default_vec(number_of_tiles);
         let mut chunks: Vec<TilemapEntry> = Vec::with_capacity(number_of_tiles);
         let mut the_two_px_to_write: [u8; 2] = [0, 0];
@@ -321,17 +125,17 @@ impl TiledImage {
                 let chunk_x = x / (tile_dim * chunk_dim);
                 let chunk_y = y / (tile_dim * chunk_dim);
                 let tiles_up_to_current_chunk_y = img_width / tile_dim * chunk_y * chunk_dim;
-                
+
                 tile_x = (chunk_x * chunk_dim * chunk_dim) + ((x / tile_dim) - (chunk_x * chunk_dim));
                 tile_y = (chunk_y * chunk_dim) + ((y / tile_dim) - (chunk_y * chunk_dim));
                 tile_id = tiles_up_to_current_chunk_y + ((tile_y - chunk_dim * chunk_y) * chunk_dim) + tile_x;
-                
+
                 let in_tile_x = x - tile_dim * (x / tile_dim);
                 let in_tile_y = y - tile_dim * (y / tile_dim);
                 let idx_in_tile = in_tile_y * tile_dim + in_tile_x;
-                
+
                 nidx = idx_in_tile / 2;
-                
+
                 if !already_initialised_tiles.contains(&tile_id) {
                     already_initialised_tiles.push(tile_id);
                     // Begin a new tile

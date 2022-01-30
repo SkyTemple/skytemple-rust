@@ -39,7 +39,7 @@ const BPL_COL_INDEX_ENTRY_LEN: usize = 4;
 // Size of a single palette in bytes
 const BPL_PAL_SIZE: usize = BPL_PAL_LEN * BPL_PAL_ENTRY_LEN;
 
-#[pyclass(module = "st_bpl")]
+#[pyclass(module = "skytemple_rust.st_bpl")]
 #[derive(Clone)]
 pub struct BplAnimationSpec {
     #[pyo3(get, set)]
@@ -58,7 +58,7 @@ impl BplAnimationSpec {
     }
 }
 
-#[pyclass(module = "st_bpl")]
+#[pyclass(module = "skytemple_rust.st_bpl")]
 #[derive(Clone)]
 pub struct Bpl {
     #[pyo3(get, set)]
@@ -224,7 +224,7 @@ impl Bpl {
     }
 }
 
-#[pyclass(module = "st_bpl")]
+#[pyclass(module = "skytemple_rust.st_bpl")]
 #[derive(Clone)]
 pub struct BplWriter;
 

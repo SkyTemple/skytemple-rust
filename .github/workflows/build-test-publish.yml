@@ -18,7 +18,7 @@ jobs:
         name: Run type checks
         with:
           mypy_flags: '--config-file mypy.ini'
-          requirements: '-r requirements.txt git+git://github.com/skytemple/skytemple-files@master#egg=skytemple_files'
+          requirements: '-r requirements.txt'
           python_version: '${{ matrix.python-version }}'
 
   build_linux:
@@ -158,7 +158,7 @@ jobs:
       - name: Build Python wheels
         shell: msys2 {0}
         run: |
-          PATH="$PATH:/c/Rust/.cargo/bin" python setup.py bdist_wheel
+          PATH="$PATH:/c/Users/runneradmin/.cargo/bin" python setup.py bdist_wheel
         env:
           CARGO_BUILD_TARGET: ${{ matrix.rust_target }}
           PYO3_CROSS_LIB_DIR: ${{ matrix.lib_dir }}

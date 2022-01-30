@@ -76,6 +76,9 @@ pub struct BpcTilemapCompressor;
 
 impl BpcTilemapCompressor {
     pub fn run(decompressed_data: Bytes) -> PyResult<Bytes> {
+        if decompressed_data.is_empty() {
+            return Ok(Bytes::new());
+        }
         let mut compressed_data = BytesMut::with_capacity(decompressed_data.len() * 2);
 
         // First we process all the high bytes (LE)
@@ -135,7 +138,9 @@ impl<'a, T> BpcTilemapDecompressor<'a, T> where T: AsRef<[u8]> {
             decompression_step(slf.compressed_data, &mut slf.decompressed_data);
         }
 
-        assert_eq!(slf.stop_when_size, slf.decompressed_data.0.len());
+        if slf.decompressed_data.0.len() > slf.stop_when_size {
+            slf.decompressed_data.0.truncate(slf.stop_when_size);
+        }
 
         while slf.phase2_out_pos < slf.stop_when_size {
             if !slf.compressed_data.has_remaining() {
@@ -188,7 +193,7 @@ impl<'a, T> BpcTilemapDecompressor<'a, T> where T: AsRef<[u8]> {
 /////////////////////////////////////////
 
 // "Private" container for compressed data for use with tests written in Python (skytemple-files):
-#[pyclass(module = "_st_bpc_tilemap_compression")]
+#[pyclass(module = "skytemple_rust._st_bpc_tilemap_compression")]
 #[derive(Clone)]
 pub(crate) struct BpcTilemapCompressionContainer {
     compressed_data: Bytes,

@@ -24,7 +24,7 @@ use crate::st_bpa::Bpa;
 use crate::st_bpc::Bpc;
 use crate::st_bpl::Bpl;
 
-#[pyclass(module = "st_bg_list_dat")]
+#[pyclass(module = "skytemple_rust.st_bg_list_dat")]
 #[derive(Clone)]
 pub struct BgListEntry {
     #[pyo3(get, set)]
@@ -81,7 +81,7 @@ impl BgListEntry {
     }
 }
 
-#[pyclass(module = "st_bg_list_dat")]
+#[pyclass(module = "skytemple_rust.st_bg_list_dat")]
 #[derive(Clone)]
 pub struct BgList {
     #[pyo3(get, set)]
@@ -108,7 +108,7 @@ impl BgList {
     }
 }
 
-#[pyclass(module = "st_bg_list_dat")]
+#[pyclass(module = "skytemple_rust.st_bg_list_dat")]
 #[derive(Clone)]
 pub struct BgListWriter;
 

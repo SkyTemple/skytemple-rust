@@ -18,17 +18,17 @@
  */
 use std::cmp::Ordering;
 use std::mem::take;
-use std::ops::Index;
 use bytes::{Buf, BufMut};
-use pyo3::mapping::len;
 use crate::bytes::StBytes;
-use crate::image::{In256ColIndexedImage, IndexedImage, InIndexedImage, PixelGenerator, TiledImage, TilemapEntry};
+use crate::image::{In256ColIndexedImage, IndexedImage, InIndexedImage, PixelGenerator};
+use crate::image::tiled::TiledImage;
+use crate::image::tilemap_entry::TilemapEntry;
 use crate::python::*;
 
 const BPA_PIXEL_BITLEN: u8 = 4;
 const BPA_TILE_DIM: usize = 8;
 
-#[pyclass(module = "st_bpa")]
+#[pyclass(module = "skytemple_rust.st_bpa")]
 #[derive(Clone)]
 pub struct BpaFrameInfo {
     #[pyo3(get, set)]
@@ -47,7 +47,7 @@ impl BpaFrameInfo {
     }
 }
 
-#[pyclass(module = "st_bpa")]
+#[pyclass(module = "skytemple_rust.st_bpa")]
 #[derive(Clone)]
 pub struct Bpa {
     #[pyo3(get, set)]
@@ -244,7 +244,7 @@ impl Bpa {
     }
 }
 
-#[pyclass(module = "st_bpa")]
+#[pyclass(module = "skytemple_rust.st_bpa")]
 #[derive(Clone)]
 pub struct BpaWriter;
 

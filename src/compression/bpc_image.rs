@@ -99,6 +99,9 @@ pub struct BpcImageCompressor {
 
 impl BpcImageCompressor {
     pub fn run(decompressed_data: Bytes) -> PyResult<Bytes> {
+        if decompressed_data.len() % 2 != 0 {
+            return Err(exceptions::PyValueError::new_err("BPC Image compressor can only compress data with an even length."))
+        }
         let mut slf = Self {
             compressed_data: BytesMut::with_capacity(decompressed_data.len() * 2),
             decompressed_data,
@@ -282,6 +285,9 @@ pub struct BpcImageDecompressor<'a, T> where T: 'a + AsRef<[u8]> {
 
 impl<'a, T> BpcImageDecompressor<'a, T> where T: 'a + AsRef<[u8]> {
     pub fn run(compressed_data: &'a mut Cursor<T>, stop_when_size: usize) -> PyResult<Bytes> {
+        if stop_when_size % 2 != 0 {
+            return Err(exceptions::PyValueError::new_err("BPC Image compressor can only decompress data with an even output length."))
+        }
         let mut slf = Self {
             decompressed_data: BytesMut::with_capacity(stop_when_size),
             compressed_data,
@@ -444,7 +450,7 @@ impl<'a, T> BpcImageDecompressor<'a, T> where T: 'a + AsRef<[u8]> {
 }
 
 // "Private" container for compressed data for use with tests written in Python (skytemple-files):
-#[pyclass(module = "_st_bpc_image_compression")]
+#[pyclass(module = "skytemple_rust._st_bpc_image_compression")]
 #[derive(Clone)]
 pub(crate) struct BpcImageCompressionContainer {
     compressed_data: Bytes,

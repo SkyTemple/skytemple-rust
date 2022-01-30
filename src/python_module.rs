@@ -44,6 +44,7 @@ use crate::st_pkdpx::create_st_pkdpx_module;
 use crate::compression::bpc_image::create_st_bpc_image_compression_module;
 use crate::compression::bpc_tilemap::create_st_bpc_tilemap_compression_module;
 use crate::compression::generic::nrl::create_st_generic_nrl_compression_module;
+use crate::image::tilemap_entry::TilemapEntry;
 
 #[pymodule]
 fn skytemple_rust(py: Python, module: &PyModule) -> PyResult<()> {
@@ -75,6 +76,8 @@ fn skytemple_rust(py: Python, module: &PyModule) -> PyResult<()> {
     add_submodule(module, create_st_generic_nrl_compression_module(py)?, modules)?;
     add_submodule(module, create_st_bpc_image_compression_module(py)?, modules)?;
     add_submodule(module, create_st_bpc_tilemap_compression_module(py)?, modules)?;
+
+    module.add_class::<TilemapEntry>()?;
 
     Ok(())
 }

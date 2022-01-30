@@ -23,7 +23,7 @@ use crate::compression::custom_999::{Custom999Compressor, Custom999Decompressor}
 use crate::python::*;
 use crate::st_at_common::CompressionContainer;
 
-#[pyclass(module = "st_atupx")]
+#[pyclass(module = "skytemple_rust.st_atupx")]
 #[derive(Clone)]
 pub struct Atupx {
     data: Bytes,

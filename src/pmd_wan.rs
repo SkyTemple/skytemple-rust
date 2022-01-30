@@ -28,7 +28,7 @@ use crate::image::{In16ColIndexedImage, InIndexedImage};
 use crate::bytes::StBytes;
 
 /// A PMD2 WAN sprite.
-#[pyclass(module = "pmd_wan")]
+#[pyclass(module = "skytemple_rust.pmd_wan")]
 #[derive(Clone)]
 struct WanImage {
     #[pyo3(get)]
@@ -52,14 +52,14 @@ struct WanImage {
     pub unk2: u16,
 }
 
-#[pyclass(module = "pmd_wan")]
+#[pyclass(module = "skytemple_rust.pmd_wan")]
 #[derive(Clone)]
 struct ImageStore {
     #[pyo3(get)]
     pub images: Vec<ImageBytes>,
 }
 
-#[pyclass(module = "pmd_wan")]
+#[pyclass(module = "skytemple_rust.pmd_wan")]
 #[derive(Clone)]
 pub struct ImageBytes {
     #[pyo3(get)]
@@ -109,14 +109,14 @@ impl ImageBytes {
     }
 }
 
-#[pyclass(module = "pmd_wan")]
+#[pyclass(module = "skytemple_rust.pmd_wan")]
 #[derive(Clone)]
 pub struct MetaFrameStore {
     #[pyo3(get)]
     pub meta_frame_groups: Vec<MetaFrameGroup>,
 }
 
-#[pyclass(module = "pmd_wan")]
+#[pyclass(module = "skytemple_rust.pmd_wan")]
 #[derive(Clone)]
 pub struct MetaFrame {
     #[pyo3(get)]
@@ -145,14 +145,14 @@ pub struct MetaFrame {
     pub resolution: Resolution,
 }
 
-#[pyclass(module = "pmd_wan")]
+#[pyclass(module = "skytemple_rust.pmd_wan")]
 #[derive(Clone)]
 pub struct MetaFrameGroup {
     #[pyo3(get)]
     pub meta_frames: Vec<MetaFrame>,
 }
 
-#[pyclass(module = "pmd_wan")]
+#[pyclass(module = "skytemple_rust.pmd_wan")]
 #[derive(Copy, Clone)]
 pub struct Resolution {
     #[pyo3(get)]
@@ -161,7 +161,7 @@ pub struct Resolution {
     pub y: u8,
 }
 
-#[pyclass(module = "pmd_wan")]
+#[pyclass(module = "skytemple_rust.pmd_wan")]
 #[derive(Clone)]
 pub struct AnimStore {
     #[pyo3(get)]
@@ -170,14 +170,14 @@ pub struct AnimStore {
     pub anim_groups: Vec<Vec<Animation>>, //usize1 = start, usize2 = length
 }
 
-#[pyclass(module = "pmd_wan")]
+#[pyclass(module = "skytemple_rust.pmd_wan")]
 #[derive(PartialEq, Clone)]
 pub struct Animation {
     #[pyo3(get)]
     pub frames: Vec<AnimationFrame>,
 }
 
-#[pyclass(module = "pmd_wan")]
+#[pyclass(module = "skytemple_rust.pmd_wan")]
 #[derive(PartialEq, Clone)]
 pub struct AnimationFrame {
     #[pyo3(get)]
@@ -196,14 +196,14 @@ pub struct AnimationFrame {
     pub shadow_offset_y: i16,
 }
 
-#[pyclass(module = "pmd_wan")]
+#[pyclass(module = "skytemple_rust.pmd_wan")]
 #[derive(Clone)]
 pub struct Palette {
     #[pyo3(get)]
     pub palette: Vec<[u8; 4]>,
 }
 
-#[pyclass(module = "pmd_wan")]
+#[pyclass(module = "skytemple_rust.pmd_wan")]
 #[derive(Clone)]
 pub struct SpriteType {
     #[pyo3(get)]

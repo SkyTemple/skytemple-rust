@@ -24,7 +24,7 @@ use crate::python::*;
 use crate::st_at_common::CompressionContainer;
 use crate::util::slice_to_array;
 
-#[pyclass(module = "st_at4px")]
+#[pyclass(module = "skytemple_rust.st_at4px")]
 #[derive(Clone)]
 pub struct At4px {
     data: Bytes,

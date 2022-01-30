@@ -24,7 +24,7 @@ use crate::python::*;
 use crate::st_at_common::CompressionContainer;
 use crate::util::slice_to_array;
 
-#[pyclass(module = "st_pkdpx")]
+#[pyclass(module = "skytemple_rust.st_pkdpx")]
 #[derive(Clone)]
 pub struct Pkdpx {
     data: Bytes,

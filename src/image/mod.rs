@@ -1,0 +1,153 @@
+/*
+ * Copyright 2021-2022 Capypara and the SkyTemple Contributors
+ *
+ * This file is part of SkyTemple.
+ *
+ * SkyTemple is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * SkyTemple is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with SkyTemple.  If not, see <https://www.gnu.org/licenses/>.
+ */
+
+use std::slice::ChunksExact;
+use std::vec::IntoIter;
+use bytes::{Buf, Bytes};
+use crate::bytes::{StBytes, StBytesMut};
+use crate::image::tilemap_entry::TilemapEntry;
+
+use crate::python::*;
+
+// ---
+
+pub struct Raster(pub StBytesMut, pub usize, pub usize);  // data, width, height
+pub type Palette = Bytes;
+pub struct IndexedImage(pub Raster, pub Palette);
+
+pub type TilesGenerator<G> = Vec<PixelGenerator<G>>;
+pub type Tile = StBytesMut;
+pub type Tiles = Vec<Tile>;
+pub type TiledImageDataSeq<T/*: AsRef<[Tile]>*/> = (T, StBytesMut);
+pub type TiledImageData = (Tiles, StBytesMut, Vec<TilemapEntry>);
+
+// ---
+
+pub trait InIndexedImage<'py>: Sized {
+    const MAX_COLORS: usize;
+    #[cfg(feature = "python")]
+    fn unwrap_py(self) -> PyObject;
+    #[cfg(feature = "python")]
+    fn extract(self, py: Python<'py>) -> PyResult<IndexedImage> {
+        match in_from_py(self, py) {
+            Ok((raster, pal, width, height)) => {
+                Ok(IndexedImage(Raster(
+                    raster, width, height),
+                                Bytes::from(pal)
+                ))
+            },
+            Err(e) => Err(e)
+        }
+    }
+    #[cfg(not(feature = "python"))]
+    fn extract(self, _py: Python) -> PyResult<IndexedImage>;
+}
+
+#[cfg(feature = "python")]
+#[derive(FromPyObject)]
+pub struct In16ColIndexedImage(pub PyObject); // PIL Image
+#[cfg(feature = "python")]
+#[derive(FromPyObject)]
+pub struct In256ColIndexedImage(pub PyObject); // PIL Image
+
+#[cfg(not(feature = "python"))]
+pub struct In16ColIndexedImage(pub IndexedImage);
+#[cfg(not(feature = "python"))]
+pub struct In256ColIndexedImage(pub IndexedImage);
+
+impl InIndexedImage<'_> for In16ColIndexedImage {
+    const MAX_COLORS: usize = 16;
+    #[cfg(feature = "python")]
+    fn unwrap_py(self) -> PyObject { self.0 }
+    #[cfg(not(feature = "python"))]
+    fn extract(self, _py: Python) -> PyResult<IndexedImage> {
+        Ok(self.0)
+    }
+}
+impl InIndexedImage<'_> for In256ColIndexedImage {
+    const MAX_COLORS: usize = 256;
+    #[cfg(feature = "python")]
+    fn unwrap_py(self) -> PyObject { self.0 }
+    #[cfg(not(feature = "python"))]
+    fn extract(self, _py: Python) -> PyResult<IndexedImage> {
+        Ok(self.0)
+    }
+}
+
+// ---
+
+pub mod tilemap_entry;
+
+// ---
+
+pub struct PixelGenerator<T>(pub T) where T: Iterator<Item = u8>;
+
+impl PixelGenerator<FourBppIterator> {
+    pub fn pack4bpp(tiledata: &[u8], tile_dim: usize) -> Vec<Self> {
+        let chunks: ChunksExact<u8> = tiledata.chunks_exact(tile_dim * tile_dim / 2);
+        debug_assert_eq!(chunks.remainder().len(), 0);
+        chunks.map(|x| PixelGenerator(FourBppIterator::new(x.to_vec()))).collect()
+    }
+    pub fn tiled4bpp(tiledata: &[StBytes]) -> Vec<Self> {
+        tiledata.iter().map(|x| PixelGenerator(FourBppIterator::new(x.0.clone()))).collect()
+    }
+}
+
+impl PixelGenerator<IntoIter<u8>> {
+    pub fn pack8bpp(tiledata: &[u8], tile_dim: usize) -> Vec<Self> {
+        let chunks: ChunksExact<u8> = tiledata.chunks_exact(tile_dim * tile_dim);
+        debug_assert_eq!(chunks.remainder().len(), 0);
+        chunks.map(|x| PixelGenerator(x.to_vec().into_iter())).collect()
+    }
+}
+
+// ---
+
+/// Iterates a byte buffer one nibble at a time (low nibble first)
+#[derive(Clone)]
+pub struct FourBppIterator(Bytes, u8, bool);  // data, next high nibble, on high nibble
+
+impl FourBppIterator {
+    pub fn new(data: impl Into<Bytes>) -> Self {
+        Self(data.into(), 0, false)
+    }
+}
+
+impl Iterator for FourBppIterator {
+    type Item = u8;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if !self.2 && !self.0.has_remaining() {
+            return None;
+        }
+        if self.2 {
+            self.2 = false;
+            Some(self.1)
+        } else {
+            self.2 = true;
+            let byte = self.0.get_u8();
+            self.1 = byte >> 4;
+            Some(byte & 0x0f)
+        }
+    }
+}
+
+// ---
+
+pub mod tiled;

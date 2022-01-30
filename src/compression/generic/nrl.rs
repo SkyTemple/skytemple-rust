@@ -187,7 +187,7 @@ pub(crate) fn decompression_step<T, W>(
 // "Private" container for compressed data for use with tests written in Python (skytemple-files):
 use crate::python::*;
 
-#[pyclass(module = "_st_generic_nrl_compression")]
+#[pyclass(module = "skytemple_rust._st_generic_nrl_compression")]
 #[derive(Clone)]
 pub(crate) struct GenericNrlCompressionContainer {
     compressed_data: Bytes,

@@ -23,7 +23,7 @@ use crate::st_bpa::Bpa;
 use crate::st_bpc::Bpc;
 use crate::st_bpl::Bpl;
 
-#[pyclass(module = "st_bma")]
+#[pyclass(module = "skytemple_rust.st_bma")]
 #[derive(Clone)]
 pub struct Bma {
     #[pyo3(get, set)]
@@ -101,7 +101,7 @@ impl Bma {
     }
 }
 
-#[pyclass(module = "st_bma")]
+#[pyclass(module = "skytemple_rust.st_bma")]
 #[derive(Clone)]
 pub struct BmaWriter;
 

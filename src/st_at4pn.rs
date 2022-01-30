@@ -22,7 +22,7 @@ use crate::bytes::StBytesMut;
 use crate::python::*;
 use crate::st_at_common::CompressionContainer;
 
-#[pyclass(module = "st_at4pn")]
+#[pyclass(module = "skytemple_rust.st_at4pn")]
 #[derive(Clone)]
 pub struct At4pn {
     data: Bytes
