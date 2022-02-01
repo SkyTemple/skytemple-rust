@@ -28,8 +28,8 @@ class BpaFrameInfo:
 class Bpa:
     number_of_tiles: int
     number_of_frames: int
-    tiles: List[bytes]
-    frame_info: List[BpaFrameInfo]
+    tiles: Sequence[bytes]
+    frame_info: Sequence[BpaFrameInfo]
 
     def __init__(self, data: bytes): ...
     def get_tile(self, tile_idx: int, frame_idx: int) -> bytes: ...

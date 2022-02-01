@@ -234,7 +234,8 @@ impl BplWriter {
     pub fn new() -> Self {
         Self
     }
-    pub fn write(&self, model: Bpl, py: Python) -> PyResult<StBytes> {
+    pub fn write(&self, model: Py<Bpl>, py: Python) -> PyResult<StBytes> {
+        let model = model.borrow(py);
         let animation_size = if model.has_palette_animation {
             model.number_palettes as usize * BPL_COL_INDEX_ENTRY_LEN + model.animation_palette.len() * BPL_PAL_ENTRY_LEN
         } else {
@@ -262,16 +263,16 @@ impl BplWriter {
 
         if model.has_palette_animation {
             // Palette Animation Spec
-            for spec in model.animation_specs {
+            for spec in &model.animation_specs {
                 let spec = spec.borrow(py);
                 data.put_u16_le(spec.duration_per_frame);
                 data.put_u16_le(spec.number_of_frames);
             }
 
             // Palette Animation Palette
-            for frame in model.animation_palette {
-                for (i, color) in frame.into_iter().enumerate() {
-                    data.put_u8(color);
+            for frame in &model.animation_palette {
+                for (i, color) in frame.iter().enumerate() {
+                    data.put_u8(*color);
                     if i % 3 == 2 {
                         // Insert the fourth color
                         data.put_u8(BPL_FOURTH_COLOR);
@@ -293,4 +294,72 @@ pub(crate) fn create_st_bpl_module(py: Python) -> PyResult<(&str, &PyModule)> {
     m.add_class::<BplWriter>()?;
 
     Ok((name, m))
+}
+
+/////////////////////////
+/////////////////////////
+// BPLs as inputs (for compatibility of including other BPL implementations from Python)
+#[cfg(feature = "python")]
+pub mod input {
+    use crate::python::*;
+    use crate::st_bpl::Bpl;
+
+    pub trait BplProvider: ToPyObject {
+
+    }
+
+    impl BplProvider for Py<Bpl> {
+
+    }
+
+    impl BplProvider for PyObject {
+
+    }
+
+    pub struct InputBpl(pub Box<dyn BplProvider>);
+
+    impl<'source> FromPyObject<'source> for InputBpl {
+        fn extract(ob: &'source PyAny) -> PyResult<Self> {
+            if let Ok(obj) = ob.extract::<Py<Bpl>>() {
+                Ok(Self(Box::new(obj)))
+            } else {
+                Ok(Self(Box::new(ob.to_object(ob.py()))))
+            }
+        }
+    }
+
+    impl IntoPy<PyObject> for InputBpl {
+        fn into_py(self, py: Python) -> PyObject {
+            self.0.to_object(py)
+        }
+    }
+
+    impl From<InputBpl> for Bpl {
+        fn from(obj: InputBpl) -> Self {
+            Python::with_gil(|py| obj.0.to_object(py).extract(py).unwrap())
+        }
+    }
+}
+
+
+#[cfg(not(feature = "python"))]
+pub mod input {
+    use crate::python::{PyResult, Python};
+    use crate::st_bpl::Bpl;
+
+    pub trait BplProvider {
+
+    }
+
+    impl BplProvider for Bpl {
+
+    }
+
+    pub struct InputBpl(pub(crate) Bpl);
+
+    impl From<InputBpl> for Bpl {
+        fn from(obj: InputBpl) -> Self {
+            obj.0
+        }
+    }
 }

@@ -14,7 +14,7 @@
 #
 #  You should have received a copy of the GNU General Public License
 #  along with SkyTemple.  If not, see <https://www.gnu.org/licenses/>.
-from typing import List
+from typing import List, Sequence
 
 
 class BplAnimationSpec:
@@ -27,9 +27,9 @@ class BplAnimationSpec:
 class Bpl:
     number_palettes: int
     has_palette_animation: bool
-    palettes: List[List[int]]
-    animation_specs: List[BplAnimationSpec]
-    animation_palette: List[List[int]]
+    palettes: Sequence[Sequence[int]]
+    animation_specs: Sequence[BplAnimationSpec]
+    animation_palette: Sequence[Sequence[int]]
 
     def __init__(self, data: bytes) -> None: ...
     def import_palettes(self, palettes: List[List[int]]) -> None: ...

@@ -271,7 +271,7 @@ impl Bpc {
     /// slots being None.
     #[args(width_in_mtiles = "20")]
     pub fn chunks_animated_to_pil(&self, layer: u8, palettes: Vec<StBytes>, bpas: Vec<Option<InputBpa>>, width_in_mtiles: usize) -> Vec<IndexedImage> {
-        /// TODO: The speed can be increased if we only re-render the changed animated tiles instead!
+        // TODO: The speed can be increased if we only re-render the changed animated tiles instead!
         //         ldata = self.layers[layer]
         //         # First check if we even have BPAs to use
         //         is_using_bpa = len(bpas) > 0 and any(x > 0 for x in ldata.bpas)
@@ -311,7 +311,7 @@ impl Bpc {
     /// chunks_animated_to_pil.
     ///
     pub fn single_chunk_animated_to_pil(&self, layer: u8, chunk_idx: u16, palettes: Vec<StBytes>, bpas: Vec<Option<InputBpa>>) -> Vec<IndexedImage> {
-        /// TODO: Code duplication with chunks_animated_to_pil. Could probably be refactored.
+        // TODO: Code duplication with chunks_animated_to_pil. Could probably be refactored.
         //         ldata = self.layers[layer]
         //         # First check if we even have BPAs to use
         //         is_using_bpa = len(bpas) > 0 and any(x > 0 for x in ldata.bpas)
@@ -619,7 +619,8 @@ impl BpcWriter {
     pub fn new() -> Self {
         Self
     }
-    pub fn write(&self, model: Bpc, py: Python) -> PyResult<StBytes> {
+    pub fn write(&self, model: Py<Bpc>, py: Python) -> PyResult<StBytes> {
+        let model = model.borrow(py);
         debug_assert!(model.number_of_layers > 0 && model.number_of_layers < 3);
         let end_of_layer_specs = 4 + (12 * model.number_of_layers) as u16;
 
@@ -669,7 +670,7 @@ impl BpcWriter {
             data.put_u16_le(0);
         }
 
-        for layer in model.layers {
+        for layer in &model.layers {
             let layer = layer.borrow(py);
             // number tiles + 1
             data.put_u16_le(layer.number_tiles + 1);
@@ -757,4 +758,72 @@ pub(crate) fn create_st_bpc_module(py: Python) -> PyResult<(&str, &PyModule)> {
     m.add_class::<BpcWriter>()?;
 
     Ok((name, m))
+}
+
+/////////////////////////
+/////////////////////////
+// BPCs as inputs (for compatibility of including other BPC implementations from Python)
+#[cfg(feature = "python")]
+pub mod input {
+    use crate::python::*;
+    use crate::st_bpc::Bpc;
+
+    pub trait BpcProvider: ToPyObject {
+
+    }
+
+    impl BpcProvider for Py<Bpc> {
+
+    }
+
+    impl BpcProvider for PyObject {
+
+    }
+
+    pub struct InputBpc(pub Box<dyn BpcProvider>);
+
+    impl<'source> FromPyObject<'source> for InputBpc {
+        fn extract(ob: &'source PyAny) -> PyResult<Self> {
+            if let Ok(obj) = ob.extract::<Py<Bpc>>() {
+                Ok(Self(Box::new(obj)))
+            } else {
+                Ok(Self(Box::new(ob.to_object(ob.py()))))
+            }
+        }
+    }
+
+    impl IntoPy<PyObject> for InputBpc {
+        fn into_py(self, py: Python) -> PyObject {
+            self.0.to_object(py)
+        }
+    }
+
+    impl From<InputBpc> for Bpc {
+        fn from(obj: InputBpc) -> Self {
+            Python::with_gil(|py| obj.0.to_object(py).extract(py).unwrap())
+        }
+    }
+}
+
+
+#[cfg(not(feature = "python"))]
+pub mod input {
+    use crate::python::{PyResult, Python};
+    use crate::st_bpc::Bpc;
+
+    pub trait BpcProvider {
+
+    }
+
+    impl BpcProvider for Bpc {
+
+    }
+
+    pub struct InputBpc(pub(crate) Bpc);
+
+    impl From<InputBpc> for Bpc {
+        fn from(obj: InputBpc) -> Self {
+            obj.0
+        }
+    }
 }

@@ -14,7 +14,7 @@
 #
 #  You should have received a copy of the GNU General Public License
 #  along with SkyTemple.  If not, see <https://www.gnu.org/licenses/>.
-from typing import List, Optional, Protocol, Union
+from typing import List, Optional, Protocol, Union, Sequence
 
 from skytemple_rust.st_bma import Bma
 from skytemple_rust.st_bpa import Bpa
@@ -30,7 +30,7 @@ class BgListEntry:
     bpl_name: str
     bpc_name: str
     bma_name: str
-    bpa_names: List[Optional[str]]
+    bpa_names: Sequence[Optional[str]]
     def __init__(self, bpl_name: str, bpc_name: str, bma_name: str, bpa_names: List[Optional[str]]): ...
     def get_bpl(self, rom_or_directory_root: Union[str, RomFileProviderProtocol]) -> Bpl: ...
     def get_bpc(self, rom_or_directory_root: Union[str, RomFileProviderProtocol], bpc_tiling_width: int = 3, bpc_tiling_height: int = 3) -> Bpc: ...
@@ -39,7 +39,7 @@ class BgListEntry:
 
 
 class BgList(BgListEntry):
-    level: List[BgListEntry]
+    level: Sequence[BgListEntry]
 
     def __init__(self, data: bytes): ...
     def find_bma(self, name: str) -> int: ...

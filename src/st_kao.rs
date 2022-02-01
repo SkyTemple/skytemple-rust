@@ -406,13 +406,14 @@ impl KaoWriter {
     pub fn new() -> Self {
         Self
     }
-    pub fn write(&self, model: Kao, py: Python) -> PyResult<StBytes> {
+    pub fn write(&self, model: Py<Kao>, py: Python) -> PyResult<StBytes> {
+        let model = model.borrow(py);
         let toc_len = Kao::TOC_PADDING + (model.portraits.len() * Kao::PORTRAIT_SLOTS * 4);
         let mut toc: Vec<u8> = Vec::with_capacity(toc_len);
         toc.put_slice(&[0; Kao::TOC_PADDING]);
         let mut current_image_end = toc_len as i32;
         let mut portrait_data = model.portraits
-            .into_iter()
+            .iter()
             .flatten()
             .filter_map(|opt| {
                 match opt {

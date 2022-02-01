@@ -254,7 +254,8 @@ impl BpaWriter {
     pub fn new() -> Self {
         Self
     }
-    pub fn write(&self, model: Bpa, py: Python) -> PyResult<StBytes> {
+    pub fn write(&self, model: Py<Bpa>, py: Python) -> PyResult<StBytes> {
+        let model = model.borrow(py);
         // 4 byte header + animation info for each + images
         let mut data = Vec::with_capacity(
             (4 + (model.number_of_frames * 4) + (model.number_of_tiles * model.number_of_frames / 2)) as usize
@@ -264,7 +265,7 @@ impl BpaWriter {
         data.put_u16_le(model.number_of_frames);
 
         assert_eq!(model.number_of_frames as usize, model.frame_info.len());
-        for finfo in model.frame_info {
+        for finfo in &model.frame_info {
             let finfo = finfo.borrow(py);
             data.put_u16_le(finfo.duration_per_frame);
             data.put_u16_le(finfo.unk2);

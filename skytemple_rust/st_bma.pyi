@@ -34,15 +34,15 @@ class Bma:
     unk6: int
     number_of_collision_layers: int
 
-    layer0: List[int]
-    layer1: Optional[List[int]]
+    layer0: Sequence[int]
+    layer1: Optional[Sequence[int]]
 
     # if unk6:
-    unknown_data_block: Optional[List[int]]
+    unknown_data_block: Optional[Sequence[int]]
     # if number_of_collision_layers > 0:
-    collision: Optional[List[bool]]
+    collision: Optional[Sequence[bool]]
     # if number_of_collision_layers > 1:
-    collision2: Optional[List[bool]]
+    collision2: Optional[Sequence[bool]]
 
     def __init__(self, data: bytes): ...
 
