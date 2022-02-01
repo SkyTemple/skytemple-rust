@@ -18,34 +18,36 @@
  */
 use std::io::Cursor;
 use std::iter::once;
+use std::mem::swap;
 use bytes::{Buf, BufMut, Bytes, BytesMut};
 use crate::bytes::StBytes;
 use crate::compression::bpc_image::{BpcImageCompressor, BpcImageDecompressor};
 use crate::compression::bpc_tilemap::{BpcTilemapCompressor, BpcTilemapDecompressor};
-use crate::image::{In256ColIndexedImage, IndexedImage};
+use crate::image::{In16ColIndexedImage, In256ColIndexedImage, IndexedImage, InIndexedImage, PixelGenerator, Tile};
+use crate::image::tiled::TiledImage;
 use crate::image::tilemap_entry::{InputTilemapEntry, TilemapEntry};
 use crate::python::*;
-use crate::st_bpa::Bpa;
+use crate::st_bpa::input::InputBpa;
 
 const BPC_TILE_DIM: usize = 8;
 const BPC_TILEMAP_BYTELEN: usize = 2;
 const BPC_BYTELEN_TILE: usize = BPC_TILE_DIM * BPC_TILE_DIM / 2;
 
 #[pyclass(module = "skytemple_rust.st_bpc")]
-#[derive(Clone)]
+#[derive(Clone, Default)]
 pub struct BpcLayer {
     // The actual number of tiles is one lower
     #[pyo3(get, set)]
-    number_tiles: u16,
+    pub number_tiles: u16,
     // There must be 4 BPAs. (0 for not used)
     #[pyo3(get, set)]
-    bpas: [u16; 4],
+    pub bpas: [u16; 4],
     // NOTE: Inconsistent with number_tiles. We are including the null chunk in this count.
     #[pyo3(get, set)]
-    chunk_tilemap_len: u16,
+    pub chunk_tilemap_len: u16,
     #[pyo3(get, set)]
-    tiles:  Vec<StBytes>,
-    tilemap: Vec<Py<TilemapEntry>>
+    pub tiles:  Vec<StBytes>,
+    pub tilemap: Vec<Py<TilemapEntry>>
 }
 
 #[pymethods]
@@ -74,13 +76,13 @@ impl BpcLayer {
 #[derive(Clone)]
 pub struct Bpc {
     #[pyo3(get, set)]
-    tiling_width: u16,
+    pub tiling_width: u16,
     #[pyo3(get, set)]
-    tiling_height: u16,
+    pub tiling_height: u16,
     #[pyo3(get, set)]
-    number_of_layers: u8,
+    pub number_of_layers: u8,
     #[pyo3(get, set)]
-    layers: Vec<Py<BpcLayer>>
+    pub layers: Vec<Py<BpcLayer>>
 }
 
 #[pymethods]
@@ -167,10 +169,7 @@ impl Bpc {
             }
 
             // Read the second layer tilemap
-            #[cfg(not(feature = "python"))]
-                let mut l1borrowed = layers[1].borrow_mut(py);
-            #[cfg(feature = "python")]
-                let mut l1borrowed = (&layers[1]).borrow_mut(py);
+            let mut l1borrowed = layers[1].borrow_mut(py);
             l1borrowed.tilemap = Self::read_tilemap_data(BpcTilemapDecompressor::run(
                 &mut lower_cursor,
                 (l1borrowed.chunk_tilemap_len - 1) as usize * (tiling_width * tiling_height) as usize * BPC_TILEMAP_BYTELEN
@@ -184,62 +183,395 @@ impl Bpc {
         })
     }
 
+    /// Convert all chunks of the BPC to one big image.
+    /// The chunks are all placed next to each other.
+    /// The resulting image has one large palette with all palettes merged together.
+    ///
+    /// To get the palettes, use the data from the BPL file for this map background.
+    ///
+    /// The first chunk is a NULL chunk. It is always empty, even when re-imported.
+    ///
+    /// Does NOT export BPA tiles. Chunks that reference BPA tiles are replaced with empty tiles.
+    /// The mapping to BPA tiles has to be done programmatically using set_tile or set_chunk.
     #[args(width_in_mtiles = "20")]
-    pub fn chunks_to_pil(&self, layer: u8, palettes: Vec<StBytes>, width_in_mtiles: u16) -> IndexedImage {
-        todo!()
+    pub fn chunks_to_pil(&self, layer_id: usize, palettes: Vec<StBytes>, width_in_mtiles: usize, py: Python) -> IndexedImage {
+        let layer = self.layers[layer_id].borrow(py);
+        let width = width_in_mtiles * self.tiling_width as usize * BPC_TILE_DIM;
+        let height = ((layer.chunk_tilemap_len as f32 / width_in_mtiles as f32).ceil()) as usize * self.tiling_height as usize * BPC_TILE_DIM;
+
+        debug_assert_eq!(self.tiling_width, self.tiling_height);
+        TiledImage::tiled_to_native(
+            layer.tilemap.iter().map(|x| x.borrow(py)),
+            PixelGenerator::tiled4bpp(&layer.tiles[..]),
+            palettes.iter().flat_map(|x| x.iter().copied()),
+            BPC_TILE_DIM, width, height, self.tiling_width as usize
+        )
     }
-    pub fn single_chunk_to_pil(&self, layer: u8, chunk_idx: u16, palettes: Vec<StBytes>) -> IndexedImage {
-        todo!()
+
+    /// Convert a single chunk of the BPC to one big PIL image. For general notes, see chunks_to_pil.
+    /// Does NOT export BPA tiles. Chunks that reference BPA tiles are replaced with empty tiles.
+    pub fn single_chunk_to_pil(&self, layer_id: usize, chunk_idx: usize, palettes: Vec<StBytes>, py: Python) -> IndexedImage {
+        let layer = self.layers[layer_id].borrow(py);
+        let mtidx = chunk_idx * self.tiling_width as usize * self.tiling_height as usize;
+        debug_assert_eq!(self.tiling_width, self.tiling_height);
+        TiledImage::tiled_to_native(
+            layer.tilemap.iter().skip(mtidx).take(9).map(|x| x.borrow(py)),
+            PixelGenerator::tiled4bpp(&layer.tiles[..]),
+            palettes.iter().flat_map(|x| x.iter().copied()),
+            BPC_TILE_DIM,
+            BPC_TILE_DIM * self.tiling_width as usize,
+            BPC_TILE_DIM * self.tiling_height as usize,
+            self.tiling_width as usize
+        )
     }
+    /// Convert all individual tiles of the BPC into one image.
+    /// The image contains all tiles next to each other, the image width is tile_width tiles.
+    /// The resulting image has one large palette with all palettes merged together.
+    //
+    /// The tiles are exported with the palette of the first placed tile or 0 if tile is not in tilemap,
+    /// for easier editing. The result image contains a palette that consists of all palettes merged together.
+    //
+    /// If single_palette is not None, all palettes are exported using the palette no. stored in single_palette.
+    //
+    /// The first tile is a NULL tile. It is always empty, even when re-imported.
     #[args(width_in_mtiles = "20", single_palette = "None")]
-    pub fn tiles_to_pil(&self, layer: u8, palettes: Vec<StBytes>, width_in_tiles: u16, single_palette: Option<u16>) -> IndexedImage {
-        todo!()
+    pub fn tiles_to_pil(&self, layer_id: usize, palettes: Vec<StBytes>, width_in_tiles: usize, single_palette: Option<u8>, py: Python) -> IndexedImage {
+        let layer = self.layers[layer_id].borrow(py);
+        let tilemap = (0..layer.number_tiles + 1).into_iter().map(|i| TilemapEntry(
+            i as usize, false, false, match single_palette {
+                None => self.get_palette_for_tile(layer_id, i as usize, py),
+                Some(p) => p
+            }
+        ));
+        let width = width_in_tiles * BPC_TILE_DIM as usize;
+        let height = (((layer.number_tiles + 1) as f32 / width_in_tiles as f32).ceil()) as usize * BPC_TILE_DIM;
+        TiledImage::tiled_to_native(
+            tilemap,
+            PixelGenerator::tiled4bpp(&layer.tiles[..]),
+            palettes.iter().flat_map(|x| x.iter().copied()),
+            BPC_TILE_DIM, width, height, 1
+        )
     }
+
+    //// Exports chunks. For general notes see chunks_to_pil.
+    ///
+    /// However this method also exports BPA animated tiles referenced in the tilemap. This means it returns
+    /// a set of images containing the chunks, including BPC tiles and BPA tiles. BPA tiles are animated, and
+    /// each image contains one frame of the animation.
+    ///
+    /// The method does not care about frame speeds. Each step of animation is simply returned as a new image,
+    /// so if BPAs use different frame speeds, this is ignored; they effectively run at the same speed.
+    /// If BPAs are using a different amount of frames per tile, the length of returned list of images will be the lowest
+    /// common denominator of the different frame lengths.
+    ///
+    /// Does not include palette animations. You can apply them by switching out the palettes of the PIL
+    /// using the information provided by the BPL.
+    ///
+    /// The list of bpas must be the one contained in the bg_list. It needs to contain 8 slots, with empty
+    /// slots being None.
     #[args(width_in_mtiles = "20")]
-    pub fn chunks_animated_to_pil(&self, layer: u8, palettes: Vec<StBytes>, bpas: Vec<Option<Bpa>>, width_in_mtiles: usize) -> Vec<IndexedImage> {
+    pub fn chunks_animated_to_pil(&self, layer: u8, palettes: Vec<StBytes>, bpas: Vec<Option<InputBpa>>, width_in_mtiles: usize) -> Vec<IndexedImage> {
+        /// TODO: The speed can be increased if we only re-render the changed animated tiles instead!
+        //         ldata = self.layers[layer]
+        //         # First check if we even have BPAs to use
+        //         is_using_bpa = len(bpas) > 0 and any(x > 0 for x in ldata.bpas)
+        //         if not is_using_bpa:
+        //             # Simply build the single chunks frame
+        //             return [self.chunks_to_pil(layer, palettes, width_in_mtiles)]
+        //
+        //         bpa_animation_indices = [0, 0, 0, 0]
+        //         frames = []
+        //
+        //         orig_len = len(ldata.tiles)
+        //         while True:  # Ended by check at end (do while)
+        //             previous_end_of_tiles = orig_len
+        //             # For each frame: Insert all BPA current frame tiles into their slots
+        //             for bpaidx, bpa in enumerate(self.get_bpas_for_layer(layer, bpas)):
+        //
+        //                 # Add the BPA tiles for this frame to the set of BPC tiles:
+        //                 new_end_of_tiles = previous_end_of_tiles + bpa.number_of_tiles
+        //                 ldata.tiles[previous_end_of_tiles:new_end_of_tiles] = bpa.tiles_for_frame(bpa_animation_indices[bpaidx])
+        //
+        //                 previous_end_of_tiles = new_end_of_tiles
+        //                 bpa_animation_indices[bpaidx] += 1
+        //                 bpa_animation_indices[bpaidx] %= bpa.number_of_frames
+        //
+        //             frames.append(self.chunks_to_pil(layer, palettes, width_in_mtiles))
+        //             # All animations have been played, we are done!
+        //             if bpa_animation_indices == [0, 0, 0, 0]:
+        //                 break
+        //
+        //         # RESET the layer's tiles to NOT include the BPA tiles!
+        //         ldata.tiles = ldata.tiles[:orig_len]
+        //         return frames
         todo!()
     }
-    pub fn single_chunk_animated_to_pil(&self, layer: u8, chunk_idx: u16, palettes: Vec<StBytes>, bpas: Vec<Option<Bpa>>) -> Vec<IndexedImage> {
+
+    /// Exports a single chunk. For general notes see chunks_to_pil. For notes regarding the animation see
+    /// chunks_animated_to_pil.
+    ///
+    pub fn single_chunk_animated_to_pil(&self, layer: u8, chunk_idx: u16, palettes: Vec<StBytes>, bpas: Vec<Option<InputBpa>>) -> Vec<IndexedImage> {
+        /// TODO: Code duplication with chunks_animated_to_pil. Could probably be refactored.
+        //         ldata = self.layers[layer]
+        //         # First check if we even have BPAs to use
+        //         is_using_bpa = len(bpas) > 0 and any(x > 0 for x in ldata.bpas)
+        //         if is_using_bpa:
+        //             # Also check if any of the tiles in the chunk even uses BPA tiles
+        //             is_using_bpa = False
+        //             for tilem in self.get_chunk(layer, chunk_idx):
+        //                 if tilem.idx > ldata.number_tiles:
+        //                     is_using_bpa = True
+        //                     break
+        //         if not is_using_bpa:
+        //             # Simply build the single chunks frame
+        //             return [self.single_chunk_to_pil(layer, chunk_idx, palettes)]
+        //
+        //         bpa_animation_indices = [0, 0, 0, 0]
+        //         frames = []
+        //
+        //         orig_len = len(ldata.tiles)
+        //         while True:  # Ended by check at end (do while)
+        //             previous_end_of_tiles = orig_len
+        //             # For each frame: Insert all BPA current frame tiles into their slots
+        //             for bpaidx, bpa in enumerate(self.get_bpas_for_layer(layer, bpas)):
+        //
+        //                 # Add the BPA tiles for this frame to the set of BPC tiles:
+        //                 new_end_of_tiles = previous_end_of_tiles + bpa.number_of_tiles
+        //                 ldata.tiles[previous_end_of_tiles:new_end_of_tiles] = bpa.tiles_for_frame(bpa_animation_indices[bpaidx])
+        //
+        //                 previous_end_of_tiles = new_end_of_tiles
+        //                 if bpa.number_of_frames > 0:
+        //                     bpa_animation_indices[bpaidx] += 1
+        //                     bpa_animation_indices[bpaidx] %= bpa.number_of_frames
+        //
+        //             frames.append(self.single_chunk_to_pil(layer, chunk_idx, palettes))
+        //             # All animations have been played, we are done!
+        //             if bpa_animation_indices == [0, 0, 0, 0]:
+        //                 break
+        //
+        //         # RESET the layer's tiles to NOT include the BPA tiles!
+        //         ldata.tiles = ldata.tiles[:orig_len]
+        //         return frames
         todo!()
     }
-    pub fn pil_to_tiles(&self, layer: u8, image: In256ColIndexedImage) -> PyResult<()> {
-        todo!()
+
+    /// Imports tiles that are in a format as described in the documentation for tiles_to_pil.
+    /// Tile mappings, chunks and palettes are not updated.
+    pub fn pil_to_tiles(&self, layer_id: usize, image: In16ColIndexedImage, py: Python) -> PyResult<()> {
+        let image = image.extract(py)?;
+        let w = *&image.0.1;
+        let h = *&image.0.2;
+        let (tiles, _) = TiledImage::native_to_tiled_seq(
+            image, BPC_TILE_DIM, w, h
+        )?;
+        let mut layer = self.layers[layer_id].borrow_mut(py);
+        layer.tiles = tiles.into_iter().map(|x| x.0.into()).collect();
+        layer.number_tiles = (layer.tiles.len() - 1) as u16;
+        Ok(())
     }
+
+    /// Imports chunks. Format same as for chunks_to_pil.
+    /// Replaces tiles, tile mappings and therefor also chunks.
+    /// "Unsets" BPA assignments! BPAs have to be manually re-assigned by using set_tile or set_chunk. BPA
+    /// indices are stored after BPC tile indices.
+    ///
+    /// The image must have a palette containing the 16 sub-palettes with 16 colors each (256 colors).
+    ///
+    /// If a pixel in a tile uses a color outside of it's 16 color range the color is replaced with
+    /// 0 of the palette (transparent). The "_force_import" parameter is ignored.
+    ///
+    /// Returns the palettes stored in the image for further processing (eg. replacing the BPL palettes).
     #[args(force_import = "true")]
-    pub fn pil_to_chunks(&self, layer: u8, image: In256ColIndexedImage, force_import: bool) -> Vec<StBytes> {
-        todo!()
+    pub fn pil_to_chunks(&self, layer_id: usize, image: In256ColIndexedImage, _force_import: bool, py: Python) -> PyResult<Vec<StBytes>> {
+        let image = image.extract(py)?;
+        let w = *&image.0.1;
+        let h = *&image.0.2;
+        debug_assert_eq!(self.tiling_width, self.tiling_height);
+        let (tiles, palettes, tilemap) = TiledImage::native_to_tiled(
+            image, 16, BPC_TILE_DIM, w, h,
+            self.tiling_width as usize, 0, true
+        )?;
+        let mut layer = self.layers[layer_id].borrow_mut(py);
+        layer.tiles = tiles.into_iter().map(|x| x.0.into()).collect();
+        layer.tilemap = tilemap.into_iter().map(|x| Py::new(py, x)).collect::<PyResult<Vec<Py<TilemapEntry>>>>()?;
+        layer.number_tiles = (layer.tiles.len() - 1) as u16;
+        layer.chunk_tilemap_len = layer.tilemap.len() as u16 / self.tiling_width / self.tiling_height;
+        Ok(palettes.chunks(16).map(|x| x.into()).collect())
     }
-    pub fn get_tile(&self, layer: u8, index: u16) -> TilemapEntry {
-        todo!()
+
+    pub fn get_tile(&self, layer: usize, index: usize, py: Python) -> PyResult<TilemapEntry> {
+        self.layers[layer].borrow(py).tilemap[index].extract::<TilemapEntry>(py)
     }
-    pub fn set_tile(&self, layer: u8, index: u16, tile_mapping: TilemapEntry) -> PyResult<()> {
-        todo!()
+
+    pub fn set_tile(&mut self, layer: usize, index: usize, tile_mapping: InputTilemapEntry, py: Python) {
+        self.layers[layer].borrow_mut(py).tilemap[index] = tile_mapping.0
     }
-    pub fn get_chunk(&self, layer: u8, index: u16) -> Vec<TilemapEntry> {
-        todo!()
+
+    pub fn get_chunk(&mut self, layer: usize, index: usize, py: Python) -> PyResult<Vec<TilemapEntry>> {
+        let dim = self.tiling_width as usize * self.tiling_height as usize;
+        let mtidx = index * dim;
+        self.layers[layer].borrow_mut(py).tilemap[mtidx..mtidx+dim]
+            .iter().map(|x| x.extract::<TilemapEntry>(py)).collect()
     }
+
+    /// Replace the tiles of the specified layer.
+    /// If contains_null_tile is False, the null tile is added to the list, at the beginning.
     #[args(contains_null_tile = "false")]
-    pub fn import_tiles(&self, layer: u8, tiles: StBytes, contains_null_tile: bool) -> PyResult<()> {
-        todo!()
+    pub fn import_tiles(&mut self, layer: usize, mut tiles: Vec<StBytes>, contains_null_tile: bool, py: Python) {
+        if !contains_null_tile {
+            tiles = once(StBytes::from(vec![0; BPC_TILE_DIM * BPC_TILE_DIM / 2])).chain(tiles).collect();
+        }
+        let mut layer = self.layers[layer].borrow_mut(py);
+        layer.tiles = tiles;
+        layer.number_tiles = (layer.tiles.len() - 1) as u16;
     }
+
+    /// Replace the tile mappings of the specified layer.
+    /// If contains_null_tile is False, the null chunk is added to the list, at the beginning.
+    ///
+    /// If correct_tile_ids is True, then the tile id of tile_mappings is also increased by one. Use this,
+    /// if you previously used import_tiles with contains_null_tile=false
     #[args(contains_null_chunk = "false", correct_tile_ids = "true")]
-    pub fn import_tile_mappings(&self, layer: u8, tile_mappings: Vec<TilemapEntry>, contains_null_chunk: bool, correct_tile_ids: bool) -> PyResult<()> {
-        todo!()
+    pub fn import_tile_mappings(&mut self, layer: usize, mut tile_mappings: Vec<InputTilemapEntry>, contains_null_chunk: bool, correct_tile_ids: bool, py: Python) -> PyResult<()> {
+        let nb_tiles_in_chunk = self.tiling_width * self.tiling_height;
+        if correct_tile_ids {
+            for entry in tile_mappings.iter_mut() {
+                entry.0.borrow_mut(py).0 += 1
+            }
+        }
+        let mut borrow = self.layers[layer].borrow_mut(py);
+        borrow.tilemap = if !contains_null_chunk {
+            (0..nb_tiles_in_chunk).map(|_| Py::new(py, TilemapEntry::from(0)))
+                .chain(tile_mappings.into_iter().map(|x| Ok(x.0))).collect::<PyResult<Vec<Py<TilemapEntry>>>>()?
+        } else {
+            tile_mappings.into_iter().map(|x| x.0).collect()
+        };
+        borrow.chunk_tilemap_len = borrow.tilemap.len() as u16 / self.tiling_width / self.tiling_height;
+        Ok(())
     }
-    pub fn get_bpas_for_layer(&self, layer: u8, bpas_from_bg_list: Vec<Option<Bpa>>) -> Vec<Bpa> {
-        todo!()
+
+    /// This method returns a list of not None BPAs assigned to the BPC layer from an ordered list of possible candidates.
+    /// What is returned depends on the BPA mapping of the layer.
+    ///
+    /// The bg_list.dat contains a list of 8 BPAs. The first four are for layer 0, the next four for layer 1.
+    ///
+    /// This method asserts, that the number of tiles stored in the layer for the BPA, matches the data in the BPA!
+    pub fn get_bpas_for_layer(&self, layer: usize, bpas: Vec<Option<InputBpa>>, py: Python) -> PyResult<Vec<InputBpa>> {
+        let mut not_none_bpas = Vec::with_capacity(4);
+        let borrow = self.layers[layer].borrow(py);
+        for (i, bpa) in bpas.into_iter().skip(layer * 4).take(4).enumerate() {
+            match bpa {
+                None => if borrow.bpas[i] != 0 { return Err(exceptions::PyAssertionError::new_err(format!("BPA {}: {} != 0", i, borrow.bpas[i]))) }
+                Some(bpa) => {
+                    let bpa_ref = &bpa.0;
+                    if borrow.bpas[i] != bpa_ref.get_number_of_tiles(py)? { return Err(exceptions::PyAssertionError::new_err(format!("BPA {}: {} != {}", i, borrow.bpas[i], bpa_ref.get_number_of_tiles(py)?))) };
+                    not_none_bpas.push(bpa)
+                }
+            }
+        }
+        Ok(not_none_bpas)
     }
-    pub fn set_chunk(&mut self, layer: u8, index: u16, new_tilemappings: Vec<InputTilemapEntry>) -> PyResult<()> {
-        todo!()
+
+    pub fn set_chunk(&mut self, layer: usize, index: usize, new_tilemappings: Vec<InputTilemapEntry>, py: Python) -> PyResult<()> {
+        let dim = self.tiling_width as usize * self.tiling_height as usize;
+        if new_tilemappings.len() < dim {
+            return Err(exceptions::PyValueError::new_err(format!(
+                "new tilemapping for this chunk must contain {} tiles.", dim
+            )));
+        }
+        let mtidx = index * dim;
+        self.layers[layer].borrow_mut(py).tilemap
+            .splice(mtidx..mtidx+9, new_tilemappings
+                .into_iter().map(|x| x.0)
+            );
+        Ok(())
     }
-    pub fn remove_upper_layer(&self) -> PyResult<()> {
-        todo!()
+
+    /// Remove the upper layer. Silently does nothing when it doesn't exist.
+    pub fn remove_upper_layer(&mut self, py: Python) -> PyResult<()> {
+        if self.number_of_layers == 1 {
+            return Ok(());
+        }
+        self.number_of_layers = 1;
+        let mut tmp = Py::new(py, BpcLayer::default())?;
+        swap(&mut self.layers[1], &mut tmp);
+        self.layers = vec![tmp];
+        Ok(())
     }
-    pub fn add_upper_layer(&self) -> PyResult<()> {
-        todo!()
+
+    /// Add an upper layer. Silently does nothing when it already exists.
+    pub fn add_upper_layer(&mut self, py: Python) -> PyResult<()> {
+        if self.number_of_layers == 2 {
+            return Ok(())
+        }
+        self.number_of_layers = 2;
+        let mut moved = Py::new(py, BpcLayer::default())?;
+        swap(&mut moved, &mut self.layers[0]);
+        if self.layers.len() < 2 {
+            self.layers.push(moved);
+        } else {
+            self.layers[1] = moved;
+        }
+
+        let mut new_layer = self.layers[0].borrow_mut(py);
+        // The first tile is not stored, but is always empty
+        new_layer.number_tiles = 1;
+        new_layer.chunk_tilemap_len = 1;
+        new_layer.bpas = [0, 0, 0, 0];
+        new_layer.tiles = vec![StBytes::from(vec![0; BPC_BYTELEN_TILE])];
+        // The first chunk is not stored, but is always empty
+        new_layer.tilemap = (0..(self.tiling_width * self.tiling_height)).map(|_| Py::new(py, TilemapEntry::from(0))).collect::<PyResult<Vec<Py<TilemapEntry>>>>()?;
+        Ok(())
     }
-    pub fn process_bpa_change(&self, bpa_index: u8, tiles_bpa_new: u16) -> PyResult<()> {
-        todo!()
+
+    /// Update the layer entries for BPA tile number change and also re-map all tilemappings,
+    /// so that they still match their original tile, even though some tiles in-between may now
+    /// be new or removed.
+    pub fn process_bpa_change(&mut self, bpa_index: usize, tiles_bpa_new: usize, py: Python) -> PyResult<()> {
+        let layer_idx = bpa_index / 4;
+        let bpa_layer_idx = bpa_index % 4;
+        // Re-map all affected tile mappings.
+        let mut layer = self.layers[layer_idx].borrow_mut(py);
+        let mut tile_idx_start = layer.tiles.len();
+        for (bpaidx, n_pas) in layer.bpas.iter().enumerate() {
+            if bpaidx >= bpa_layer_idx {
+                break;
+            }
+            tile_idx_start += *n_pas as usize;
+        }
+
+        let old_tile_idx_end = tile_idx_start + layer.bpas[bpa_layer_idx] as usize;
+        let number_tiles_added = tiles_bpa_new as isize - layer.bpas[bpa_layer_idx] as isize;  // may be negative, of course.
+        for mapping in layer.tilemap.iter_mut() {
+            let mut mapping = mapping.borrow_mut(py);
+            if mapping.0 > old_tile_idx_end {
+                // We need to move this back by the full amount
+                mapping.0 = (mapping.0 as isize + number_tiles_added) as usize
+            } else if mapping.0 >= tile_idx_start {
+                // We may need to set to 0, if we removed
+                let relative_old_mapping = mapping.0 - tile_idx_start;
+                if relative_old_mapping >= tiles_bpa_new {
+                    mapping.0 = 0;
+                }
+            }
+        }
+
+        // Finally: Update layer entry.
+        layer.bpas[bpa_layer_idx] = tiles_bpa_new as u16;
+        Ok(())
+    }
+}
+
+impl Bpc {
+    /// Returns the first found palette of the tile with idx i. Or 0.
+    fn get_palette_for_tile(&self, layer: usize, i: usize, py: Python) -> u8 {
+        for t in self.layers[layer].borrow(py).tilemap.iter() {
+            let t = t.borrow(py);
+            if t.0 == i {
+                return t.3
+            }
+        }
+        0
     }
 }
 
@@ -310,7 +642,7 @@ impl BpcWriter {
         if model.number_of_layers == 2 {
             second_tiles = Some(Self::convert_tiles(&model.layers[1], py)?);
             second_tilemap = Some(Self::convert_tilemap(&model, &model.layers[1], py)?);
-            
+
             length_of_second_layer = (
                 second_tiles.as_ref().unwrap().len() + second_tilemap.as_ref().unwrap().len()
             ) as u16;
@@ -393,11 +725,10 @@ impl BpcWriter {
         let data: Bytes = layer.tiles
             .iter()
             .skip(1)
-            .map(|x| {
+            .flat_map(|x| {
                 debug_assert_eq!(BPC_BYTELEN_TILE, x.len());
                 x.0.to_vec()
             })
-            .flatten()
             .collect();
 
         BpcImageCompressor::run(data)

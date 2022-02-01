@@ -194,3 +194,22 @@ impl ProvidesTilemapEntry for &TilemapEntry {
         self.3
     }
 }
+
+#[cfg(feature = "python")]
+impl<'py> ProvidesTilemapEntry for PyRef<'py, TilemapEntry> {
+    fn idx(&self) -> usize {
+        self.0
+    }
+
+    fn flip_x(&self) -> bool {
+        self.1
+    }
+
+    fn flip_y(&self) -> bool {
+        self.2
+    }
+
+    fn pal_idx(&self) -> u8 {
+        self.3
+    }
+}

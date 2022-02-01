@@ -203,11 +203,12 @@ impl TiledImage {
         Ok((final_tiles_with_sum.into_iter().map(|x| x.1).collect(), StBytesMut::from(n_img.1), chunks))
     }
 
-    pub fn tiled_to_native_seq<J>(
-        tiledata: TilesGenerator<J>, paldata: &[u8], tile_dim: usize, img_width: usize, img_height: usize
+    pub fn tiled_to_native_seq<J, P>(
+        tiledata: TilesGenerator<J>, paldata: P, tile_dim: usize, img_width: usize, img_height: usize
     ) -> IndexedImage
         where
-            J: Iterator<Item = u8> + Clone
+            J: Iterator<Item = u8> + Clone,
+            P: Iterator<Item = u8>
     {
         let number_chunks = img_width * img_height / tile_dim / tile_dim;
         Self::tiled_to_native(
@@ -216,13 +217,14 @@ impl TiledImage {
         )
     }
 
-    pub fn tiled_to_native<I, J, T> (
-        chunks: I, tiledata: TilesGenerator<J>, paldata: &[u8], tile_dim: usize, img_width: usize, img_height: usize, chunk_dim: usize
+    pub fn tiled_to_native<I, J, T, P> (
+        chunks: I, tiledata: TilesGenerator<J>, paldata: P, tile_dim: usize, img_width: usize, img_height: usize, chunk_dim: usize
     ) -> IndexedImage
         where
             I: Iterator<Item = T>,
             J: Iterator<Item = u8> + Clone,
-            T: ProvidesTilemapEntry + Debug
+            T: ProvidesTilemapEntry + Debug,
+            P: Iterator<Item = u8>
     {
         let img_width_in_tiles = img_width / tile_dim;
 
@@ -254,7 +256,7 @@ impl TiledImage {
         }
 
         debug_assert_eq!(img_width * img_height, imagedata.len());
-        IndexedImage(Raster(imagedata, img_width, img_height), paldata.to_vec().into())
+        IndexedImage(Raster(imagedata, img_width, img_height), paldata.collect())
     }
 
     /// Search for the tile, or a flipped version of it, in tiles and return the index and flipped state

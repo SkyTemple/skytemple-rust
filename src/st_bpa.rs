@@ -32,9 +32,9 @@ const BPA_TILE_DIM: usize = 8;
 #[derive(Clone)]
 pub struct BpaFrameInfo {
     #[pyo3(get, set)]
-    duration_per_frame: u16,
+    pub duration_per_frame: u16,
     #[pyo3(get, set)]
-    unk2: u16
+    pub unk2: u16
 }
 
 #[pymethods]
@@ -51,13 +51,13 @@ impl BpaFrameInfo {
 #[derive(Clone)]
 pub struct Bpa {
     #[pyo3(get, set)]
-    number_of_tiles: u16,
+    pub number_of_tiles: u16,
     #[pyo3(get, set)]
-    number_of_frames: u16,
+    pub number_of_frames: u16,
     #[pyo3(get, set)]
-    tiles: Vec<StBytes>,
+    pub tiles: Vec<StBytes>,
     #[pyo3(get, set)]
-    frame_info: Vec<Py<BpaFrameInfo>>
+    pub frame_info: Vec<Py<BpaFrameInfo>>
 }
 
 #[pymethods]
@@ -109,7 +109,7 @@ impl Bpa {
         TiledImage::tiled_to_native(
             dummy_chunks,
             PixelGenerator::tiled4bpp(&self.tiles[..]),
-            &palette[..], BPA_TILE_DIM as usize, width, height, 1
+            palette.iter().copied(), BPA_TILE_DIM as usize, width, height, 1
         )
     }
     #[args(width_in_tiles = "20")]
@@ -131,7 +131,7 @@ impl Bpa {
             images.push(TiledImage::tiled_to_native(
                 chunk.iter(),
                 PixelGenerator::tiled4bpp(&self.tiles[..]),
-                &palette[..], BPA_TILE_DIM as usize, width, height, 1
+                palette.iter().copied(), BPA_TILE_DIM as usize, width, height, 1
             ))
         }
         Ok(images)
@@ -286,4 +286,78 @@ pub(crate) fn create_st_bpa_module(py: Python) -> PyResult<(&str, &PyModule)> {
     m.add_class::<BpaWriter>()?;
 
     Ok((name, m))
+}
+
+/////////////////////////
+/////////////////////////
+// BPAs as inputs (for compatibility of including other BPA implementations from Python)
+#[cfg(feature = "python")]
+pub mod input {
+    use crate::python::*;
+    use crate::st_bpa::Bpa;
+
+    pub trait BpaProvider: ToPyObject {
+        fn get_number_of_tiles(&self, py: Python) -> PyResult<u16>;
+    }
+
+    impl BpaProvider for Py<Bpa> {
+        fn get_number_of_tiles(&self, py: Python) -> PyResult<u16> {
+            Ok(self.borrow(py).number_of_tiles)
+        }
+    }
+
+    impl BpaProvider for PyObject {
+        fn get_number_of_tiles(&self, py: Python) -> PyResult<u16> {
+            self.getattr(py, "number_of_tiles")?.extract(py)
+        }
+    }
+
+    pub struct InputBpa(pub Box<dyn BpaProvider>);
+
+    impl<'source> FromPyObject<'source> for InputBpa {
+        fn extract(ob: &'source PyAny) -> PyResult<Self> {
+            if let Ok(obj) = ob.extract::<Py<Bpa>>() {
+                Ok(Self(Box::new(obj)))
+            } else {
+                Ok(Self(Box::new(ob.to_object(ob.py()))))
+            }
+        }
+    }
+
+    impl IntoPy<PyObject> for InputBpa {
+        fn into_py(self, py: Python) -> PyObject {
+            self.0.to_object(py)
+        }
+    }
+
+    impl From<InputBpa> for Bpa {
+        fn from(obj: InputBpa) -> Self {
+            Python::with_gil(|py| obj.0.to_object(py).extract(py).unwrap())
+        }
+    }
+}
+
+
+#[cfg(not(feature = "python"))]
+pub mod input {
+    use crate::python::{PyResult, Python};
+    use crate::st_bpa::Bpa;
+
+    pub trait BpaProvider {
+        fn get_number_of_tiles(&self, py: Python) -> PyResult<u16>;
+    }
+
+    impl BpaProvider for Bpa {
+        fn get_number_of_tiles(&self, _py: Python) -> PyResult<u16> {
+            Ok(self.number_of_tiles)
+        }
+    }
+
+    pub struct InputBpa(pub(crate) Bpa);
+
+    impl From<InputBpa> for Bpa {
+        fn from(obj: InputBpa) -> Self {
+            obj.0
+        }
+    }
 }

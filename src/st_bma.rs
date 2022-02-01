@@ -27,38 +27,38 @@ use crate::st_bpl::Bpl;
 #[derive(Clone)]
 pub struct Bma {
     #[pyo3(get, set)]
-    map_width_camera: u16,
+    pub map_width_camera: u16,
     #[pyo3(get, set)]
-    map_height_camera: u16,
+    pub map_height_camera: u16,
     #[pyo3(get, set)]
-    tiling_width: u8,
+    pub tiling_width: u8,
     #[pyo3(get, set)]
-    tiling_height: u8,
+    pub tiling_height: u8,
     #[pyo3(get, set)]
-    map_width_chunks: u16,
+    pub map_width_chunks: u16,
     #[pyo3(get, set)]
-    map_height_chunks: u16,
+    pub map_height_chunks: u16,
     #[pyo3(get, set)]
-    number_of_layers: u8,
+    pub number_of_layers: u8,
     #[pyo3(get, set)]
-    unk6: u8,
+    pub unk6: u8,
     #[pyo3(get, set)]
-    number_of_collision_layers: u8,
+    pub number_of_collision_layers: u8,
 
     #[pyo3(get, set)]
-    layer0: Vec<u8>,
+    pub layer0: Vec<u8>,
     #[pyo3(get, set)]
-    layer1: Option<Vec<u8>>,
+    pub layer1: Option<Vec<u8>>,
 
     // if unk6:
     #[pyo3(get, set)]
-    unknown_data_block: Option<Vec<u8>>,
+    pub unknown_data_block: Option<Vec<u8>>,
     // if number_of_collision_layers > 0:
     #[pyo3(get, set)]
-    collision: Option<Vec<bool>>,
+    pub collision: Option<Vec<bool>>,
     // if number_of_collision_layers > 1:
     #[pyo3(get, set)]
-    collision2: Option<Vec<bool>>
+    pub collision2: Option<Vec<bool>>
 }
 
 #[pymethods]

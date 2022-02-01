@@ -169,8 +169,7 @@ impl KaoImage {
                         (new_order.iter().position(|x| *x as u8 == v / 16).unwrap()) * 16) as u8
                 ).collect::<StBytesMut>(),
             new_order.into_iter()
-                .map(|v| &in_pal[(v*3) as usize..(v*3+3) as usize])
-                .flatten()
+                .flat_map(|v| &in_pal[(v*3) as usize..(v*3+3) as usize])
                 .copied()
                 .collect::<StBytesMut>()
         )
@@ -194,7 +193,7 @@ impl KaoImage {
     pub fn get(&self) -> PyResult<IndexedImage> {
         Ok(TiledImage::tiled_to_native_seq(
             PixelGenerator::pack4bpp(&CommonAt::decompress(&self.compressed_img_data)?, Self::TILE_DIM),
-            &self.pal_data, Self::TILE_DIM, Self::IMG_DIM, Self::IMG_DIM
+            self.pal_data.iter().copied(), Self::TILE_DIM, Self::IMG_DIM, Self::IMG_DIM
         ))
     }
     pub fn size(&self) -> PyResult<usize> {

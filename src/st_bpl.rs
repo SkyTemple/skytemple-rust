@@ -43,9 +43,9 @@ const BPL_PAL_SIZE: usize = BPL_PAL_LEN * BPL_PAL_ENTRY_LEN;
 #[derive(Clone)]
 pub struct BplAnimationSpec {
     #[pyo3(get, set)]
-    duration_per_frame: u16,
+    pub duration_per_frame: u16,
     #[pyo3(get, set)]
-    number_of_frames: u16
+    pub number_of_frames: u16
 }
 
 #[pymethods]
@@ -62,15 +62,15 @@ impl BplAnimationSpec {
 #[derive(Clone)]
 pub struct Bpl {
     #[pyo3(get, set)]
-    number_palettes: u16,
+    pub number_palettes: u16,
     #[pyo3(get, set)]
-    has_palette_animation: bool,
+    pub has_palette_animation: bool,
     #[pyo3(get, set)]
-    palettes: Vec<Vec<u8>>,
+    pub palettes: Vec<Vec<u8>>,
     #[pyo3(get, set)]
-    animation_specs: Vec<Py<BplAnimationSpec>>,
+    pub animation_specs: Vec<Py<BplAnimationSpec>>,
     #[pyo3(get, set)]
-    animation_palette: Vec<Vec<u8>>
+    pub animation_palette: Vec<Vec<u8>>
 }
 
 impl Bpl {
