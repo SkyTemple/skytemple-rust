@@ -52,6 +52,7 @@ pub mod st_bpl;
 //pub mod st_dpci;
 //pub mod st_dpl;
 //pub mod st_dpla;
+pub mod st_string;
 
 #[cfg(feature = "python")]
 pub mod pmd_wan;

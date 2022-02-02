@@ -16,6 +16,7 @@
  * You should have received a copy of the GNU General Public License
  * along with SkyTemple.  If not, see <https://www.gnu.org/licenses/>.
  */
+use std::cmp::Ordering;
 use std::iter::repeat;
 use std::mem::take;
 use bytes::{Buf, BufMut};
@@ -162,17 +163,21 @@ impl Bpl {
         self.number_palettes = palettes.len() as u16;
         self.palettes = palettes;
         if self.has_palette_animation {
-            if self.number_palettes < nb_pal_old {
-                // Remove the extra spec entries
-                let specs = take(&mut self.animation_specs);
-                self.animation_specs = specs.into_iter().take(self.number_palettes as usize).collect();
-            } else if self.number_palettes > nb_pal_old {
-                // Add missing spec entries
-                for _ in nb_pal_old..self.number_palettes {
-                    self.animation_specs.push(Py::new(py, BplAnimationSpec::new(
-                        0, 0
-                    ))?);
+            match self.number_palettes.cmp(&nb_pal_old) {
+                Ordering::Less => {
+                    // Remove the extra spec entries
+                    let specs = take(&mut self.animation_specs);
+                    self.animation_specs = specs.into_iter().take(self.number_palettes as usize).collect();
                 }
+                Ordering::Greater => {
+                    // Add missing spec entries
+                    for _ in nb_pal_old..self.number_palettes {
+                        self.animation_specs.push(Py::new(py, BplAnimationSpec::new(
+                            0, 0
+                        ))?);
+                    }
+                }
+                _ => {}
             }
         }
         Ok(())

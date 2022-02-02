@@ -23,7 +23,7 @@ use bytes::{Buf, BufMut, Bytes, BytesMut};
 use crate::bytes::StBytes;
 use crate::compression::bpc_image::{BpcImageCompressor, BpcImageDecompressor};
 use crate::compression::bpc_tilemap::{BpcTilemapCompressor, BpcTilemapDecompressor};
-use crate::image::{In16ColIndexedImage, In256ColIndexedImage, IndexedImage, InIndexedImage, PixelGenerator, Tile};
+use crate::image::{In16ColIndexedImage, In256ColIndexedImage, IndexedImage, InIndexedImage, PixelGenerator};
 use crate::image::tiled::TiledImage;
 use crate::image::tilemap_entry::{InputTilemapEntry, TilemapEntry};
 use crate::python::*;

@@ -17,6 +17,8 @@
  * along with SkyTemple.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+pub mod pmd2_encoder;
+
 use std::cmp::Ordering;
 use bytes::{Buf, BufMut, Bytes};
 use encoding::{DecoderTrap, EncoderTrap, Encoding};
@@ -35,7 +37,7 @@ pub trait BufMutEncoding {
 
 impl<T> BufEncoding for T where T: Buf {
     fn get_fixed_string<E>(&mut self, enc: E, len: usize, trap: DecoderTrap) -> PyResult<String> where E: Encoding {
-        Ok(self.get_fixed_string_or_null(enc, len, trap)?.unwrap_or("".to_string()))
+        Ok(self.get_fixed_string_or_null(enc, len, trap)?.unwrap_or_else(|| "".to_string()))
     }
 
     fn get_fixed_string_or_null<E>(&mut self, enc: E, len: usize, trap: DecoderTrap) -> PyResult<Option<String>> where E: Encoding {
@@ -43,7 +45,7 @@ impl<T> BufEncoding for T where T: Buf {
         if c.is_empty() {
             return Ok(None);
         }
-        enc.decode(&c, trap).map(|x| Some(x)).map_err(convert_encoding_err)
+        enc.decode(&c, trap).map(Some).map_err(convert_encoding_err)
     }
 }
 

@@ -44,7 +44,7 @@ const BPC_MIN_REPEAT_COUNT: usize = 3;
 // DECOMPRESSION CONSTANTS
 //  Operations are encoded in command bytes (CMD):
 //  BASE OPERATIONS
-const CMD_CP_FROM_POS: u8                         = 0x80;  //  All values below: Copy from pos
+//const CMD_CP_FROM_POS: u8                         = 0x80;  //  All values below: Copy from pos
 //  We build and copy a pattern:
 const CMD_CYCLE_PATTERN_AND_CP: u8                = 0xE0;  //  All values equal/above
 const CMD_USE_LAST_PATTERN_AND_CP: u8             = 0xC0;  //  All values equal/above until next

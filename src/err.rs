@@ -18,11 +18,11 @@
  */
 
 use std::borrow::Cow;
-use crate::python::PyErr;
+use crate::python::{PyErr, exceptions};
 
 #[inline]
 pub fn convert_encoding_err(err: Cow<'static, str>) -> PyErr {
-    todo!()
+    exceptions::PyValueError::new_err(format!("Failed to decode/encode string for PMD2: {}", err))
 }
 
 #[inline]

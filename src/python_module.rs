@@ -18,6 +18,8 @@
  */
 use log::info;
 use pyo3::types::PyDict;
+use crate::compression::bma_collision_rle::create_st_bma_collision_rle_compression_module;
+use crate::compression::bma_layer_nrl::create_st_bma_layer_nrl_compression_module;
 use crate::python::*;
 
 
@@ -41,6 +43,7 @@ use crate::st_bpl::create_st_bpl_module;
 //use crate::st_dpla::create_st_dpla_module;
 use crate::st_kao::create_st_kao_module;
 use crate::st_pkdpx::create_st_pkdpx_module;
+use crate::st_string::create_st_string_module;
 use crate::compression::bpc_image::create_st_bpc_image_compression_module;
 use crate::compression::bpc_tilemap::create_st_bpc_tilemap_compression_module;
 use crate::compression::generic::nrl::create_st_generic_nrl_compression_module;
@@ -72,10 +75,13 @@ fn skytemple_rust(py: Python, module: &PyModule) -> PyResult<()> {
     //add_submodule(module, create_st_dpci_module(py)?, modules)?;
     //add_submodule(module, create_st_dpl_module(py)?, modules)?;
     //add_submodule(module, create_st_dpla_module(py)?, modules)?;
+    add_submodule(module, create_st_string_module(py)?, modules)?;
 
     add_submodule(module, create_st_generic_nrl_compression_module(py)?, modules)?;
     add_submodule(module, create_st_bpc_image_compression_module(py)?, modules)?;
     add_submodule(module, create_st_bpc_tilemap_compression_module(py)?, modules)?;
+    add_submodule(module, create_st_bma_layer_nrl_compression_module(py)?, modules)?;
+    add_submodule(module, create_st_bma_collision_rle_compression_module(py)?, modules)?;
 
     module.add_class::<TilemapEntry>()?;
 

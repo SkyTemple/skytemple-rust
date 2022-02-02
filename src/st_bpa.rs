@@ -25,7 +25,6 @@ use crate::image::tiled::TiledImage;
 use crate::image::tilemap_entry::TilemapEntry;
 use crate::python::*;
 
-const BPA_PIXEL_BITLEN: u8 = 4;
 const BPA_TILE_DIM: usize = 8;
 
 #[pyclass(module = "skytemple_rust.st_bpa")]

@@ -21,3 +21,5 @@ pub mod px;
 pub mod bpc_image;
 pub mod bpc_tilemap;
 pub mod generic;
+pub mod bma_layer_nrl;
+pub mod bma_collision_rle;

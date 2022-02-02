@@ -17,10 +17,9 @@
  * along with SkyTemple.  If not, see <https://www.gnu.org/licenses/>.
  */
 use std::io::Cursor;
-use std::ops::{Deref, DerefMut};
 use bytes::{Buf, BufMut, Bytes, BytesMut};
 use crate::bytes::StBytesMut;
-use crate::compression::generic::nrl::{compression_step, decompression_step, NrlRead, NrlWrite};
+use crate::compression::generic::nrl::{compression_step, decompression_step, NrlCompRead, NrlDecompWrite};
 use crate::python::*;
 
 // Operations are encoded in command bytes (CMD):
@@ -35,25 +34,11 @@ const CMD_2_COPY_LOW: u8      = 0xC0;  // All values equal/above
 #[derive(Clone)]
 struct CompRead(Cursor<Bytes>);
 
-impl Deref for CompRead {
-    type Target = Cursor<Bytes>;
-
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
-
-impl DerefMut for CompRead {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.0
-    }
-}
-
-impl NrlRead<Bytes> for CompRead {
+impl NrlCompRead<u8> for CompRead {
     fn nrl_get(&mut self) -> u8 {
-        let v = self.get_u8();
-        if self.has_remaining() {
-            self.advance(1);
+        let v = self.0.get_u8();
+        if self.0.has_remaining() {
+            self.0.advance(1);
         }
         v
     }
@@ -61,12 +46,12 @@ impl NrlRead<Bytes> for CompRead {
         if n == 0 {
             return;
         }
-        self.advance(n * 2 - 1);
-        if self.has_remaining() {
-            self.advance(1);
+        self.0.advance(n * 2 - 1);
+        if self.0.has_remaining() {
+            self.0.advance(1);
         }
     }
-    fn has_remaining(&self) -> bool {
+    fn nrl_has_remaining(&self) -> bool {
         Buf::has_remaining(&self.0)
     }
 }
@@ -82,14 +67,14 @@ impl BpcTilemapCompressor {
 
         // First we process all the high bytes (LE)
         let mut cursor = CompRead(Cursor::new(decompressed_data.clone()));
-        cursor.advance(1);
-        while cursor.has_remaining() {
+        cursor.0.advance(1);
+        while cursor.nrl_has_remaining() {
             compression_step(&mut cursor, &mut compressed_data);
         }
 
         // And then all the low bytes (LE)
         let mut cursor = CompRead(Cursor::new(decompressed_data));
-        while cursor.has_remaining() {
+        while cursor.nrl_has_remaining() {
             compression_step(&mut cursor, &mut compressed_data);
         }
 
@@ -102,7 +87,7 @@ impl BpcTilemapCompressor {
 
 struct DecompWrite(BytesMut);
 
-impl NrlWrite for DecompWrite {
+impl NrlDecompWrite<u8> for DecompWrite {
     fn nrl_put(&mut self, b: u8) {
         self.0.put_u16_le((b as u16) << 8);
     }
