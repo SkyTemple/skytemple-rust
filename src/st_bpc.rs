@@ -27,7 +27,9 @@ use crate::image::{In16ColIndexedImage, In256ColIndexedImage, IndexedImage, InIn
 use crate::image::tiled::TiledImage;
 use crate::image::tilemap_entry::{InputTilemapEntry, TilemapEntry};
 use crate::python::*;
-use crate::st_bpa::input::InputBpa;
+// For non-Python
+#[allow(unused_imports)]
+use crate::st_bpa::input::{BpaProvider, InputBpa};
 
 const BPC_TILE_DIM: usize = 8;
 const BPC_TILEMAP_BYTELEN: usize = 2;
@@ -357,7 +359,7 @@ impl Bpc {
 
     /// Imports tiles that are in a format as described in the documentation for tiles_to_pil.
     /// Tile mappings, chunks and palettes are not updated.
-    pub fn pil_to_tiles(&self, layer_id: usize, image: In16ColIndexedImage, py: Python) -> PyResult<()> {
+    pub fn pil_to_tiles(&mut self, layer_id: usize, image: In16ColIndexedImage, py: Python) -> PyResult<()> {
         let image = image.extract(py)?;
         let w = *&image.0.1;
         let h = *&image.0.2;
@@ -382,7 +384,7 @@ impl Bpc {
     ///
     /// Returns the palettes stored in the image for further processing (eg. replacing the BPL palettes).
     #[args(force_import = "true")]
-    pub fn pil_to_chunks(&self, layer_id: usize, image: In256ColIndexedImage, _force_import: bool, py: Python) -> PyResult<Vec<StBytes>> {
+    pub fn pil_to_chunks(&mut self, layer_id: usize, image: In256ColIndexedImage, _force_import: bool, py: Python) -> PyResult<Vec<StBytes>> {
         let image = image.extract(py)?;
         let w = *&image.0.1;
         let h = *&image.0.2;

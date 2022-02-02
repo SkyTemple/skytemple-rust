@@ -23,6 +23,7 @@ use crate::err::convert_encoding_err;
 use crate::python::*;
 
 #[pyclass(module = "skytemple_rust.st_string")]
+#[derive(Clone)]
 pub struct StPmd2String(String);
 
 
