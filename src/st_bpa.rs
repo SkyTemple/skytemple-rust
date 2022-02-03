@@ -293,22 +293,43 @@ pub(crate) fn create_st_bpa_module(py: Python) -> PyResult<(&str, &PyModule)> {
 // BPAs as inputs (for compatibility of including other BPA implementations from Python)
 #[cfg(feature = "python")]
 pub mod input {
+    use pyo3::types::PyTuple;
+    use crate::bytes::StBytes;
     use crate::python::*;
     use crate::st_bpa::Bpa;
 
     pub trait BpaProvider: ToPyObject {
         fn get_number_of_tiles(&self, py: Python) -> PyResult<u16>;
+        fn get_number_of_frames(&self, py: Python) -> PyResult<u16>;
+        fn provide_tiles_for_frame(&self, frame: u16, py: Python) -> PyResult<Vec<StBytes>>;
     }
 
     impl BpaProvider for Py<Bpa> {
         fn get_number_of_tiles(&self, py: Python) -> PyResult<u16> {
             Ok(self.borrow(py).number_of_tiles)
         }
+
+        fn get_number_of_frames(&self, py: Python) -> PyResult<u16> {
+            Ok(self.borrow(py).number_of_frames)
+        }
+
+        fn provide_tiles_for_frame(&self, frame: u16, py: Python) -> PyResult<Vec<StBytes>> {
+            Ok(self.borrow(py).tiles_for_frame(frame))
+        }
     }
 
     impl BpaProvider for PyObject {
         fn get_number_of_tiles(&self, py: Python) -> PyResult<u16> {
             self.getattr(py, "number_of_tiles")?.extract(py)
+        }
+
+        fn get_number_of_frames(&self, py: Python) -> PyResult<u16> {
+            self.getattr(py, "number_of_frames")?.extract(py)
+        }
+
+        fn provide_tiles_for_frame(&self, frame: u16, py: Python) -> PyResult<Vec<StBytes>> {
+            let args = PyTuple::new(py, [frame]);
+            self.call_method1(py, "tiles_for_frame", args)?.extract(py)
         }
     }
 
@@ -340,16 +361,27 @@ pub mod input {
 
 #[cfg(not(feature = "python"))]
 pub mod input {
+    use crate::bytes::StBytes;
     use crate::python::{PyResult, Python};
     use crate::st_bpa::Bpa;
 
     pub trait BpaProvider {
         fn get_number_of_tiles(&self, py: Python) -> PyResult<u16>;
+        fn get_number_of_frames(&self, py: Python) -> PyResult<u16>;
+        fn provide_tiles_for_frame(&self, frame: u16, py: Python) -> PyResult<Vec<StBytes>>;
     }
 
     impl BpaProvider for Bpa {
         fn get_number_of_tiles(&self, _py: Python) -> PyResult<u16> {
             Ok(self.number_of_tiles)
+        }
+
+        fn get_number_of_frames(&self, py: Python) -> PyResult<u16> {
+            Ok(self.number_of_frames)
+        }
+
+        fn provide_tiles_for_frame(&self, frame: u16, py: Python) -> PyResult<Vec<StBytes>> {
+            Ok(self.tiles_for_frame(frame))
         }
     }
 

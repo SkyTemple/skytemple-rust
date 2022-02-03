@@ -18,7 +18,7 @@
  */
 use std::io::Cursor;
 use std::iter::once;
-use std::mem::swap;
+use std::mem::{swap, take};
 use bytes::{Buf, BufMut, Bytes, BytesMut};
 use crate::bytes::StBytes;
 use crate::compression::bpc_image::{BpcImageCompressor, BpcImageDecompressor};
@@ -34,6 +34,11 @@ use crate::st_bpa::input::{BpaProvider, InputBpa};
 const BPC_TILE_DIM: usize = 8;
 const BPC_TILEMAP_BYTELEN: usize = 2;
 const BPC_BYTELEN_TILE: usize = BPC_TILE_DIM * BPC_TILE_DIM / 2;
+
+enum AnimatedExportMode {
+    All(usize), // width_in_mtiles
+    Single(usize) // chunk_idx
+}
 
 #[pyclass(module = "skytemple_rust.st_bpc")]
 #[derive(Clone, Default)]
@@ -195,36 +200,19 @@ impl Bpc {
     ///
     /// Does NOT export BPA tiles. Chunks that reference BPA tiles are replaced with empty tiles.
     /// The mapping to BPA tiles has to be done programmatically using set_tile or set_chunk.
+    #[cfg(feature = "python")]
     #[args(width_in_mtiles = "20")]
-    pub fn chunks_to_pil(&self, layer_id: usize, palettes: Vec<StBytes>, width_in_mtiles: usize, py: Python) -> IndexedImage {
-        let layer = self.layers[layer_id].borrow(py);
-        let width = width_in_mtiles * self.tiling_width as usize * BPC_TILE_DIM;
-        let height = ((layer.chunk_tilemap_len as f32 / width_in_mtiles as f32).ceil()) as usize * self.tiling_height as usize * BPC_TILE_DIM;
-
-        debug_assert_eq!(self.tiling_width, self.tiling_height);
-        TiledImage::tiled_to_native(
-            layer.tilemap.iter().map(|x| x.borrow(py)),
-            PixelGenerator::tiled4bpp(&layer.tiles[..]),
-            palettes.iter().flat_map(|x| x.iter().copied()),
-            BPC_TILE_DIM, width, height, self.tiling_width as usize
-        )
+    #[pyo3(name="chunks_to_pil")]
+    pub fn _chunks_to_pil(&self, layer_id: usize, palettes: Vec<StBytes>, width_in_mtiles: usize, py: Python) -> IndexedImage {
+        self.chunks_to_pil(layer_id, &palettes, width_in_mtiles, py)
     }
 
     /// Convert a single chunk of the BPC to one big PIL image. For general notes, see chunks_to_pil.
     /// Does NOT export BPA tiles. Chunks that reference BPA tiles are replaced with empty tiles.
-    pub fn single_chunk_to_pil(&self, layer_id: usize, chunk_idx: usize, palettes: Vec<StBytes>, py: Python) -> IndexedImage {
-        let layer = self.layers[layer_id].borrow(py);
-        let mtidx = chunk_idx * self.tiling_width as usize * self.tiling_height as usize;
-        debug_assert_eq!(self.tiling_width, self.tiling_height);
-        TiledImage::tiled_to_native(
-            layer.tilemap.iter().skip(mtidx).take(9).map(|x| x.borrow(py)),
-            PixelGenerator::tiled4bpp(&layer.tiles[..]),
-            palettes.iter().flat_map(|x| x.iter().copied()),
-            BPC_TILE_DIM,
-            BPC_TILE_DIM * self.tiling_width as usize,
-            BPC_TILE_DIM * self.tiling_height as usize,
-            self.tiling_width as usize
-        )
+    #[cfg(feature = "python")]
+    #[pyo3(name="single_chunk_to_pil")]
+    pub fn _single_chunk_to_pil(&self, layer_id: usize, chunk_idx: usize, palettes: Vec<StBytes>, py: Python) -> IndexedImage {
+        self.single_chunk_to_pil(layer_id, chunk_idx, &palettes, py)
     }
     /// Convert all individual tiles of the BPC into one image.
     /// The image contains all tiles next to each other, the image width is tile_width tiles.
@@ -272,89 +260,15 @@ impl Bpc {
     /// The list of bpas must be the one contained in the bg_list. It needs to contain 8 slots, with empty
     /// slots being None.
     #[args(width_in_mtiles = "20")]
-    pub fn chunks_animated_to_pil(&self, layer: u8, palettes: Vec<StBytes>, bpas: Vec<Option<InputBpa>>, width_in_mtiles: usize) -> Vec<IndexedImage> {
-        // TODO: The speed can be increased if we only re-render the changed animated tiles instead!
-        //         ldata = self.layers[layer]
-        //         # First check if we even have BPAs to use
-        //         is_using_bpa = len(bpas) > 0 and any(x > 0 for x in ldata.bpas)
-        //         if not is_using_bpa:
-        //             # Simply build the single chunks frame
-        //             return [self.chunks_to_pil(layer, palettes, width_in_mtiles)]
-        //
-        //         bpa_animation_indices = [0, 0, 0, 0]
-        //         frames = []
-        //
-        //         orig_len = len(ldata.tiles)
-        //         while True:  # Ended by check at end (do while)
-        //             previous_end_of_tiles = orig_len
-        //             # For each frame: Insert all BPA current frame tiles into their slots
-        //             for bpaidx, bpa in enumerate(self.get_bpas_for_layer(layer, bpas)):
-        //
-        //                 # Add the BPA tiles for this frame to the set of BPC tiles:
-        //                 new_end_of_tiles = previous_end_of_tiles + bpa.number_of_tiles
-        //                 ldata.tiles[previous_end_of_tiles:new_end_of_tiles] = bpa.tiles_for_frame(bpa_animation_indices[bpaidx])
-        //
-        //                 previous_end_of_tiles = new_end_of_tiles
-        //                 bpa_animation_indices[bpaidx] += 1
-        //                 bpa_animation_indices[bpaidx] %= bpa.number_of_frames
-        //
-        //             frames.append(self.chunks_to_pil(layer, palettes, width_in_mtiles))
-        //             # All animations have been played, we are done!
-        //             if bpa_animation_indices == [0, 0, 0, 0]:
-        //                 break
-        //
-        //         # RESET the layer's tiles to NOT include the BPA tiles!
-        //         ldata.tiles = ldata.tiles[:orig_len]
-        //         return frames
-        todo!()
+    pub fn chunks_animated_to_pil(&mut self, layer_id: usize, palettes: Vec<StBytes>, bpas: Vec<Option<InputBpa>>, width_in_mtiles: usize, py: Python) -> PyResult<Vec<IndexedImage>> {
+        self._chunks_animated_to_pil(layer_id, AnimatedExportMode::All(width_in_mtiles), &palettes, bpas, py)
     }
 
     /// Exports a single chunk. For general notes see chunks_to_pil. For notes regarding the animation see
     /// chunks_animated_to_pil.
     ///
-    pub fn single_chunk_animated_to_pil(&self, layer: u8, chunk_idx: u16, palettes: Vec<StBytes>, bpas: Vec<Option<InputBpa>>) -> Vec<IndexedImage> {
-        // TODO: Code duplication with chunks_animated_to_pil. Could probably be refactored.
-        //         ldata = self.layers[layer]
-        //         # First check if we even have BPAs to use
-        //         is_using_bpa = len(bpas) > 0 and any(x > 0 for x in ldata.bpas)
-        //         if is_using_bpa:
-        //             # Also check if any of the tiles in the chunk even uses BPA tiles
-        //             is_using_bpa = False
-        //             for tilem in self.get_chunk(layer, chunk_idx):
-        //                 if tilem.idx > ldata.number_tiles:
-        //                     is_using_bpa = True
-        //                     break
-        //         if not is_using_bpa:
-        //             # Simply build the single chunks frame
-        //             return [self.single_chunk_to_pil(layer, chunk_idx, palettes)]
-        //
-        //         bpa_animation_indices = [0, 0, 0, 0]
-        //         frames = []
-        //
-        //         orig_len = len(ldata.tiles)
-        //         while True:  # Ended by check at end (do while)
-        //             previous_end_of_tiles = orig_len
-        //             # For each frame: Insert all BPA current frame tiles into their slots
-        //             for bpaidx, bpa in enumerate(self.get_bpas_for_layer(layer, bpas)):
-        //
-        //                 # Add the BPA tiles for this frame to the set of BPC tiles:
-        //                 new_end_of_tiles = previous_end_of_tiles + bpa.number_of_tiles
-        //                 ldata.tiles[previous_end_of_tiles:new_end_of_tiles] = bpa.tiles_for_frame(bpa_animation_indices[bpaidx])
-        //
-        //                 previous_end_of_tiles = new_end_of_tiles
-        //                 if bpa.number_of_frames > 0:
-        //                     bpa_animation_indices[bpaidx] += 1
-        //                     bpa_animation_indices[bpaidx] %= bpa.number_of_frames
-        //
-        //             frames.append(self.single_chunk_to_pil(layer, chunk_idx, palettes))
-        //             # All animations have been played, we are done!
-        //             if bpa_animation_indices == [0, 0, 0, 0]:
-        //                 break
-        //
-        //         # RESET the layer's tiles to NOT include the BPA tiles!
-        //         ldata.tiles = ldata.tiles[:orig_len]
-        //         return frames
-        todo!()
+    pub fn single_chunk_animated_to_pil(&mut self, layer_id: usize, chunk_idx: usize, palettes: Vec<StBytes>, bpas: Vec<Option<InputBpa>>, py: Python) -> PyResult<Vec<IndexedImage>> {
+        self._chunks_animated_to_pil(layer_id, AnimatedExportMode::Single(chunk_idx), &palettes, bpas, py)
     }
 
     /// Imports tiles that are in a format as described in the documentation for tiles_to_pil.
@@ -383,7 +297,7 @@ impl Bpc {
     /// 0 of the palette (transparent). The "_force_import" parameter is ignored.
     ///
     /// Returns the palettes stored in the image for further processing (eg. replacing the BPL palettes).
-    #[args(force_import = "true")]
+    #[args(_force_import = "true")]
     pub fn pil_to_chunks(&mut self, layer_id: usize, image: In256ColIndexedImage, _force_import: bool, py: Python) -> PyResult<Vec<StBytes>> {
         let image = image.extract(py)?;
         let w = *&image.0.1;
@@ -412,8 +326,12 @@ impl Bpc {
     pub fn get_chunk(&mut self, layer: usize, index: usize, py: Python) -> PyResult<Vec<TilemapEntry>> {
         let dim = self.tiling_width as usize * self.tiling_height as usize;
         let mtidx = index * dim;
-        self.layers[layer].borrow_mut(py).tilemap[mtidx..mtidx+dim]
-            .iter().map(|x| x.extract::<TilemapEntry>(py)).collect()
+        let b = self.layers[layer].borrow_mut(py);
+        if b.tilemap.len() <= mtidx+dim {
+            Ok(vec![])
+        } else {
+            b.tilemap[mtidx..mtidx+dim].iter().map(|x| x.extract::<TilemapEntry>(py)).collect()
+        }
     }
 
     /// Replace the tiles of the specified layer.
@@ -565,6 +483,110 @@ impl Bpc {
 }
 
 impl Bpc {
+    /// Convert all chunks of the BPC to one big image.
+    /// The chunks are all placed next to each other.
+    /// The resulting image has one large palette with all palettes merged together.
+    ///
+    /// To get the palettes, use the data from the BPL file for this map background.
+    ///
+    /// The first chunk is a NULL chunk. It is always empty, even when re-imported.
+    ///
+    /// Does NOT export BPA tiles. Chunks that reference BPA tiles are replaced with empty tiles.
+    /// The mapping to BPA tiles has to be done programmatically using set_tile or set_chunk.
+    pub fn chunks_to_pil(&self, layer_id: usize, palettes: &[StBytes], width_in_mtiles: usize, py: Python) -> IndexedImage {
+        let layer = self.layers[layer_id].borrow(py);
+        let width = width_in_mtiles * self.tiling_width as usize * BPC_TILE_DIM;
+        let height = ((layer.chunk_tilemap_len as f32 / width_in_mtiles as f32).ceil()) as usize * self.tiling_height as usize * BPC_TILE_DIM;
+
+        debug_assert_eq!(self.tiling_width, self.tiling_height);
+        TiledImage::tiled_to_native(
+            layer.tilemap.iter().map(|x| x.borrow(py)),
+            PixelGenerator::tiled4bpp(&layer.tiles[..]),
+            palettes.iter().flat_map(|x| x.iter().copied()),
+            BPC_TILE_DIM, width, height, self.tiling_width as usize
+        )
+    }
+
+    /// Convert a single chunk of the BPC to one big PIL image. For general notes, see chunks_to_pil.
+    /// Does NOT export BPA tiles. Chunks that reference BPA tiles are replaced with empty tiles.
+    pub fn single_chunk_to_pil(&self, layer_id: usize, chunk_idx: usize, palettes: &[StBytes], py: Python) -> IndexedImage {
+        let layer = self.layers[layer_id].borrow(py);
+        let mtidx = chunk_idx * self.tiling_width as usize * self.tiling_height as usize;
+        debug_assert_eq!(self.tiling_width, self.tiling_height);
+        TiledImage::tiled_to_native(
+            layer.tilemap.iter().skip(mtidx).take(9).map(|x| x.borrow(py)),
+            PixelGenerator::tiled4bpp(&layer.tiles[..]),
+            palettes.iter().flat_map(|x| x.iter().copied()),
+            BPC_TILE_DIM,
+            BPC_TILE_DIM * self.tiling_width as usize,
+            BPC_TILE_DIM * self.tiling_height as usize,
+            self.tiling_width as usize
+        )
+    }
+
+    fn _chunks_animated_to_pil(&mut self, layer_id: usize, mode: AnimatedExportMode, palettes: &[StBytes], bpas: Vec<Option<InputBpa>>, py: Python) -> PyResult<Vec<IndexedImage>> {
+        // TODO: The speed can be increased if we only re-render the changed animated tiles instead!
+
+        let ldata = self.layers[layer_id].borrow(py);
+        let mut is_using_bpa = !bpas.is_empty() && ldata.bpas.iter().any(|x| *x > 0);
+        let number_tiles = ldata.number_tiles;
+        drop(ldata);
+        match mode {
+            AnimatedExportMode::All(width_in_mtiles) =>
+                if !is_using_bpa {
+                    // Simply build the single chunks frame
+                    return Ok(vec![self.chunks_to_pil(layer_id, palettes, width_in_mtiles, py)])
+                }
+            AnimatedExportMode::Single(chunk_idx) => {
+                if is_using_bpa {
+                    is_using_bpa = false;
+                    // Also check if any of the tiles in the chunk even uses BPA tiles
+                    for tilem in self.get_chunk(layer_id, chunk_idx, py)? {
+                        if tilem.0 > number_tiles as usize {
+                            is_using_bpa = true;
+                            break;
+                        }
+                    }
+                }
+                if !is_using_bpa {
+                    // Simply build the single chunks frame
+                    return Ok(vec![self.single_chunk_to_pil(layer_id, chunk_idx, palettes, py)])
+                }
+            }
+        }
+        let ldata = self.layers[layer_id].borrow(py);
+        let mut bpa_animation_indices = [0, 0, 0, 0];
+        let mut frames = Vec::with_capacity(32);
+        let orig_len = ldata.tiles.len();
+        drop(ldata);
+        let bpas_for_layer = self.get_bpas_for_layer(layer_id, bpas, py)?;
+        loop {
+            let mut ldata = self.layers[layer_id].borrow_mut(py);
+            // For each frame: Insert all BPA current frame tiles into their slots
+            for (bpaidx, bpa) in bpas_for_layer.iter().enumerate() {
+                // Add the BPA tiles for this frame to the set of BPC tiles:
+                ldata.tiles.append(&mut bpa.0.provide_tiles_for_frame(bpa_animation_indices[bpaidx], py)?);
+                bpa_animation_indices[bpaidx] += 1;
+                bpa_animation_indices[bpaidx] %= bpa.0.get_number_of_frames(py)?;
+            }
+            drop(ldata);
+            frames.push(match mode {
+                AnimatedExportMode::All(width_in_mtiles) => self.chunks_to_pil(layer_id, &palettes, width_in_mtiles, py),
+                AnimatedExportMode::Single(chunk_idx) => self.single_chunk_to_pil(layer_id, chunk_idx, &palettes, py)
+            });
+
+            // RESET the layer's tiles to NOT include the BPA tiles!
+            ldata = self.layers[layer_id].borrow_mut(py);
+            ldata.tiles = take(&mut ldata.tiles).into_iter().take(orig_len).collect();
+
+            // All animations have been played, we are done!
+            if bpa_animation_indices == [0, 0, 0, 0] {
+                break;
+            }
+        }
+        Ok(frames)
+    }
+
     /// Returns the first found palette of the tile with idx i. Or 0.
     fn get_palette_for_tile(&self, layer: usize, i: usize, py: Python) -> u8 {
         for t in self.layers[layer].borrow(py).tilemap.iter() {
