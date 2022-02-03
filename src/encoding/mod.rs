@@ -23,7 +23,7 @@ use std::cmp::Ordering;
 use bytes::{Buf, BufMut, Bytes};
 use encoding::{DecoderTrap, EncoderTrap, Encoding};
 use crate::err::convert_encoding_err;
-use crate::python::{PyResult, exceptions};
+use crate::python::{exceptions, PyResult};
 
 /// Extensions for Buf for dealing with encoded strings.
 pub trait BufEncoding {

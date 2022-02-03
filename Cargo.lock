@@ -705,6 +705,7 @@ dependencies = [
  "arr_macro",
  "bytes",
  "encoding",
+ "encoding-index-singlebyte",
  "log",
  "num-derive",
  "num-traits",

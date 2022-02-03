@@ -25,5 +25,6 @@ num-traits = "0.2"
 num-derive = "0.3"
 arr_macro = "0.1.3"
 encoding = "0.2"
+encoding-index-singlebyte = "1"
 pmd_wan = { version = "3.0.1", optional = true }
 anyhow = { version = "1", optional = true }

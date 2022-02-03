@@ -20,6 +20,7 @@
 extern crate core;
 
 pub(crate) mod util;
+#[macro_use] pub(crate) mod encoding_utils;
 pub mod bytes;
 pub mod python;
 pub mod image;
