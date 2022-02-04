@@ -57,8 +57,8 @@ impl BgListEntry {
     pub fn get_bpc<T: RomFileProvider + Sized>(&self, rom_or_directory_root: RomSource<T>, bpc_tiling_width: u16, bpc_tiling_height: u16, py: Python) -> PyResult<Bpc> {
         Bpc::new(self.get_file(&rom_or_directory_root, &format!("{}{}{}", DIR, self.bpc_name.to_lowercase(), BPC_EXT))?, bpc_tiling_width, bpc_tiling_height, py)
     }
-    pub fn get_bma<T: RomFileProvider + Sized>(&self, rom_or_directory_root: RomSource<T>, py: Python) -> PyResult<Bma> {
-        Bma::new(self.get_file(&rom_or_directory_root, &format!("{}{}{}", DIR, self.bma_name.to_lowercase(), BMA_EXT))?, py)
+    pub fn get_bma<T: RomFileProvider + Sized>(&self, rom_or_directory_root: RomSource<T>) -> PyResult<Bma> {
+        Bma::new(self.get_file(&rom_or_directory_root, &format!("{}{}{}", DIR, self.bma_name.to_lowercase(), BMA_EXT))?)
     }
     pub fn get_bpas<T: RomFileProvider + Sized>(&self, rom_or_directory_root: RomSource<T>, py: Python) -> PyResult<Vec<Option<Bpa>>> {
         let mut v = Vec::with_capacity(self.bpa_names.len());
@@ -100,8 +100,8 @@ impl BgListEntry {
     }
     #[cfg(feature = "python")]
     #[pyo3(name = "get_bma")]
-    pub fn _get_bma(&self, rom_or_directory_root: RomSource<&PyAny>, py: Python) -> PyResult<Bma> {
-        self.get_bma(rom_or_directory_root, py)
+    pub fn _get_bma(&self, rom_or_directory_root: RomSource<&PyAny>) -> PyResult<Bma> {
+        self.get_bma(rom_or_directory_root)
     }
     #[cfg(feature = "python")]
     #[pyo3(name = "get_bpas")]

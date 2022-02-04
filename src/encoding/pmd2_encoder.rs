@@ -85,7 +85,7 @@ impl RawEncoder for Pmd2Encoder {
         (input.len(), None)
     }
 
-    fn raw_finish(&mut self, output: &mut dyn ByteWriter) -> Option<CodecError> {
+    fn raw_finish(&mut self, _output: &mut dyn ByteWriter) -> Option<CodecError> {
         None
     }
 }
@@ -130,18 +130,16 @@ initial:
     // shift_jis lead = 0x00
     state S0(ctx: Context) {
         case b @ 0x00..=0x80 => ctx.emit(b as u32);
-        case b @ 0x8D => ctx.emit('♂' as u32);
-        case b @ 0x8E => ctx.emit('♀' as u32);
-        case b @ 0x81 => S1(ctx);
+        case _b @ 0x8D => ctx.emit('♂' as u32);
+        case _b @ 0x8E => ctx.emit('♀' as u32);
+        case _b @ 0x81 => S1(ctx);
         case b @ 0x82..=0xFF => match encoding_index_singlebyte::windows_1252::forward(b) {
             0xffff => ctx.backup_and_err(1, "invalid sequence"), // unconditional
             ch => ctx.emit(ch as u32)
         };
-        case _ => ctx.err("invalid sequence");
     }
 
 transient:
-    // shift_jis lead != 0x00
     state S1(ctx: Context) {
         case b => match crate::encoding::pmd2_encoder::pmdshiftjis::forward(b) {
             0xffff => ctx.backup_and_err(1, "invalid sequence"), // unconditional

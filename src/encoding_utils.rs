@@ -24,12 +24,6 @@ use std::mem;
 use std::str::Chars;
 use encoding::types;
 
-/// Unchecked conversion to `char`.
-pub fn as_char(ch: u32) -> char {
-    debug_assert!(char::from_u32(ch).is_some());
-    unsafe { mem::transmute(ch) }
-}
-
 /// External iterator for a string's characters with its corresponding byte offset range.
 pub struct StrCharIndexIterator<'r> {
     index: usize,
@@ -111,14 +105,6 @@ impl<'a, St: Default, Data> crate::encoding_utils::StatefulDecoderHelper<'a, St,
     #[inline(always)]
     pub fn emit(&mut self, c: u32) -> St {
         self.output.write_char(unsafe {mem::transmute(c)});
-        Default::default()
-    }
-
-    /// Writes a Unicode string to the output.
-    /// If this is the last expr in the rules, also resets back to the initial state.
-    #[inline(always)]
-    pub fn emit_str(&mut self, s: &str) -> St {
-        self.output.write_str(s);
         Default::default()
     }
 

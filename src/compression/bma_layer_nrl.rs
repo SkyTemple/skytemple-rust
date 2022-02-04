@@ -258,9 +258,11 @@ impl BmaLayerNrlCompressionContainer {
     }
     pub fn decompress(&self) -> PyResult<StBytesMut> {
         let mut cur = Cursor::new(self.compressed_data.clone());
-        Ok(BmaLayerNrlDecompressor::run(
+        let result = Ok(BmaLayerNrlDecompressor::run(
             &mut cur, self.length_decompressed as usize
-        )?.into())
+        )?.into());
+        debug_assert!(!cur.has_remaining());
+        result
     }
     pub fn to_bytes(&self) -> StBytesMut {
         let mut res = BytesMut::with_capacity(self.compressed_data.len() + Self::DATA_START);

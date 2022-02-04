@@ -321,6 +321,7 @@ impl GenericNrlCompressionContainer {
 
             decompression_step(&mut compressed_data, &mut decompressed_data);
         }
+        debug_assert!(!compressed_data.has_remaining());
         Ok(decompressed_data.into())
     }
     pub fn to_bytes(&self) -> crate::bytes::StBytesMut {
