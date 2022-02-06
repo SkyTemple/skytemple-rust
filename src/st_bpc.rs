@@ -31,9 +31,9 @@ use crate::python::*;
 #[allow(unused_imports)]
 use crate::st_bpa::input::{BpaProvider, InputBpa};
 
-const BPC_TILE_DIM: usize = 8;
-const BPC_TILEMAP_BYTELEN: usize = 2;
-const BPC_BYTELEN_TILE: usize = BPC_TILE_DIM * BPC_TILE_DIM / 2;
+pub const BPC_TILE_DIM: usize = 8;
+pub const BPC_TILEMAP_BYTELEN: usize = 2;
+pub const BPC_BYTELEN_TILE: usize = BPC_TILE_DIM * BPC_TILE_DIM / 2;
 
 enum AnimatedExportMode {
     All(usize), // width_in_mtiles
@@ -261,14 +261,14 @@ impl Bpc {
     /// slots being None.
     #[args(width_in_mtiles = "20")]
     pub fn chunks_animated_to_pil(&mut self, layer_id: usize, palettes: Vec<StBytes>, bpas: Vec<Option<InputBpa>>, width_in_mtiles: usize, py: Python) -> PyResult<Vec<IndexedImage>> {
-        self._chunks_animated_to_pil(layer_id, AnimatedExportMode::All(width_in_mtiles), &palettes, bpas, py)
+        self._chunks_animated_to_pil(layer_id, AnimatedExportMode::All(width_in_mtiles), &palettes, &bpas, py)
     }
 
     /// Exports a single chunk. For general notes see chunks_to_pil. For notes regarding the animation see
     /// chunks_animated_to_pil.
     ///
     pub fn single_chunk_animated_to_pil(&mut self, layer_id: usize, chunk_idx: usize, palettes: Vec<StBytes>, bpas: Vec<Option<InputBpa>>, py: Python) -> PyResult<Vec<IndexedImage>> {
-        self._chunks_animated_to_pil(layer_id, AnimatedExportMode::Single(chunk_idx), &palettes, bpas, py)
+        self._chunks_animated_to_pil(layer_id, AnimatedExportMode::Single(chunk_idx), &palettes, &bpas, py)
     }
 
     /// Imports tiles that are in a format as described in the documentation for tiles_to_pil.
@@ -297,8 +297,9 @@ impl Bpc {
     /// 0 of the palette (transparent). The "_force_import" parameter is ignored.
     ///
     /// Returns the palettes stored in the image for further processing (eg. replacing the BPL palettes).
-    #[args(_force_import = "true")]
-    pub fn pil_to_chunks(&mut self, layer_id: usize, image: In256ColIndexedImage, _force_import: bool, py: Python) -> PyResult<Vec<StBytes>> {
+    #[allow(unused_variables)]
+    #[args(force_import = "true")]
+    pub fn pil_to_chunks(&mut self, layer_id: usize, image: In256ColIndexedImage, force_import: bool, py: Python) -> PyResult<Vec<StBytes>> {
         let image = image.extract(py)?;
         let w = *&image.0.1;
         let h = *&image.0.2;
@@ -376,20 +377,10 @@ impl Bpc {
     /// The bg_list.dat contains a list of 8 BPAs. The first four are for layer 0, the next four for layer 1.
     ///
     /// This method asserts, that the number of tiles stored in the layer for the BPA, matches the data in the BPA!
-    pub fn get_bpas_for_layer(&self, layer: usize, bpas: Vec<Option<InputBpa>>, py: Python) -> PyResult<Vec<InputBpa>> {
-        let mut not_none_bpas = Vec::with_capacity(4);
-        let borrow = self.layers[layer].borrow(py);
-        for (i, bpa) in bpas.into_iter().skip(layer * 4).take(4).enumerate() {
-            match bpa {
-                None => if borrow.bpas[i] != 0 { return Err(exceptions::PyAssertionError::new_err(format!("BPA {}: {} != 0", i, borrow.bpas[i]))) }
-                Some(bpa) => {
-                    let bpa_ref = &bpa.0;
-                    if borrow.bpas[i] != bpa_ref.get_number_of_tiles(py)? { return Err(exceptions::PyAssertionError::new_err(format!("BPA {}: {} != {}", i, borrow.bpas[i], bpa_ref.get_number_of_tiles(py)?))) };
-                    not_none_bpas.push(bpa)
-                }
-            }
-        }
-        Ok(not_none_bpas)
+    #[cfg(feature = "python")]
+    #[pyo3(name="get_bpas_for_layer")]
+    pub fn _get_bpas_for_layer(&self, layer: usize, bpas: Vec<Option<InputBpa>>, py: Python) -> PyResult<Vec<PyObject>> {
+        self.get_bpas_for_layer(layer, &bpas, py).map(|x| x.into_iter().map(|x| x.clone().into_py(py)).collect())
     }
 
     pub fn set_chunk(&mut self, layer: usize, index: usize, new_tilemappings: Vec<InputTilemapEntry>, py: Python) -> PyResult<()> {
@@ -524,13 +515,30 @@ impl Bpc {
         )
     }
 
-    fn _chunks_animated_to_pil(&mut self, layer_id: usize, mode: AnimatedExportMode, palettes: &[StBytes], bpas: Vec<Option<InputBpa>>, py: Python) -> PyResult<Vec<IndexedImage>> {
+    pub fn get_bpas_for_layer<'a>(&self, layer: usize, bpas: &'a [Option<InputBpa>], py: Python) -> PyResult<Vec<&'a InputBpa>> {
+        let mut not_none_bpas = Vec::with_capacity(4);
+        let borrow = self.layers[layer].borrow(py);
+        for (i, bpa) in bpas.iter().skip(layer * 4).take(4).enumerate() {
+            match bpa {
+                None => if borrow.bpas[i] != 0 { return Err(exceptions::PyAssertionError::new_err(format!("BPA {}: {} != 0", i, borrow.bpas[i]))) }
+                Some(bpa) => {
+                    let bpa_ref = &bpa.0;
+                    if borrow.bpas[i] != bpa_ref.get_number_of_tiles(py)? { return Err(exceptions::PyAssertionError::new_err(format!("BPA {}: {} != {}", i, borrow.bpas[i], bpa_ref.get_number_of_tiles(py)?))) };
+                    not_none_bpas.push(bpa)
+                }
+            }
+        }
+        Ok(not_none_bpas)
+    }
+
+    fn _chunks_animated_to_pil(&mut self, layer_id: usize, mode: AnimatedExportMode, palettes: &[StBytes], bpas: &[Option<InputBpa>], py: Python) -> PyResult<Vec<IndexedImage>> {
         // TODO: The speed can be increased if we only re-render the changed animated tiles instead!
 
         let ldata = self.layers[layer_id].borrow(py);
         let mut is_using_bpa = !bpas.is_empty() && ldata.bpas.iter().any(|x| *x > 0);
         let number_tiles = ldata.number_tiles;
-        drop(ldata);
+        #[cfg(feature = "python")]
+            drop(ldata);
         match mode {
             AnimatedExportMode::All(width_in_mtiles) =>
                 if !is_using_bpa {
@@ -558,7 +566,8 @@ impl Bpc {
         let mut bpa_animation_indices = [0, 0, 0, 0];
         let mut frames = Vec::with_capacity(32);
         let orig_len = ldata.tiles.len();
-        drop(ldata);
+        #[cfg(feature = "python")]
+            drop(ldata);
         let bpas_for_layer = self.get_bpas_for_layer(layer_id, bpas, py)?;
         loop {
             let mut ldata = self.layers[layer_id].borrow_mut(py);
@@ -569,10 +578,11 @@ impl Bpc {
                 bpa_animation_indices[bpaidx] += 1;
                 bpa_animation_indices[bpaidx] %= bpa.0.get_number_of_frames(py)?;
             }
-            drop(ldata);
+            #[cfg(feature = "python")]
+                drop(ldata);
             frames.push(match mode {
-                AnimatedExportMode::All(width_in_mtiles) => self.chunks_to_pil(layer_id, &palettes, width_in_mtiles, py),
-                AnimatedExportMode::Single(chunk_idx) => self.single_chunk_to_pil(layer_id, chunk_idx, &palettes, py)
+                AnimatedExportMode::All(width_in_mtiles) => self.chunks_to_pil(layer_id, palettes, width_in_mtiles, py),
+                AnimatedExportMode::Single(chunk_idx) => self.single_chunk_to_pil(layer_id, chunk_idx, palettes, py)
             });
 
             // RESET the layer's tiles to NOT include the BPA tiles!
@@ -789,19 +799,89 @@ pub(crate) fn create_st_bpc_module(py: Python) -> PyResult<(&str, &PyModule)> {
 // BPCs as inputs (for compatibility of including other BPC implementations from Python)
 #[cfg(feature = "python")]
 pub mod input {
+    use pyo3::types::{PyList, PyTuple};
+    use crate::bytes::StBytes;
+    use crate::image::{In256ColIndexedImage, IndexedImage, InIndexedImage};
+    use crate::image::tilemap_entry::InputTilemapEntry;
     use crate::python::*;
-    use crate::st_bpc::Bpc;
+    use crate::st_bpa::input::InputBpa;
+    use crate::st_bpc::{AnimatedExportMode, Bpc};
 
     pub trait BpcProvider: ToPyObject {
-
+        fn get_number_of_layers(&self, py: Python) -> PyResult<u8>;
+        fn get_chunks_animated_to_pil(&mut self, layer_id: usize, palettes: &[StBytes], bpas: &[Option<InputBpa>], width_in_mtiles: usize, py: Python) -> PyResult<Vec<IndexedImage>>;
+        fn do_add_upper_layer(&mut self, py: Python) -> PyResult<()>;
+        fn do_import_tiles(&mut self, layer: usize, tiles: Vec<StBytes>, contains_null_tile: bool, py: Python) -> PyResult<()>;
+        fn do_import_tile_mappings(&mut self, layer: usize, tile_mappings: Vec<InputTilemapEntry>, contains_null_chunk: bool, correct_tile_ids: bool, py: Python) -> PyResult<()>;
     }
 
     impl BpcProvider for Py<Bpc> {
+        fn get_number_of_layers(&self, py: Python) -> PyResult<u8> {
+            Ok(self.borrow(py).number_of_layers)
+        }
 
+        fn get_chunks_animated_to_pil(&mut self, layer_id: usize, palettes: &[StBytes], bpas: &[Option<InputBpa>], width_in_mtiles: usize, py: Python) -> PyResult<Vec<IndexedImage>> {
+            self.borrow_mut(py)._chunks_animated_to_pil(layer_id, AnimatedExportMode::All(width_in_mtiles), palettes, bpas, py)
+        }
+
+        fn do_add_upper_layer(&mut self, py: Python) -> PyResult<()> {
+            self.borrow_mut(py).add_upper_layer(py)
+        }
+
+        fn do_import_tiles(&mut self, layer: usize, tiles: Vec<StBytes>, contains_null_tile: bool, py: Python) -> PyResult<()> {
+            self.borrow_mut(py).import_tiles(layer, tiles, contains_null_tile, py);
+            Ok(())
+        }
+
+        fn do_import_tile_mappings(&mut self, layer: usize, tile_mappings: Vec<InputTilemapEntry>, contains_null_chunk: bool, correct_tile_ids: bool, py: Python) -> PyResult<()> {
+            self.borrow_mut(py).import_tile_mappings(layer, tile_mappings, contains_null_chunk, correct_tile_ids, py)
+        }
     }
 
     impl BpcProvider for PyObject {
+        fn get_number_of_layers(&self, py: Python) -> PyResult<u8> {
+            self.getattr(py, "number_of_layers")?.extract(py)
+        }
 
+        fn get_chunks_animated_to_pil(&mut self, layer_id: usize, palettes: &[StBytes], bpas: &[Option<InputBpa>], width_in_mtiles: usize, py: Python) -> PyResult<Vec<IndexedImage>> {
+            // This is obviously very inefficient. You should not mix Rust models with Python models because of this.
+            // This is mostly just to support the Mocks in the unit tests in skytemple-files.
+            let args = PyTuple::new(py, [
+                layer_id.into_py(py),
+                palettes.iter().map(|x| x.to_vec()).collect::<Vec<Vec<u8>>>().into_py(py),
+                bpas.to_vec().into_py(py),
+                width_in_mtiles.into_py(py),
+            ]);
+            let in_img: Vec<In256ColIndexedImage> = self.call_method1(py, "chunks_animated_to_pil", args)?.extract(py)?;
+            let img: PyResult<Vec<IndexedImage>> = in_img.into_iter().map(|x| x.extract(py)).collect();
+            img
+        }
+
+        fn do_add_upper_layer(&mut self, py: Python) -> PyResult<()> {
+            self.call_method0(py, "add_upper_layer")?;
+            Ok(())
+        }
+
+        fn do_import_tiles(&mut self, layer: usize, tiles: Vec<StBytes>, contains_null_tile: bool, py: Python) -> PyResult<()> {
+            let args = PyTuple::new(py, [
+                layer.into_py(py),
+                tiles.into_py(py),
+                contains_null_tile.into_py(py),
+            ]);
+            self.call_method1(py, "import_tiles", args)?;
+            Ok(())
+        }
+
+        fn do_import_tile_mappings(&mut self, layer: usize, tile_mappings: Vec<InputTilemapEntry>, contains_null_chunk: bool, correct_tile_ids: bool, py: Python) -> PyResult<()> {
+            let args = PyTuple::new(py, [
+                layer.into_py(py),
+                PyList::new(py, tile_mappings.into_iter().map(|v| v.0.into_py(py))).into_py(py),
+                contains_null_chunk.into_py(py),
+                correct_tile_ids.into_py(py),
+            ]);
+            self.call_method1(py, "import_tile_mappings", args)?;
+            Ok(())
+        }
     }
 
     pub struct InputBpc(pub Box<dyn BpcProvider>);
@@ -832,15 +912,42 @@ pub mod input {
 
 #[cfg(not(feature = "python"))]
 pub mod input {
+    use crate::bytes::StBytes;
+    use crate::image::IndexedImage;
+    use crate::image::tilemap_entry::InputTilemapEntry;
     use crate::python::{PyResult, Python};
-    use crate::st_bpc::Bpc;
+    use crate::st_bpa::input::InputBpa;
+    use crate::st_bpc::{AnimatedExportMode, Bpc};
 
     pub trait BpcProvider {
-
+        fn get_number_of_layers(&self, py: Python) -> PyResult<u8>;
+        fn get_chunks_animated_to_pil(&mut self, layer_id: usize, palettes: &[StBytes], bpas: &[Option<InputBpa>], width_in_mtiles: usize, py: Python) -> PyResult<Vec<IndexedImage>>;
+        fn do_add_upper_layer(&mut self, py: Python) -> PyResult<()>;
+        fn do_import_tiles(&mut self, layer: usize, tiles: Vec<StBytes>, contains_null_tile: bool, py: Python) -> PyResult<()>;
+        fn do_import_tile_mappings(&mut self, layer: usize, tile_mappings: Vec<InputTilemapEntry>, contains_null_chunk: bool, correct_tile_ids: bool, py: Python) -> PyResult<()>;
     }
 
     impl BpcProvider for Bpc {
+        fn get_number_of_layers(&self, _py: Python) -> PyResult<u8> {
+            Ok(self.number_of_layers)
+        }
 
+        fn get_chunks_animated_to_pil(&mut self, layer_id: usize, palettes: &[StBytes], bpas: &[Option<InputBpa>], width_in_mtiles: usize, py: Python) -> PyResult<Vec<IndexedImage>> {
+            self._chunks_animated_to_pil(layer_id, AnimatedExportMode::All(width_in_mtiles), palettes, bpas, py)
+        }
+
+        fn do_add_upper_layer(&mut self, py: Python) -> PyResult<()> {
+            self.add_upper_layer(py)
+        }
+
+        fn do_import_tiles(&mut self, layer: usize, tiles: Vec<StBytes>, contains_null_tile: bool, py: Python) -> PyResult<()> {
+            self.import_tiles(layer, tiles, contains_null_tile, py);
+            Ok(())
+        }
+
+        fn do_import_tile_mappings(&mut self, layer: usize, tile_mappings: Vec<InputTilemapEntry>, contains_null_chunk: bool, correct_tile_ids: bool, py: Python) -> PyResult<()> {
+            self.import_tile_mappings(layer, tile_mappings, contains_null_chunk, correct_tile_ids, py)
+        }
     }
 
     pub struct InputBpc(pub(crate) Bpc);

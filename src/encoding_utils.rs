@@ -20,7 +20,6 @@
 //! Fork from encoding @ 0.2 util.rs
 
 use std::marker::PhantomData;
-use std::mem;
 use std::str::Chars;
 use encoding::types;
 
@@ -104,7 +103,7 @@ impl<'a, St: Default, Data> crate::encoding_utils::StatefulDecoderHelper<'a, St,
     /// If this is the last expr in the rules, also resets back to the initial state.
     #[inline(always)]
     pub fn emit(&mut self, c: u32) -> St {
-        self.output.write_char(unsafe {mem::transmute(c)});
+        self.output.write_char(std::char::from_u32(c).unwrap());
         Default::default()
     }
 

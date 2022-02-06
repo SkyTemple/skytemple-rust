@@ -259,6 +259,17 @@ impl TiledImage {
         IndexedImage(Raster(imagedata, img_width, img_height), paldata.collect())
     }
 
+    /// In the provided list of tile mappings, find an existing chunk.
+    /// Returns the position of the first tile of the chunk or None if not found.
+    pub fn search_for_chunk(chunk: &[TilemapEntry], tile_mappings: &[TilemapEntry]) -> Option<usize> {
+        for (i, check_chunk) in tile_mappings.chunks(chunk.len()).enumerate() {
+            if chunk == check_chunk {
+                return Some(i)
+            }
+        }
+        None
+    }
+
     /// Search for the tile, or a flipped version of it, in tiles and return the index and flipped state
     /// Increases performance by comparing the bytes sum of each tile before actually compare them
     fn _search_for_tile_with_sum(tiles: &[BuiltTile], needle: &BuiltTile, tile_dim: usize) -> (Option<usize>, bool, bool) {

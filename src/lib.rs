@@ -1,3 +1,4 @@
+#![feature(iter_zip)]
 /*
  * Copyright 2021-2022 Capypara and the SkyTemple Contributors
  *

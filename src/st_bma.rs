@@ -20,15 +20,25 @@ use std::io::Cursor;
 use std::iter::{Copied, Enumerate};
 use std::slice::Iter;
 use bytes::{Buf, BufMut, Bytes, BytesMut};
+use itertools::Itertools;
 use crate::bytes::{StBytes};
 use crate::compression::bma_collision_rle::{BmaCollisionRleCompressor, BmaCollisionRleDecompressor};
 use crate::compression::bma_layer_nrl::{BmaLayerNrlCompressor, BmaLayerNrlDecompressor};
 use crate::compression::generic::nrl::{compression_step, decompression_step, NrlCompRead};
-use crate::image::{In256ColIndexedImage, IndexedImage};
+use crate::image::{In256ColIndexedImage, IndexedImage, Raster, InIndexedImage, Palette};
+use crate::image::tiled::TiledImage;
+use crate::image::tilemap_entry::{InputTilemapEntry, TilemapEntry};
 use crate::python::*;
 use crate::st_bpa::input::InputBpa;
+use crate::st_bpc::BPC_TILE_DIM;
 use crate::st_bpc::input::InputBpc;
+use crate::st_bpl::{BPL_IMG_PAL_LEN, BPL_MAX_PAL, BPL_PAL_LEN};
 use crate::st_bpl::input::InputBpl;
+use crate::util::lcm;
+#[cfg(not(feature = "python"))]
+use crate::st_bpc::input::BpcProvider;
+#[cfg(not(feature = "python"))]
+use crate::st_bpl::input::BplProvider;
 
 #[pyclass(module = "skytemple_rust.st_bma")]
 #[derive(Clone)]
@@ -163,301 +173,251 @@ impl Bma {
         })
     }
 
-    pub fn to_pil_single_layer(&self, bpc: InputBpc, palettes: Vec<Vec<u8>>, bpas: Vec<Option<InputBpa>>, layer: u8) -> IndexedImage {
-        //         """
-        //         Converts one layer of the map into an image. The exported image has the same format as expected by from_pil.
-        //         Exported is a single frame.
-        //
-        //         The list of bpas must be the one contained in the bg_list. It needs to contain 8 slots, with empty
-        //         slots being None.
-        //
-        //         0: lower layer
-        //         1: upper layer
-        //
-        //         Example, of how to export and then import again using images:
-        //             >>> l_upper = bma.to_pil_single_layer(bpc, bpl.palettes, bpas, 1)
-        //             >>> l_lower = bma.to_pil_single_layer(bpc, bpl.palettes, bpas, 0)
-        //             >>> bma.from_pil(bpc, bpl, l_lower, l_upper)
-        //         """
-        //         chunk_width = BPC_TILE_DIM * self.tiling_width
-        //         chunk_height = BPC_TILE_DIM * self.tiling_height
-        //
-        //         width_map = self.map_width_chunks * chunk_width
-        //         height_map = self.map_height_chunks * chunk_height
-        //
-        //         if layer == 0:
-        //             bma_layer = self.layer0
-        //             bpc_layer_id = 0 if bpc.number_of_layers == 1 else 1
-        //         else:
-        //             assert self.layer1 is not None
-        //             bma_layer = self.layer1
-        //             bpc_layer_id = 0
-        //
-        //         chunks = bpc.chunks_animated_to_pil(bpc_layer_id, palettes, bpas, 1)[0]
-        //         fimg = Image.new('P', (width_map, height_map))
-        //         fimg.putpalette(chunks.getpalette())  # type: ignore
-        //
-        //         for i, mt_idx in enumerate(bma_layer):
-        //             x = i % self.map_width_chunks
-        //             y = math.floor(i / self.map_width_chunks)
-        //             fimg.paste(
-        //                 chunks.crop((0, mt_idx * chunk_width, chunk_width, mt_idx * chunk_width + chunk_height)),
-        //                 (x * chunk_width, y * chunk_height)
-        //             )
-        //
-        //         return fimg
-        todo!()
+    /// Converts one layer of the map into an image. The exported image has the same format as expected by from_pil.
+    /// Exported is a single frame.
+    ///
+    /// The list of bpas must be the one contained in the bg_list. It needs to contain 8 slots, with empty
+    /// slots being None.
+    ///
+    /// 0: lower layer
+    /// 1: upper layer
+    ///
+    /// (Python) example, of how to export and then import again using images:
+    /// ```py
+    /// l_upper = bma.to_pil_single_layer(bpc, bpl.palettes, bpas, 1)
+    /// l_lower = bma.to_pil_single_layer(bpc, bpl.palettes, bpas, 0)
+    /// bma.from_pil(bpc, bpl, l_lower, l_upper)
+    /// ```
+    pub fn to_pil_single_layer(&self, mut bpc: InputBpc, palettes: Vec<StBytes>, bpas: Vec<Option<InputBpa>>, layer: usize, py: Python) -> PyResult<IndexedImage> {
+        let chunk_width = BPC_TILE_DIM * self.tiling_width as usize;
+        let chunk_height = BPC_TILE_DIM * self.tiling_height as usize;
+
+        let width_map = self.map_width_chunks as usize * chunk_width;
+        let height_map = self.map_height_chunks as usize * chunk_height;
+
+        let bma_layer;
+        let bpc_layer_id;
+        if layer == 0 {
+            bma_layer = &self.layer0;
+            bpc_layer_id = if bpc.0.get_number_of_layers(py)? == 1 { 0 } else { 1 };
+        } else {
+            bma_layer = self.layer1.as_ref().unwrap();
+            bpc_layer_id = 0;
+        }
+
+        let chunks = &bpc.0.get_chunks_animated_to_pil(bpc_layer_id, &palettes, &bpas, 1, py)?[0];
+
+        let mut fimg = IndexedImage(Raster::new(width_map, height_map), chunks.1.clone());
+
+        for (i, mt_idx) in bma_layer.iter().enumerate() {
+            let x = i % self.map_width_chunks as usize;
+            let y = i / self.map_width_chunks as usize;
+            fimg.0.paste(
+                chunks.0.crop(0, *mt_idx as usize * chunk_width, chunk_width, chunk_height),
+                x * chunk_width, y * chunk_height
+            );
+        }
+        Ok(fimg)
     }
 
+    /// Converts the entire map into an image, as shown in the game. Each PIL image in the list returned is one
+    /// frame. The palettes argument can be retrieved from the map's BPL (bpl.palettes).
+    ///
+    /// This implementation does NOT support drawing the unknown data block or collision.
+    /// The parameters will be ignored. Use the Python implementation if you need this debugging information.
+    ///
+    /// The method does not care about frame speeds. Each step of animation is simply returned as a new image,
+    /// so if BPAs use different frame speeds, this is ignored; they effectively run at the same speed.
+    /// If BPAs are using a different amount of frames per tile, the length of returned list of images will be the lowest
+    /// common multiple of the different frame lengths.
+    ///
+    /// If pal_ani=true, then also includes palette animations.
+    ///
+    /// The list of bpas must be the one contained in the bg_list. It needs to contain 8 slots, with empty
+    /// slots being None.
     #[allow(clippy::too_many_arguments)]
+    #[allow(unused_variables)]
     #[args(include_collision = "true", include_unknown_data_block = "true", pal_ani = "true", single_frame = "false")]
     pub fn to_pil(
-        &self, bpc: InputBpc, bpl: InputBpl, bpas: Vec<Option<InputBpa>>, include_collision: bool,
-        include_unknown_data_block: bool, pal_ani: bool, single_frame: bool
-    ) -> Vec<IndexedImage> {
-        //         """
-        //         Converts the entire map into an image, as shown in the game. Each PIL image in the list returned is one
-        //         frame. The palettes argument can be retrieved from the map's BPL (bpl.palettes).
-        //
-        //         The method does not care about frame speeds. Each step of animation is simply returned as a new image,
-        //         so if BPAs use different frame speeds, this is ignored; they effectively run at the same speed.
-        //         If BPAs are using a different amount of frames per tile, the length of returned list of images will be the lowest
-        //         common multiple of the different frame lengths.
-        //
-        //         If pal_ani=True, then also includes palette animations.
-        //
-        //         The list of bpas must be the one contained in the bg_list. It needs to contain 8 slots, with empty
-        //         slots being None.
-        //
-        //         TODO: The speed can be increased if we only re-render the changed animated tiles instead!
-        //         """
-        //
-        //         chunk_width = BPC_TILE_DIM * self.tiling_width
-        //         chunk_height = BPC_TILE_DIM * self.tiling_height
-        //
-        //         width_map = self.map_width_chunks * chunk_width
-        //         height_map = self.map_height_chunks * chunk_height
-        //
-        //         final_images = []
-        //         lower_layer_bpc = 0 if bpc.number_of_layers == 1 else 1
-        //         chunks_lower = bpc.chunks_animated_to_pil(lower_layer_bpc, bpl.palettes, bpas, 1)
-        //         for img in chunks_lower:
-        //             fimg = Image.new('P', (width_map, height_map))
-        //             fimg.putpalette(img.getpalette())  # type: ignore
-        //
-        //             # yes. self.layer0 is always the LOWER layer! It's the opposite from BPC
-        //             for i, mt_idx in enumerate(self.layer0):
-        //                 x = i % self.map_width_chunks
-        //                 y = math.floor(i / self.map_width_chunks)
-        //                 fimg.paste(
-        //                     img.crop((0, mt_idx * chunk_width, chunk_width, mt_idx * chunk_width + chunk_height)),
-        //                     (x * chunk_width, y * chunk_height)
-        //                 )
-        //
-        //             final_images.append(fimg)
-        //             if single_frame:
-        //                 break
-        //
-        //         if bpc.number_of_layers > 1:
-        //             # Overlay higher layer tiles
-        //             chunks_higher = bpc.chunks_animated_to_pil(0, bpl.palettes, bpas, 1)
-        //             len_lower = len(chunks_lower)
-        //             len_higher = len(chunks_higher)
-        //             if len_higher != len_lower and not single_frame:
-        //                 # oh fun! We are missing animations for one of the layers, let's stretch to the lowest common multiple
-        //                 lm = lcm(len_higher, len_lower)
-        //                 for i in range(len_lower, lm):
-        //                     final_images.append(final_images[i % len_lower].copy())
-        //                 for i in range(len_higher, lm):
-        //                     chunks_higher.append(chunks_higher[i % len_higher].copy())
-        //
-        //             for j, img in enumerate(chunks_higher):
-        //                 fimg = final_images[j]
-        //                 assert self.layer1 is not None
-        //                 for i, mt_idx in enumerate(self.layer1):
-        //                     x = i % self.map_width_chunks
-        //                     y = math.floor(i / self.map_width_chunks)
-        //
-        //                     cropped_img = img.crop((0, mt_idx * chunk_width, chunk_width, mt_idx * chunk_width + chunk_height))
-        //                     cropped_img_mask = cropped_img.copy()
-        //                     cropped_img_mask.putpalette(MASK_PAL)
-        //                     fimg.paste(
-        //                         cropped_img,
-        //                         (x * chunk_width, y * chunk_height),
-        //                         mask=cropped_img_mask.convert('1')
-        //                     )
-        //                 if single_frame:
-        //                     break
-        //
-        //         final_images_were_rgb_converted = False
-        //         if include_collision and self.number_of_collision_layers > 0:
-        //             for i, img in enumerate(final_images):
-        //                 final_images_were_rgb_converted = True
-        //                 # time for some RGB action!
-        //                 final_images[i] = img.convert('RGB')
-        //                 img = final_images[i]
-        //                 draw = ImageDraw.Draw(img, 'RGBA')
-        //                 assert self.collision is not None
-        //                 for j, col in enumerate(self.collision):
-        //                     x = j % self.map_width_camera
-        //                     y = math.floor(j / self.map_width_camera)
-        //                     if col:
-        //                         draw.rectangle((
-        //                             (x * BPC_TILE_DIM, y * BPC_TILE_DIM),
-        //                             ((x+1) * BPC_TILE_DIM, (y+1) * BPC_TILE_DIM)
-        //                         ), fill=(0xff, 0x00, 0x00, 0x40))
-        //                 # Second collision layer
-        //                 if self.number_of_collision_layers > 1:
-        //                     assert self.collision2 is not None
-        //                     for j, col in enumerate(self.collision2):
-        //                         x = j % self.map_width_camera
-        //                         y = math.floor(j / self.map_width_camera)
-        //                         if col:
-        //                             draw.ellipse((
-        //                                 (x * BPC_TILE_DIM, y * BPC_TILE_DIM),
-        //                                 ((x+1) * BPC_TILE_DIM, (y+1) * BPC_TILE_DIM)
-        //                             ), fill=(0x00, 0x00, 0xff, 0x40))
-        //
-        //         if include_unknown_data_block and self.unk6 > 0:
-        //             fnt = ImageFont.load_default()
-        //             for i, img in enumerate(final_images):
-        //                 if not final_images_were_rgb_converted:
-        //                     final_images[i] = img.convert('RGB')
-        //                     img = final_images[i]
-        //                 draw = ImageDraw.Draw(img, 'RGBA')
-        //                 assert self.unknown_data_block is not None
-        //                 for j, unk in enumerate(self.unknown_data_block):
-        //                     x = j % self.map_width_camera
-        //                     y = math.floor(j / self.map_width_camera)
-        //                     if unk > 0:
-        //                         draw.text(
-        //                             (x * BPC_TILE_DIM, y * BPC_TILE_DIM),
-        //                             str(unk),
-        //                             font=fnt,
-        //                             fill=(0x00, 0xff, 0x00)
-        //                         )
-        //
-        //         # Apply palette animations
-        //         if pal_ani and bpl.has_palette_animation and len(bpl.animation_palette) > 0 and not single_frame:
-        //             old_images = final_images
-        //             old_images_i = 0
-        //             final_images = []
-        //
-        //             for ppal_ani in range(0, len(bpl.animation_palette)):
-        //                 current_img = old_images[old_images_i].copy()
-        //                 # Switch out the palette with that from the palette animation
-        //                 pal_for_frame = itertools.chain.from_iterable(bpl.apply_palette_animations(ppal_ani))
-        //                 current_img.putpalette(pal_for_frame)
-        //                 final_images.append(current_img)
-        //                 old_images_i += 1
-        //                 if old_images_i >= len(old_images):
-        //                     old_images_i = 0
-        //
-        //         return final_images
-        todo!()
+        &self, mut bpc: InputBpc, bpl: InputBpl, bpas: Vec<Option<InputBpa>>, include_collision: bool,
+        include_unknown_data_block: bool, pal_ani: bool, single_frame: bool, py: Python
+    ) -> PyResult<Vec<IndexedImage>> {
+        let chunk_width = BPC_TILE_DIM * self.tiling_width as usize;
+        let chunk_height = BPC_TILE_DIM * self.tiling_height as usize;
+
+        let width_map = self.map_width_chunks as usize * chunk_width;
+        let height_map = self.map_height_chunks as usize * chunk_height;
+
+        let palettes = bpl.0.get_palettes(py)?;
+
+        let mut final_images = Vec::with_capacity(50);
+        let lower_layer_bpc = if bpc.0.get_number_of_layers(py)? == 1 { 0 } else { 1 };
+        let chunks_lower = bpc.0.get_chunks_animated_to_pil(lower_layer_bpc, &palettes, &bpas, 1, py)?;
+        let len_lower = chunks_lower.len();
+        for img in chunks_lower {
+            let mut fimg = IndexedImage(Raster::new(width_map, height_map), img.1.clone());
+
+            // yes. self.layer0 is always the LOWER layer! It's the opposite from BPC
+            for (i, mt_idx) in self.layer0.iter().enumerate() {
+                let x = i % self.map_width_chunks as usize;
+                let y = i / self.map_width_chunks as usize;
+                fimg.0.paste(
+                    img.0.crop(0, *mt_idx as usize * chunk_width, chunk_width, chunk_height),
+                    x * chunk_width, y * chunk_height
+                );
+            }
+
+            final_images.push(fimg);
+            if single_frame {
+                break;
+            }
+        }
+        if bpc.0.get_number_of_layers(py)? > 1 {
+            // Overlay higher layer tiles
+            let mut chunks_higher = bpc.0.get_chunks_animated_to_pil(
+                0, &bpl.0.get_palettes(py)?, &bpas, 1, py
+            )?;
+            let len_higher = chunks_higher.len();
+            if len_higher != len_lower && !single_frame {
+                // oh fun! We are missing animations for one of the layers, let's stretch to the lowest common multiple
+                let lm = lcm(len_higher, len_lower);
+                for i in len_lower..lm {
+                    final_images.push(final_images[i % len_lower].clone())
+                }
+                for i in len_higher..lm {
+                    chunks_higher.push(chunks_higher[i % len_higher].clone())
+                }
+            }
+
+            for (j, img) in chunks_higher.iter().enumerate() {
+                let fimg = &mut final_images[j];
+                debug_assert!(self.layer1 != None);
+                for (i, mt_idx) in self.layer1.as_ref().unwrap().iter().enumerate() {
+                    let x = i % self.map_width_chunks as usize;
+                    let y = i / self.map_width_chunks as usize;
+
+                    fimg.0.paste_masked(
+                        img.0.crop(0, *mt_idx as usize * chunk_width, chunk_width, chunk_height),
+                        x * chunk_width, y * chunk_height
+                    );
+                }
+                if single_frame {
+                    break;
+                }
+            }
+        }
+
+        // Apply palette animations
+        if pal_ani && !single_frame && bpl.0.get_has_palette_animation(py)? && !bpl.0.get_animation_palette(py)?.is_empty() {
+            let old_images = final_images;
+            let mut old_images_i = 0;
+
+            final_images = Vec::with_capacity(old_images.len());
+
+            for ppal_ani in 0..bpl.0.get_animation_palette(py)?.len() {
+                let mut current_img = old_images[old_images_i].clone();
+                // Switch out the palette with that from the palette animation
+                let pal_for_frame = bpl.0.do_apply_palette_animations(ppal_ani as u16, py)?.into_iter().flatten().collect();
+                current_img.1 = pal_for_frame;
+                final_images.push(current_img);
+                old_images_i += 1;
+                if old_images_i >= old_images.len() {
+                    old_images_i = 0;
+                }
+            }
+        }
+        Ok(final_images)
     }
 
+    /// Import an entire map from one or two images (for each layer).
+    /// Changes all tiles, tilemappings and chunks in the BPC and re-writes the two layer mappings of the BMA.
+    /// Imports the palettes of the image to the BPL.
+    /// The palettes of the images passed into this method must either identical or can be merged.
+    /// The how_many_palettes_lower_layer parameter controls how many palettes
+    /// from the lower layer image will then be used.
+    ///
+    /// The passed PIL will be split into separate tiles and the tile's palette index in the tile mapping for this
+    /// coordinate is determined by the first pixel value of each tile in the PIL. The PIL
+    /// must have a palette containing up to 16 sub-palettes with 16 colors each (256 colors).
+    ///
+    /// If a pixel in a tile uses a color outside of it's 16 color range, the color is replaced with
+    /// 0 of the palette (transparent). The force_import flag is ignored.
+    ///
+    /// Does not import animations. BPA tiles must be manually mapped to the tilemappings of the BPC after the import.
+    /// BPL palette animations are not modified.
+    ///
+    /// The input images must have the same dimensions as the BMA (same dimensions as to_pil_single_layer would export).
+    /// The input image can have a different number of layers, than the BMA. BPC and BMA layers are changed accordingly.
+    ///
+    /// BMA collision and data layer are not modified.
     #[allow(clippy::too_many_arguments)]
+    #[allow(clippy::option_map_unit_fn)]
+    #[allow(unused_variables)]
     #[args(lower_img = "None", upper_img = "None", force_import = "true", how_many_palettes_lower_layer = "16")]
     pub fn from_pil(
-        &mut self, bpc: InputBpc, bpl: InputBpl, lower_img: Option<In256ColIndexedImage>,
+        &mut self, mut bpc: InputBpc, mut bpl: InputBpl, lower_img: Option<In256ColIndexedImage>,
         upper_img: Option<In256ColIndexedImage>, force_import: bool,
-        how_many_palettes_lower_layer: u16
+        how_many_palettes_lower_layer: usize, py: Python
     ) -> PyResult<()> {
-        //         """
-        //         Import an entire map from one or two images (for each layer).
-        //         Changes all tiles, tilemappings and chunks in the BPC and re-writes the two layer mappings of the BMA.
-        //         Imports the palettes of the image to the BPL.
-        //         The palettes of the images passed into this method must either identical or can be merged.
-        //         The how_many_palettes_lower_layer parameter controls how many palettes
-        //         from the lower layer image will then be used.
-        //
-        //         The passed PIL will be split into separate tiles and the tile's palette index in the tile mapping for this
-        //         coordinate is determined by the first pixel value of each tile in the PIL. The PIL
-        //         must have a palette containing up to 16 sub-palettes with 16 colors each (256 colors).
-        //
-        //         If a pixel in a tile uses a color outside of it's 16 color range, an error is thrown or
-        //         the color is replaced with 0 of the palette (transparent). This is controlled by
-        //         the force_import flag.
-        //
-        //         Does not import animations. BPA tiles must be manually mapped to the tilemappings of the BPC after the import.
-        //         BPL palette animations are not modified.
-        //
-        //         The input images must have the same dimensions as the BMA (same dimensions as to_pil_single_layer would export).
-        //         The input image can have a different number of layers, than the BMA. BPC and BMA layers are changed accordingly.
-        //
-        //         BMA collision and data layer are not modified.
-        //         """
-        //         expected_width = self.tiling_width * self.map_width_chunks * BPC_TILE_DIM
-        //         expected_height = self.tiling_height * self.map_height_chunks * BPC_TILE_DIM
-        //         if (False if lower_img is None else lower_img.width != expected_width) \
-        //                 or (False if upper_img is None else upper_img.width != expected_width):
-        //             raise ValueError(f(_("Can not import map background: Width of both images must match the current map width: "
-        //                                  "{expected_width}px")))
-        //         if (False if lower_img is None else lower_img.height != expected_height) \
-        //                 or (False if upper_img is None else upper_img.height != expected_height):
-        //             raise ValueError(f(_("Can not import map background: Height of both images must match the current map height: "
-        //                                  "{expected_height}px")))
-        //         upper_palette_palette_color_offset = 0
-        //         if upper_img is not None and lower_img is not None and how_many_palettes_lower_layer < BPL_MAX_PAL:
-        //             # Combine palettes
-        //             lower_palette = lower_img.getpalette()[:how_many_palettes_lower_layer * (BPL_PAL_LEN + 1) * 3]  # type: ignore
-        //             upper_palette = upper_img.getpalette()[:(BPL_MAX_PAL - how_many_palettes_lower_layer) * (BPL_PAL_LEN + 1) * 3]  # type: ignore
-        //             new_palette = lower_palette + upper_palette
-        //             lower_img.putpalette(new_palette)
-        //             upper_img.putpalette(new_palette)
-        //             # We need to offset the colors in the upper image now, when we read it.
-        //             upper_palette_palette_color_offset = how_many_palettes_lower_layer
-        //
-        //         # Adjust layer numbers
-        //         number_of_layers = 2 if upper_img is not None else 1
-        //         low_map_idx = 0 if lower_img is not None else 1
-        //         if number_of_layers > self.number_of_layers:
-        //             self.add_upper_layer()
-        //             bpc.add_upper_layer()
-        //
-        //         # Import tiles, tile mappings and chunks mappings
-        //         for layer_idx in range(low_map_idx, number_of_layers):
-        //             if layer_idx == 0:
-        //                 bpc_layer_id = 0 if bpc.number_of_layers == 1 else 1
-        //                 img = lower_img
-        //                 palette_offset = 0
-        //             else:
-        //                 bpc_layer_id = 0
-        //                 img = upper_img
-        //                 palette_offset = upper_palette_palette_color_offset
-        //
-        //             tiles, all_possible_tile_mappings, palettes = from_pil(
-        //                 img, BPL_IMG_PAL_LEN, BPL_MAX_PAL, BPC_TILE_DIM,
-        //                 img.width, img.height, 3, 3, force_import, palette_offset=palette_offset  # type: ignore
-        //             )
-        //             bpc.import_tiles(bpc_layer_id, tiles)
-        //
-        //             # Build a new list of chunks / tile mappings for the BPC based on repeating chunks
-        //             # in the imported image. Generate chunk mappings.
-        //             chunk_mappings = []
-        //             chunk_mappings_counter = 1
-        //             tile_mappings: List[TilemapEntryProtocol] = []
-        //             tiles_in_chunk = self.tiling_width * self.tiling_height
-        //             for chk_fst_tile_idx in range(0, self.map_width_chunks * self.map_height_chunks * tiles_in_chunk, tiles_in_chunk):
-        //                 chunk = all_possible_tile_mappings[chk_fst_tile_idx:chk_fst_tile_idx+tiles_in_chunk]
-        //                 start_of_existing_chunk = search_for_chunk(chunk, tile_mappings)
-        //                 if start_of_existing_chunk is not None:
-        //                     chunk_mappings.append(int(start_of_existing_chunk / tiles_in_chunk) + 1)
-        //                 else:
-        //                     tile_mappings += chunk
-        //                     chunk_mappings.append(chunk_mappings_counter)
-        //                     chunk_mappings_counter += 1
-        //
-        //             bpc.import_tile_mappings(bpc_layer_id, tile_mappings)
-        //             if layer_idx == 0:
-        //                 self.layer0 = chunk_mappings
-        //             else:
-        //                 self.layer1 = chunk_mappings
-        //
-        //         # Import palettes
-        //         bpl.import_palettes(palettes)
-        todo!()
+        let expected_width = self.tiling_width as usize * self.map_width_chunks as usize * BPC_TILE_DIM as usize;
+        let expected_height = self.tiling_height as usize * self.map_height_chunks as usize * BPC_TILE_DIM as usize;
+        let mut lower_img: Option<IndexedImage> = match lower_img { None => None, Some(img) => Some(img.extract(py)?) };
+        let mut upper_img: Option<IndexedImage> = match upper_img { None => None, Some(img) => Some(img.extract(py)?) };
+        if lower_img.as_ref().map_or(false, |lower_img| lower_img.0.1 != expected_width) ||
+            upper_img.as_ref().map_or(false, |upper_img| upper_img.0.1 != expected_width)
+        {
+            return Err(exceptions::PyValueError::new_err(format!(
+                "Can not import map background: Width of both images must match the current map width: {}px",
+                expected_width
+            )))
+        }
+        if lower_img.as_ref().map_or(false, |lower_img| lower_img.0.2 != expected_height) ||
+            upper_img.as_ref().map_or(false, |upper_img| upper_img.0.2 != expected_height)
+        {
+            return Err(exceptions::PyValueError::new_err(format!(
+                "Can not import map background: Height of both images must match the current map width: {}px",
+                expected_height
+            )))
+        }
+        let mut upper_palette_palette_color_offset = 0;
+        if upper_img.is_some() && lower_img.is_some() && how_many_palettes_lower_layer < BPL_MAX_PAL as usize {
+            // Combine palettes
+            let lower_palette = &lower_img.as_ref().unwrap().1[..(how_many_palettes_lower_layer * (BPL_PAL_LEN + 1) * 3)];
+            let upper_palette = &upper_img.as_ref().unwrap().1[..((BPL_MAX_PAL as usize - how_many_palettes_lower_layer) * (BPL_PAL_LEN + 1) * 3)];
+            let new_palette: Palette = lower_palette.iter().chain(upper_palette.iter()).copied().collect();
+            lower_img.as_mut().map(|x| x.1 = new_palette.clone());
+            upper_img.as_mut().map(|x| x.1 = new_palette);
+            // We need to offset the colors in the upper image now, when we read it.
+            upper_palette_palette_color_offset = how_many_palettes_lower_layer
+        }
+        // Adjust layer numbers
+        let number_of_layers = if upper_img.is_some() { 2 } else { 1 };
+        let low_map_idx = if lower_img.is_some() { 0 } else { 1 };
+        if number_of_layers > self.number_of_layers {
+            self.add_upper_layer();
+            bpc.0.do_add_upper_layer(py)?;
+        }
+
+        // Import tiles, tile mappings and chunks mappings
+        let mut palettes: Vec<Vec<u8>> = Default::default();
+        if let Some(lower_img) = lower_img {
+            palettes = self.from_pil_step(
+                false,
+                if bpc.0.get_number_of_layers(py)? == 1 { 0 } else { 1 },
+                lower_img, 0, &mut bpc, py
+            )?;
+        }
+        if let Some(upper_img) = upper_img {
+            palettes = self.from_pil_step(
+                true,
+                0,
+                upper_img, upper_palette_palette_color_offset, &mut bpc, py
+            )?;
+        }
+
+        // Import palettes
+        bpl.0.do_import_palettes(palettes, py)?;
+        Ok(())
     }
 
     /// Remove the upper layer. Silently does nothing when it doesn't exist.
@@ -567,6 +527,61 @@ impl Bma {
         }
         col
     }
+
+    #[allow(clippy::option_map_unit_fn)]
+    fn from_pil_step(
+        &mut self, is_upper: bool, bpc_layer_id: usize, img: IndexedImage,
+        palette_offset: usize, bpc: &mut InputBpc, py: Python
+    ) -> PyResult<Vec<Vec<u8>>> {
+        let layer = match is_upper {
+            true => self.layer1.as_mut(),
+            false => Some(&mut self.layer0)
+        };
+        let w = img.0.1;
+        let h = img.0.2;
+        let (tiles, palettes, mut all_possible_tile_mappings) = TiledImage::native_to_tiled(
+            img, BPL_IMG_PAL_LEN as u8, BPC_TILE_DIM,
+            w, h, self.tiling_width as usize, palette_offset, true
+        )?;
+        bpc.0.do_import_tiles(bpc_layer_id, tiles.into_iter().map(|x| x.freeze()).collect(), false, py)?;
+
+        // Build a new list of chunks / tile mappings for the BPC based on repeating chunks
+        let tiles_in_chunk = self.tiling_width as usize * self.tiling_height as usize;
+        let n_all_chunks = self.map_width_chunks as usize * self.map_height_chunks as usize * tiles_in_chunk;
+        let mut chunk_mappings = Vec::with_capacity(n_all_chunks);
+        let mut chunk_mappings_counter = 1;
+        let mut tile_mappings = Vec::with_capacity(n_all_chunks);
+        all_possible_tile_mappings.truncate(n_all_chunks);
+        let chunked = all_possible_tile_mappings.into_iter().chunks(tiles_in_chunk);
+        for chunk in chunked.into_iter() {
+            let mut chunk: Vec<TilemapEntry> = chunk.collect();
+            match TiledImage::search_for_chunk(&chunk, &tile_mappings) {
+                Some(start_of_existing_chunk) => chunk_mappings.push((start_of_existing_chunk + 1) as u16),
+                None => {
+                    tile_mappings.append(&mut chunk);
+                    chunk_mappings.push(chunk_mappings_counter);
+                    chunk_mappings_counter += 1;
+                }
+            }
+        }
+
+        bpc.0.do_import_tile_mappings(
+            bpc_layer_id,
+            tile_mappings
+                .into_iter()
+                .map(|t| Ok(InputTilemapEntry(Py::new(py, t)?)))
+                .collect::<PyResult<Vec<InputTilemapEntry>>>()?,
+            false,
+            true,
+            py
+        )?;
+        layer.map(|x| *x = chunk_mappings);
+        Ok(palettes.0
+            .chunks(BPL_IMG_PAL_LEN * 3)
+            .map(|x| x.iter().copied().collect())
+            .collect::<Vec<Vec<u8>>>()
+        )
+    }
 }
 
 #[pyclass(module = "skytemple_rust.st_bma")]
@@ -639,6 +654,7 @@ impl BmaWriter {
     /// Converts chunk mappings for a layer back into bytes.
     /// If map size is odd, adds one extra tiles per row.
     /// Every row is NRL encoded separately, because the game decodes the rows separately!
+    #[allow(clippy::needless_range_loop)]
     fn convert_layer(map_width_chunks: usize, map_height_chunks: usize, layer: &[u16]) -> PyResult<BytesMut> {
         // The actual values are "encoded" using XOR.
         let mut previous_row_values = vec![0; map_width_chunks];
@@ -671,6 +687,7 @@ impl BmaWriter {
     /// Converts collision mappings back into bytes.
     /// If map size is odd, adds one extra tiles per row
     /// Every row is NRL encoded separately, because the game decodes the rows separately!
+    #[allow(clippy::needless_range_loop)]
     fn convert_collision(map_width_camera: usize, map_height_camera: usize, collision_layer: &[bool]) -> PyResult<BytesMut> {
         // The actual values are "encoded" using XOR.
         let mut previous_row_values = vec![false; map_width_camera];
@@ -753,7 +770,7 @@ trait Resizable<T>: Sized where T: Default + Copy {
         if (new_h as usize) < rows.len() {
             rows.truncate(new_h as usize);
         }
-        for (row_i, row) in rows.iter_mut().enumerate() {
+        for row in rows.iter_mut() {
             // X: Enlarge
             for _ in 0..(new_w as i64 - row.len() as i64) {
                 row.push(T::default());

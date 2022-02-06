@@ -17,9 +17,10 @@
  * along with SkyTemple.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+use std::iter::zip;
 use std::slice::ChunksExact;
 use std::vec::IntoIter;
-use bytes::{Buf, Bytes};
+use bytes::{Buf, Bytes, BytesMut};
 use crate::bytes::{StBytes, StBytesMut};
 use crate::image::tilemap_entry::TilemapEntry;
 
@@ -27,8 +28,59 @@ use crate::python::*;
 
 // ---
 
-pub struct Raster(pub StBytesMut, pub usize, pub usize);  // data, width, height
+#[derive(Clone)]
+pub struct Raster(pub StBytesMut, pub usize, pub usize); // data, width, height
+
+impl Raster {
+    pub fn new(width: usize, height: usize) -> Self {
+        Self(StBytesMut::from(vec![0; width * height]), width, height)
+    }
+
+    /// Returns the part of the Raster enclosed by (x, y, x + w, y + h)
+    pub fn crop(&self, x: usize, y: usize, w: usize, h: usize) -> Self {
+        let mut out = BytesMut::with_capacity(w * h);
+        for row in self.0.chunks(self.1).skip(y).take(h) {
+            out.extend(row.iter().skip(x).take(w));
+        }
+        Self(out.into(), w, h)
+    }
+
+    // Pastes the other Raster at position (x, y)
+    pub fn paste(&mut self, source: Self, x: usize, y: usize) {
+        for (self_row, source_row) in zip(
+            self.0.chunks_mut(self.1).skip(y).take(source.2),
+            source.0.chunks(source.1)
+        ) {
+            for (self_px, source_px) in zip(
+                self_row.iter_mut().skip(x).take(source.1),
+                source_row.iter()
+            ) {
+                *self_px = *source_px
+            }
+        }
+    }
+
+    // Like paste, but if a value in source is 0, it is not copied.
+    pub fn paste_masked(&mut self, source: Self, x: usize, y: usize) {
+        for (self_row, source_row) in zip(
+            self.0.chunks_mut(self.1).skip(y).take(source.2),
+            source.0.chunks(source.1)
+        ) {
+            for (self_px, source_px) in zip(
+                self_row.iter_mut().skip(x).take(source.1),
+                source_row.iter()
+            ) {
+                if *source_px != 0 {
+                    *self_px = *source_px
+                }
+            }
+        }
+    }
+}
+
 pub type Palette = Bytes;
+
+#[derive(Clone)]
 pub struct IndexedImage(pub Raster, pub Palette);
 
 pub type TilesGenerator<G> = Vec<PixelGenerator<G>>;

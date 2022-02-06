@@ -25,7 +25,7 @@ use crate::image::tiled::TiledImage;
 use crate::image::tilemap_entry::TilemapEntry;
 use crate::python::*;
 
-const BPA_TILE_DIM: usize = 8;
+pub const BPA_TILE_DIM: usize = 8;
 
 #[pyclass(module = "skytemple_rust.st_bpa")]
 #[derive(Clone)]
@@ -296,12 +296,16 @@ pub mod input {
     use pyo3::types::PyTuple;
     use crate::bytes::StBytes;
     use crate::python::*;
-    use crate::st_bpa::Bpa;
+    use crate::st_bpa::{Bpa, BpaFrameInfo};
 
     pub trait BpaProvider: ToPyObject {
         fn get_number_of_tiles(&self, py: Python) -> PyResult<u16>;
         fn get_number_of_frames(&self, py: Python) -> PyResult<u16>;
         fn provide_tiles_for_frame(&self, frame: u16, py: Python) -> PyResult<Vec<StBytes>>;
+
+        // python only (needed for clone):
+        fn __get_cloned_tiles(&self, py: Python) -> PyResult<Vec<StBytes>>;
+        fn __get_cloned_frame_info(&self, py: Python) -> PyResult<Vec<Py<BpaFrameInfo>>>;
     }
 
     impl BpaProvider for Py<Bpa> {
@@ -315,6 +319,14 @@ pub mod input {
 
         fn provide_tiles_for_frame(&self, frame: u16, py: Python) -> PyResult<Vec<StBytes>> {
             Ok(self.borrow(py).tiles_for_frame(frame))
+        }
+
+        fn __get_cloned_tiles(&self, py: Python) -> PyResult<Vec<StBytes>> {
+            Ok(self.borrow(py).tiles.clone())
+        }
+
+        fn __get_cloned_frame_info(&self, py: Python) -> PyResult<Vec<Py<BpaFrameInfo>>> {
+            Ok(self.borrow(py).frame_info.clone())
         }
     }
 
@@ -330,6 +342,18 @@ pub mod input {
         fn provide_tiles_for_frame(&self, frame: u16, py: Python) -> PyResult<Vec<StBytes>> {
             let args = PyTuple::new(py, [frame]);
             self.call_method1(py, "tiles_for_frame", args)?.extract(py)
+        }
+
+        fn __get_cloned_tiles(&self, py: Python) -> PyResult<Vec<StBytes>> {
+            self.getattr(py, "tiles")?.extract(py)
+        }
+
+        fn __get_cloned_frame_info(&self, py: Python) -> PyResult<Vec<Py<BpaFrameInfo>>> {
+            let frames: Vec<PyObject> = self.getattr(py, "frame_info")?.extract(py)?;
+            frames.into_iter().map(|x| Py::new(py, BpaFrameInfo {
+                duration_per_frame: x.getattr(py, "duration_per_frame")?.extract(py)?,
+                unk2: x.getattr(py, "unk2")?.extract(py)?
+            })).collect::<PyResult<Vec<Py<BpaFrameInfo>>>>()
         }
     }
 
@@ -354,6 +378,19 @@ pub mod input {
     impl From<InputBpa> for Bpa {
         fn from(obj: InputBpa) -> Self {
             Python::with_gil(|py| obj.0.to_object(py).extract(py).unwrap())
+        }
+    }
+
+    impl Clone for InputBpa {
+        fn clone(&self) -> Self {
+            Python::with_gil(|py|
+                Self(Box::new(Py::new(py, Bpa {
+                    number_of_tiles: self.0.get_number_of_tiles(py).unwrap(),
+                    number_of_frames: self.0.get_number_of_frames(py).unwrap(),
+                    tiles: self.0.__get_cloned_tiles(py).unwrap(),
+                    frame_info: self.0.__get_cloned_frame_info(py).unwrap()
+                }).unwrap()))
+            )
         }
     }
 }
@@ -385,6 +422,7 @@ pub mod input {
         }
     }
 
+    #[derive(Clone)]
     pub struct InputBpa(pub(crate) Bpa);
 
     impl From<InputBpa> for Bpa {
