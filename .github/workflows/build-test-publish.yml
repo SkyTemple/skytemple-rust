@@ -98,7 +98,12 @@ jobs:
         if: "matrix.os == 'windows-2019'"
         with:
           url: https://skytemple.org/build_deps/tar.exe
-          target: "C:\\Windows\\system32"
+          target: "C:\\tarout"
+      - name: Prepend GNU Tar to Path
+        if: "matrix.os == 'windows-2019'"
+        shell: powershell
+        run:
+          echo "C:\tarout" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
       - name: Build Python wheels
         run: |
           python setup.py bdist_wheel
