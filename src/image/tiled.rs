@@ -192,10 +192,7 @@ impl TiledImage {
         }
         if final_tiles_with_sum.len() > 1024 {
             return Err(exceptions::PyValueError::new_err(gettext!(
-                "An image selected to import is too complex. It has too many unique tiles \
-                ({}, max allowed are 1024).\nTry to have less unique tiles. Unique tiles \
-                are 8x8 sections of the images that can't be found anywhere else in the image (including \
-                flipped or with a different sub-palette).",
+                "An image selected to import is too complex. It has too many unique tiles ({}, max allowed are 1024).\nTry to have less unique tiles. Unique tiles are 8x8 sections of the images that can't be found anywhere else in the image (including flipped or with a different sub-palette).",
                 final_tiles_with_sum.len()
             )));
         }

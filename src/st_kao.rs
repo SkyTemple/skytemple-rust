@@ -88,9 +88,7 @@ impl KaoImage {
         // Check image size
         if compressed_img.len() > 800 {
             return Err(exceptions::PyValueError::new_err(gettext!(
-                "This portrait does not compress well, the result size is greater than 800 bytes ({} bytes total).\n\
-                If you haven't done already, try applying the 'ProvideATUPXSupport' to install an optimized compression algorithm, \
-                which might be able to better compress this image.",
+                "This portrait does not compress well, the result size is greater than 800 bytes ({} bytes total).\n If you haven't done already, try applying the 'ProvideATUPXSupport' to install an optimized compression algorithm, which might be able to better compress this image.",
                 compressed_img.len()
             )));
         }
