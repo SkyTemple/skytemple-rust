@@ -98,7 +98,7 @@ jobs:
         if: "matrix.os == 'windows-2019'"
         with:
           url: https://skytemple.org/build_deps/tar.exe
-          target: "C:\tarout"
+          target: "C:\\tarout"
       - name: Prepend GNU Tar to Path
         if: "matrix.os == 'windows-2019'"
         shell: powershell
