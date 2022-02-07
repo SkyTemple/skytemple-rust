@@ -127,6 +127,7 @@ jobs:
             mingw-w64-${{ matrix.arch }}-openssl
             mingw-w64-${{ matrix.arch }}-toolchain
             mingw-w64-${{ matrix.arch }}-gettext
+            mingw-w64-${{ matrix.arch }}-diffutils
       - name: Checkout
         uses: actions/checkout@v2
       - name: Rewrite version for dev if not tag
