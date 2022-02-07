@@ -93,6 +93,12 @@ jobs:
           python -m pip install --upgrade pip wheel
           python -m pip install -r dev-requirements.txt
           python -m pip install -r requirements.txt
+      - name: Download GNU Tar
+        uses: suisei-cn/actions-download-file@v1
+        if: "matrix.os == 'windows-2019'"
+        with:
+          url: https://skytemple.org/build_deps/tar.exe
+          target: .
       - name: Build Python wheels
         run: |
           python setup.py bdist_wheel
