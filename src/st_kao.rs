@@ -24,6 +24,7 @@ use std::io::Cursor;
 use std::mem::swap;
 use std::vec;
 use bytes::{Buf, BufMut};
+use gettextrs::gettext;
 use crate::image::{In16ColIndexedImage, IndexedImage, InIndexedImage, PixelGenerator};
 use crate::image::tiled::TiledImage;
 use crate::python::*;
@@ -86,7 +87,7 @@ impl KaoImage {
         let compressed_img = CommonAt::compress(&img, COMMON_AT_MUST_COMPRESS_3.iter())?;
         // Check image size
         if compressed_img.len() > 800 {
-            return Err(exceptions::PyValueError::new_err(format!(
+            return Err(exceptions::PyValueError::new_err(gettext!(
                 "This portrait does not compress well, the result size is greater than 800 bytes ({} bytes total).\n\
                 If you haven't done already, try applying the 'ProvideATUPXSupport' to install an optimized compression algorithm, \
                 which might be able to better compress this image.",

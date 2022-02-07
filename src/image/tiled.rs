@@ -19,6 +19,7 @@
 
 use std::fmt::Debug;
 use std::vec::IntoIter;
+use gettextrs::gettext;
 use log::warn;
 use crate::bytes::StBytesMut;
 use crate::python::*;
@@ -190,8 +191,7 @@ impl TiledImage {
             final_tiles_with_sum = tiles_with_sum;
         }
         if final_tiles_with_sum.len() > 1024 {
-            // TODO: Localization!
-            return Err(exceptions::PyValueError::new_err(format!(
+            return Err(exceptions::PyValueError::new_err(gettext!(
                 "An image selected to import is too complex. It has too many unique tiles \
                 ({}, max allowed are 1024).\nTry to have less unique tiles. Unique tiles \
                 are 8x8 sections of the images that can't be found anywhere else in the image (including \

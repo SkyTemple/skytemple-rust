@@ -20,6 +20,7 @@ use std::io::Cursor;
 use std::iter::{Copied, Enumerate};
 use std::slice::Iter;
 use bytes::{Buf, BufMut, Bytes, BytesMut};
+use gettextrs::gettext;
 use itertools::Itertools;
 use crate::bytes::{StBytes};
 use crate::compression::bma_collision_rle::{BmaCollisionRleCompressor, BmaCollisionRleDecompressor};
@@ -366,7 +367,7 @@ impl Bma {
         if lower_img.as_ref().map_or(false, |lower_img| lower_img.0.1 != expected_width) ||
             upper_img.as_ref().map_or(false, |upper_img| upper_img.0.1 != expected_width)
         {
-            return Err(exceptions::PyValueError::new_err(format!(
+            return Err(exceptions::PyValueError::new_err(gettext!(
                 "Can not import map background: Width of both images must match the current map width: {}px",
                 expected_width
             )))
@@ -374,7 +375,7 @@ impl Bma {
         if lower_img.as_ref().map_or(false, |lower_img| lower_img.0.2 != expected_height) ||
             upper_img.as_ref().map_or(false, |upper_img| upper_img.0.2 != expected_height)
         {
-            return Err(exceptions::PyValueError::new_err(format!(
+            return Err(exceptions::PyValueError::new_err(gettext!(
                 "Can not import map background: Height of both images must match the current map width: {}px",
                 expected_height
             )))

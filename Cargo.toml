@@ -19,6 +19,7 @@ with_pmd_wan = ["pmd_wan", "anyhow"]
 skytemple_rust_macros = { path = "skytemple_rust_macros" }
 pyo3 = { version = "0.15", features = ["extension-module"], optional = true }
 pyo3-log = { version = "0.5", optional = true }
+gettext-rs = "0.7"
 itertools = "0.10"
 log = "0.4"
 bytes = "1"

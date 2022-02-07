@@ -20,6 +20,7 @@ use std::io::Cursor;
 use std::iter::once;
 use std::mem::{swap, take};
 use bytes::{Buf, BufMut, Bytes, BytesMut};
+use gettextrs::gettext;
 use crate::bytes::StBytes;
 use crate::compression::bpc_image::{BpcImageCompressor, BpcImageDecompressor};
 use crate::compression::bpc_tilemap::{BpcTilemapCompressor, BpcTilemapDecompressor};
@@ -386,7 +387,7 @@ impl Bpc {
     pub fn set_chunk(&mut self, layer: usize, index: usize, new_tilemappings: Vec<InputTilemapEntry>, py: Python) -> PyResult<()> {
         let dim = self.tiling_width as usize * self.tiling_height as usize;
         if new_tilemappings.len() < dim {
-            return Err(exceptions::PyValueError::new_err(format!(
+            return Err(exceptions::PyValueError::new_err(gettext!(
                 "new tilemapping for this chunk must contain {} tiles.", dim
             )));
         }

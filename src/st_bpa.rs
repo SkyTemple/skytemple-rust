@@ -19,6 +19,7 @@
 use std::cmp::Ordering;
 use std::mem::take;
 use bytes::{Buf, BufMut};
+use gettextrs::gettext;
 use crate::bytes::StBytes;
 use crate::image::{In256ColIndexedImage, IndexedImage, InIndexedImage, PixelGenerator};
 use crate::image::tiled::TiledImage;
@@ -185,7 +186,7 @@ impl Bpa {
                 first_image_dims = Some((w, h));
             }
             if Some((w, h)) != first_image_dims {
-                return Err(exceptions::PyValueError::new_err("The dimensions of all images must be the same."))
+                return Err(exceptions::PyValueError::new_err(gettext("The dimensions of all images must be the same.")))
             }
         }
 
