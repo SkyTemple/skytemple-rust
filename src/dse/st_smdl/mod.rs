@@ -18,4 +18,5 @@
  */
 
 #[cfg(feature = "python")]
-mod python;
+pub(crate) mod python;
+pub mod model;

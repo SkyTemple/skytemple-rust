@@ -16,3 +16,10 @@
  * You should have received a copy of the GNU General Public License
  * along with SkyTemple.  If not, see <https://www.gnu.org/licenses/>.
  */
+
+use crate::bytes::StBytes;
+
+#[derive(Clone)]
+pub struct SwdlPcmd {
+    pub chunk_data: StBytes
+}

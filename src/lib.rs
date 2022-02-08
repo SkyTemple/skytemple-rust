@@ -71,9 +71,7 @@ pub mod st_bpl;
 #[cfg(feature = "strings")]
 pub mod st_string;
 #[cfg(feature = "dse")]
-mod st_smdl;
-#[cfg(feature = "dse")]
-mod st_swdl;
+pub mod dse;
 
 #[cfg(feature = "python")]
 #[cfg(feature = "with_pmd_wan")]

@@ -17,5 +17,21 @@
  * along with SkyTemple.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-#[cfg(feature = "python")]
-mod python;
+use crate::bytes::StBytes;
+
+#[derive(Clone)]
+pub struct DseDate {
+
+}
+
+impl From<StBytes> for DseDate {
+    fn from(source: StBytes) -> Self {
+        todo!()
+    }
+}
+
+impl From<DseDate> for StBytes {
+    fn from(source: DseDate) -> Self {
+        todo!()
+    }
+}

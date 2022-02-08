@@ -154,7 +154,7 @@ class SwdlKgrp:
 
 
 class SwdlPcmdLen:
-    ref: Optional[int]
+    reference: Optional[int]
     external: bool
 
 

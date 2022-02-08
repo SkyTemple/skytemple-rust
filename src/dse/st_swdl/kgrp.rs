@@ -16,3 +16,19 @@
  * You should have received a copy of the GNU General Public License
  * along with SkyTemple.  If not, see <https://www.gnu.org/licenses/>.
  */
+
+#[derive(Clone)]
+pub struct SwdlKeygroup {
+    pub id: u32,
+    pub poly: u32,
+    pub priority: u32,
+    pub vclow: u32,
+    pub vchigh: u32,
+    pub unk50: u32,
+    pub unk51: u32,
+}
+
+#[derive(Clone)]
+pub struct SwdlKgrp {
+    pub keygroups: Vec<SwdlKeygroup>
+}

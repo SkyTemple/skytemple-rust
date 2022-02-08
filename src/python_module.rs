@@ -68,6 +68,10 @@ use crate::compression::bma_collision_rle::create_st_bma_collision_rle_compressi
 use crate::compression::bma_layer_nrl::create_st_bma_layer_nrl_compression_module;
 #[cfg(feature = "image")]
 use crate::image::tilemap_entry::TilemapEntry;
+#[cfg(feature = "dse")]
+use crate::dse::st_smdl::python::create_st_smdl_module;
+#[cfg(feature = "dse")]
+use crate::dse::st_swdl::python::create_st_swdl_module;
 
 #[pymodule]
 fn skytemple_rust(py: Python, module: &PyModule) -> PyResult<()> {
@@ -108,6 +112,10 @@ fn skytemple_rust(py: Python, module: &PyModule) -> PyResult<()> {
     //add_submodule(module, create_st_dpci_module(py)?, modules)?;
     //add_submodule(module, create_st_dpl_module(py)?, modules)?;
     //add_submodule(module, create_st_dpla_module(py)?, modules)?;
+    #[cfg(feature = "dse")]
+    add_submodule(module, create_st_smdl_module(py)?, modules)?;
+    #[cfg(feature = "dse")]
+    add_submodule(module, create_st_swdl_module(py)?, modules)?;
     #[cfg(feature = "strings")]
     add_submodule(module, create_st_string_module(py)?, modules)?;
 
