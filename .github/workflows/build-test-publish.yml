@@ -1,6 +1,6 @@
 # Builds on all branches & PRs
 # Deploys to PyPi on "release".
-name: Build, test and publish
+name: Build with and for Python
 
 on: [push, pull_request]
 

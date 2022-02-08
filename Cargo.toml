@@ -11,8 +11,16 @@ crate-type = ["cdylib", "rlib"]
 name = "skytemple_rust"
 
 [features]
-default = ["python", "with_pmd_wan"]
+default = ["python", "strings", "compression", "image", "kao", "map_bg", "with_pmd_wan"]
 python = ["pyo3", "pyo3-log"]
+
+strings = ["encoding-index-singlebyte"]
+compression = []
+image = []
+
+kao = ["compression", "image", "arr_macro"]
+map_bg = ["compression", "image"]
+
 with_pmd_wan = ["pmd_wan", "anyhow"]
 
 [dependencies]
@@ -25,8 +33,8 @@ log = "0.4"
 bytes = "1"
 num-traits = "0.2"
 num-derive = "0.3"
-arr_macro = "0.1.3"
+arr_macro = { version = "0.1.3", optional = true }
 encoding = "0.2"
-encoding-index-singlebyte = "1"
+encoding-index-singlebyte = { version = "1", optional = true }
 pmd_wan = { version = "3.0.1", optional = true }
 anyhow = { version = "1", optional = true }

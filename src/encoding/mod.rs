@@ -17,6 +17,7 @@
  * along with SkyTemple.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+#[cfg(feature = "strings")]
 pub mod pmd2_encoder;
 
 use std::cmp::Ordering;

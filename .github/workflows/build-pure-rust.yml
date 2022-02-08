@@ -3,34 +3,36 @@ on: [push]
 name: Build Pure Rust
 
 jobs:
-  build_with_python:
-    name: Build Release with PyO3
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        features:
+          - ""
+          - "python"
+          - "default"
+          - "image"
+          - "image,python"
+          - "compression"
+          - "compression,python"
+          - "map_bg"
+          - "map_bg,python"
+          - "kao"
+          - "kao,python"
+          - "map_bg,kao"
+          - "map_bg,kao,python"
+          - "strings"
+          - "strings,python"
+          - "strings,map_bg,kao,python,python,with_pmd_wan"
+    name: Build
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
       - uses: actions-rs/toolchain@v1
         with:
           toolchain: nightly
-          components: clippy
-          override: true
-      - uses: actions-rs/clippy-check@v1
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          args: --release
-      - uses: actions-rs/cargo@v1
-        with:
-          command: build
-          args: --release
-  build_with_no_python:
-    name: Build Release without PyO3
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v2
-      - uses: actions-rs/toolchain@v1
-        with:
-          toolchain: nightly
           override: true
       - uses: actions-rs/cargo@v1
         with:
           command: build
-          args: --release --no-default-features
+          args: --release -no-default-features --features=${{ matrix.features }}

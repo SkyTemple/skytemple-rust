@@ -17,12 +17,13 @@
  * along with SkyTemple.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-extern crate core;
+#[macro_use] pub(crate) mod encoding_utils;
 
 pub(crate) mod util;
-#[macro_use] pub(crate) mod encoding_utils;
+pub(crate) mod err;
 pub mod bytes;
 pub mod python;
+#[cfg(feature = "image")]
 pub mod image;
 pub mod encoding;
 pub mod rom_source;
@@ -33,19 +34,32 @@ mod python_image;
 #[cfg(feature = "python")]
 mod python_module;
 
+#[cfg(feature = "compression")]
 pub mod compression;
+#[cfg(feature = "compression")]
 pub mod st_at_common;
+#[cfg(feature = "compression")]
 pub mod st_at3px;
+#[cfg(feature = "compression")]
 pub mod st_at4pn;
+#[cfg(feature = "compression")]
 pub mod st_at4px;
+#[cfg(feature = "compression")]
 pub mod st_atupx;
+#[cfg(feature = "compression")]
 pub mod st_pkdpx;
+#[cfg(feature = "kao")]
 pub mod st_kao;
+#[cfg(feature = "map_bg")]
 pub mod st_bg_list_dat;
 //pub mod st_bgp;
+#[cfg(feature = "map_bg")]
 pub mod st_bma;
+#[cfg(feature = "map_bg")]
 pub mod st_bpa;
+#[cfg(feature = "map_bg")]
 pub mod st_bpc;
+#[cfg(feature = "map_bg")]
 pub mod st_bpl;
 //pub mod st_dbg;
 //pub mod st_dma;
@@ -53,8 +67,8 @@ pub mod st_bpl;
 //pub mod st_dpci;
 //pub mod st_dpl;
 //pub mod st_dpla;
+#[cfg(feature = "strings")]
 pub mod st_string;
 
 #[cfg(feature = "python")]
 pub mod pmd_wan;
-pub(crate) mod err;

@@ -19,17 +19,19 @@
 use std::cmp::{max, min};
 
 #[inline]
+#[allow(unused)]
 pub(crate)  fn slice_to_array<const N: usize>(slice: &[u8]) -> [u8; N] {
     let mut arr: [u8; N] = [0; N];
     arr.copy_from_slice(slice);
     arr
 }
 
+#[allow(unused)]
 pub(crate)  fn init_default_vec<U, T>(size: usize) -> U where U: FromIterator<T>, T: Default {
     (0..size).into_iter().map(|_| Default::default()).collect()
 }
 
-
+#[allow(unused)]
 pub(crate) fn gcd(a: usize, b: usize) -> usize {
     match ((a, b), (a & 1, b & 1)) {
         ((x, y), _) if x == y => y,
@@ -44,6 +46,7 @@ pub(crate) fn gcd(a: usize, b: usize) -> usize {
     }
 }
 
+#[allow(unused)]
 pub(crate) fn lcm(a: usize, b: usize) -> usize {
     a * b/gcd(a, b)
 }

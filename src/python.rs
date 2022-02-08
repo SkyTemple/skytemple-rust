@@ -39,6 +39,7 @@ pub type PyClonedByRef<T> = Py<T>;
 pub use crate::no_python::*;
 
 #[inline]
+#[allow(unused)]
 // Clonability is required for non-Python use cases.
 pub(crate) fn return_option<T>(py: Python, opt: &Option<Py<T>>) -> PyResult<Option<PyClonedByRef<T>>> where T: Clone {
     Ok(opt.as_ref().map(|x| x.clone_ref(py)))
