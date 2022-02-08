@@ -18,22 +18,31 @@
  */
 use log::info;
 use pyo3::types::PyDict;
-use crate::compression::bma_collision_rle::create_st_bma_collision_rle_compression_module;
-use crate::compression::bma_layer_nrl::create_st_bma_layer_nrl_compression_module;
 use crate::python::*;
 
 
+#[cfg(feature = "with_pmd_wan")]
 use crate::pmd_wan::create_pmd_wan_module;
+#[cfg(feature = "compression")]
 use crate::st_at3px::create_st_at3px_module;
+#[cfg(feature = "compression")]
 use crate::st_at4pn::create_st_at4pn_module;
+#[cfg(feature = "compression")]
 use crate::st_at4px::create_st_at4px_module;
+#[cfg(feature = "compression")]
 use crate::st_at_common::create_st_at_common_module;
+#[cfg(feature = "compression")]
 use crate::st_atupx::create_st_atupx_module;
+#[cfg(feature = "map_bg")]
 use crate::st_bg_list_dat::create_st_bg_list_dat_module;
 //use crate::st_bgp::create_st_bgp_module;
+#[cfg(feature = "map_bg")]
 use crate::st_bma::create_st_bma_module;
+#[cfg(feature = "map_bg")]
 use crate::st_bpa::create_st_bpa_module;
+#[cfg(feature = "map_bg")]
 use crate::st_bpc::create_st_bpc_module;
+#[cfg(feature = "map_bg")]
 use crate::st_bpl::create_st_bpl_module;
 //use crate::st_dbg::create_st_dbg_module;
 //use crate::st_dma::create_st_dma_module;
@@ -41,12 +50,23 @@ use crate::st_bpl::create_st_bpl_module;
 //use crate::st_dpci::create_st_dpci_module;
 //use crate::st_dpl::create_st_dpl_module;
 //use crate::st_dpla::create_st_dpla_module;
+#[cfg(feature = "kao")]
 use crate::st_kao::create_st_kao_module;
+#[cfg(feature = "compression")]
 use crate::st_pkdpx::create_st_pkdpx_module;
+#[cfg(feature = "strings")]
 use crate::st_string::create_st_string_module;
+#[cfg(feature = "compression")]
 use crate::compression::bpc_image::create_st_bpc_image_compression_module;
+#[cfg(feature = "compression")]
 use crate::compression::bpc_tilemap::create_st_bpc_tilemap_compression_module;
+#[cfg(feature = "compression")]
 use crate::compression::generic::nrl::create_st_generic_nrl_compression_module;
+#[cfg(feature = "compression")]
+use crate::compression::bma_collision_rle::create_st_bma_collision_rle_compression_module;
+#[cfg(feature = "compression")]
+use crate::compression::bma_layer_nrl::create_st_bma_layer_nrl_compression_module;
+#[cfg(feature = "image")]
 use crate::image::tilemap_entry::TilemapEntry;
 
 #[pymodule]
@@ -55,19 +75,32 @@ fn skytemple_rust(py: Python, module: &PyModule) -> PyResult<()> {
     info!("Loading skytemple_rust...");
     let sys = py.import("sys")?;
     let modules: &PyDict = sys.getattr("modules")?.cast_as()?;
+    #[cfg(feature = "with_pmd_wan")]
     add_submodule(module, create_pmd_wan_module(py)?, modules)?;
+    #[cfg(feature = "compression")]
     add_submodule(module, create_st_at_common_module(py)?, modules)?;
+    #[cfg(feature = "compression")]
     add_submodule(module, create_st_at3px_module(py)?, modules)?;
+    #[cfg(feature = "compression")]
     add_submodule(module, create_st_at4pn_module(py)?, modules)?;
+    #[cfg(feature = "compression")]
     add_submodule(module, create_st_at4px_module(py)?, modules)?;
+    #[cfg(feature = "compression")]
     add_submodule(module, create_st_atupx_module(py)?, modules)?;
+    #[cfg(feature = "compression")]
     add_submodule(module, create_st_pkdpx_module(py)?, modules)?;
+    #[cfg(feature = "kao")]
     add_submodule(module, create_st_kao_module(py)?, modules)?;
+    #[cfg(feature = "map_bg")]
     add_submodule(module, create_st_bg_list_dat_module(py)?, modules)?;
     //add_submodule(module, create_st_bgp_module(py)?, modules)?;
+    #[cfg(feature = "map_bg")]
     add_submodule(module, create_st_bma_module(py)?, modules)?;
+    #[cfg(feature = "map_bg")]
     add_submodule(module, create_st_bpa_module(py)?, modules)?;
+    #[cfg(feature = "map_bg")]
     add_submodule(module, create_st_bpc_module(py)?, modules)?;
+    #[cfg(feature = "map_bg")]
     add_submodule(module, create_st_bpl_module(py)?, modules)?;
     //add_submodule(module, create_st_dbg_module(py)?, modules)?;
     //add_submodule(module, create_st_dma_module(py)?, modules)?;
@@ -75,14 +108,21 @@ fn skytemple_rust(py: Python, module: &PyModule) -> PyResult<()> {
     //add_submodule(module, create_st_dpci_module(py)?, modules)?;
     //add_submodule(module, create_st_dpl_module(py)?, modules)?;
     //add_submodule(module, create_st_dpla_module(py)?, modules)?;
+    #[cfg(feature = "strings")]
     add_submodule(module, create_st_string_module(py)?, modules)?;
 
+    #[cfg(feature = "compression")]
     add_submodule(module, create_st_generic_nrl_compression_module(py)?, modules)?;
+    #[cfg(feature = "compression")]
     add_submodule(module, create_st_bpc_image_compression_module(py)?, modules)?;
+    #[cfg(feature = "compression")]
     add_submodule(module, create_st_bpc_tilemap_compression_module(py)?, modules)?;
+    #[cfg(feature = "compression")]
     add_submodule(module, create_st_bma_layer_nrl_compression_module(py)?, modules)?;
+    #[cfg(feature = "compression")]
     add_submodule(module, create_st_bma_collision_rle_compression_module(py)?, modules)?;
 
+    #[cfg(feature = "image")]
     module.add_class::<TilemapEntry>()?;
 
     Ok(())

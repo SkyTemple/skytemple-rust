@@ -27,6 +27,7 @@ pub use pyo3::types::PyByteArray;
 #[cfg(feature = "python")]
 pub use pyo3::types::PyType;
 #[cfg(feature = "python")]
+#[cfg(feature = "image")]
 pub use crate::python_image::*;
 
 // The Py::clone_ref method returns a copy of the Py container with Python.

@@ -30,6 +30,7 @@ pub mod rom_source;
 #[cfg(not(feature = "python"))]
 pub mod no_python;
 #[cfg(feature = "python")]
+#[cfg(feature = "image")]
 mod python_image;
 #[cfg(feature = "python")]
 mod python_module;
@@ -69,6 +70,11 @@ pub mod st_bpl;
 //pub mod st_dpla;
 #[cfg(feature = "strings")]
 pub mod st_string;
+#[cfg(feature = "dse")]
+mod st_smdl;
+#[cfg(feature = "dse")]
+mod st_swdl;
 
 #[cfg(feature = "python")]
+#[cfg(feature = "with_pmd_wan")]
 pub mod pmd_wan;
