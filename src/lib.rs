@@ -19,6 +19,7 @@
 
 #[macro_use] pub(crate) mod encoding_utils;
 
+#[macro_use] pub(crate) mod macros;
 pub(crate) mod util;
 pub(crate) mod err;
 pub mod bytes;

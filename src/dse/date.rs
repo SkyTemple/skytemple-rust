@@ -17,21 +17,63 @@
  * along with SkyTemple.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+use bytes::{Buf, BufMut, BytesMut};
 use crate::bytes::StBytes;
+use chrono::{Datelike, Timelike, Utc};
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct DseDate {
-
+    pub year: u16,
+    pub month: u8,
+    pub day: u8,
+    pub hour: u8,
+    pub minute: u8,
+    pub second: u8,
+    pub centisecond: u8
 }
 
-impl From<StBytes> for DseDate {
-    fn from(source: StBytes) -> Self {
-        todo!()
+impl DseDate {
+    pub fn new(year: u16, month: u8, day: u8, hour: u8, minute: u8, second: u8, centisecond: u8) -> Self {
+        DseDate { year, month, day, hour, minute, second, centisecond }
+    }
+    pub fn now() -> Self {
+        let now = Utc::now();
+        DseDate {
+            year: now.year() as u16,
+            month: now.month() as u8,
+            day: now.day() as u8,
+            hour: now.hour() as u8,
+            minute: now.minute() as u8,
+            second: now.second() as u8,
+            centisecond: 0
+        }
+    }
+}
+
+impl From<&mut StBytes> for DseDate {
+    fn from(source: &mut StBytes) -> Self {
+        Self::new(
+            source.get_u16_le(),
+            source.get_u8(),
+            source.get_u8(),
+            source.get_u8(),
+            source.get_u8(),
+            source.get_u8(),
+            source.get_u8()
+        )
     }
 }
 
 impl From<DseDate> for StBytes {
     fn from(source: DseDate) -> Self {
-        todo!()
+        let mut buff = BytesMut::with_capacity(8);
+        buff.put_u16_le(source.year);
+        buff.put_u8(source.month);
+        buff.put_u8(source.day);
+        buff.put_u8(source.hour);
+        buff.put_u8(source.minute);
+        buff.put_u8(source.second);
+        buff.put_u8(source.centisecond);
+        buff.into()
     }
 }

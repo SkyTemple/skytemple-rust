@@ -718,13 +718,13 @@ impl From<implem::model::SwdlHeader> for SwdlHeader {
 }
 
 impl From<SwdlHeader> for implem::model::SwdlHeader {
-    fn from(source: SwdlHeader) -> Self {
+    fn from(mut source: SwdlHeader) -> Self {
         implem::model::SwdlHeader {
             version: source.version,
             unk1: source.unk1,
             unk2: source.unk2,
-            modified_date: source.modified_date.into(),
-            file_name: source.file_name.into(),
+            modified_date: (&mut source.modified_date).into(),
+            file_name: (&mut source.file_name).into(),
             unk13: source.unk13,
             pcmdlen: source.pcmdlen,
             unk17: source.unk17,

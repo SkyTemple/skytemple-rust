@@ -18,20 +18,43 @@
  */
 
 use crate::bytes::StBytes;
+use crate::encoding::{BufEncoding, BufMutEncoding};
+use encoding::codec::ascii::ASCIIEncoding;
+use std::iter::{once, repeat};
+use bytes::{BytesMut, BufMut};
+use encoding::{DecoderTrap, EncoderTrap};
 
-#[derive(Clone)]
-pub struct DseFilename {
+#[derive(Clone, Debug)]
+pub struct DseFilename(pub String);
 
+impl DseFilename {
+    pub fn from_bytes_fixed(source: &mut StBytes, len: usize) -> Self {
+        Self(source.get_fixed_string(ASCIIEncoding, len, DecoderTrap::Ignore).unwrap())
+    }
 }
 
-impl From<StBytes> for DseFilename {
-    fn from(source: StBytes) -> Self {
-        todo!()
+impl From<&mut StBytes> for DseFilename {
+    fn from(source: &mut StBytes) -> Self {
+        Self(source.get_c_string(ASCIIEncoding, DecoderTrap::Ignore).unwrap())
     }
 }
 
 impl From<DseFilename> for StBytes {
-    fn from(source: DseFilename) -> Self {
-        todo!()
+    fn from(mut source: DseFilename) -> Self {
+        if source.0.len() > 0xF {
+            source.0.truncate(0xF)
+        }
+        let mut target = BytesMut::with_capacity(16);
+        target.put_c_string(&source.0, ASCIIEncoding, EncoderTrap::Ignore).unwrap();
+        if target.len() < 2 {
+            // the string only contained non-ascii characters.....
+            target = BytesMut::with_capacity(16);
+            target.put_u8(b'?');
+            target.put_u8(0);
+        }
+        if target.len() < 16 {
+            target.extend(repeat(0xFF).take(16 - target.len()))
+        }
+        target.into()
     }
 }

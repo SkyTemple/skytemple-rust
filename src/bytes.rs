@@ -7,10 +7,10 @@ use pyo3::types::PyList;
 use crate::python::{FromPyObject, IntoPy, PyAny, PyByteArray, PyBytes, PyObject, PyResult, Python};
 
 #[derive(Clone, Default, PartialEq, Debug)]
-pub struct StBytesMut(pub BytesMut);
+pub struct StBytesMut(pub(crate) BytesMut);
 
 #[derive(Clone, Default, PartialEq, Debug)]
-pub struct StBytes(pub Bytes);
+pub struct StBytes(pub(crate) Bytes);
 
 /** Export Bytes as bytes */
 #[cfg(feature = "python")]

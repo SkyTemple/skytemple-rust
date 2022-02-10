@@ -18,6 +18,8 @@
  */
 
 use crate::bytes::StBytes;
+use crate::dse::date::DseDate;
+use crate::dse::filename::DseFilename;
 use crate::dse::st_swdl::kgrp::SwdlKgrp;
 use crate::dse::st_swdl::pcmd::SwdlPcmd;
 use crate::dse::st_swdl::prgi::SwdlPrgi;
@@ -34,8 +36,8 @@ pub struct SwdlHeader {
     pub version: u32,
     pub unk1: u32,
     pub unk2: u32,
-    pub modified_date: StBytes,
-    pub file_name: StBytes,
+    pub modified_date: DseDate,
+    pub file_name: DseFilename,
     pub unk13: u32,
     pub pcmdlen: u32,
     pub unk17: u32,
