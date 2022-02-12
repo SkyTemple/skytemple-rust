@@ -272,7 +272,7 @@ impl BpaWriter {
         }
 
         // Tiles
-        data.extend(model.tiles.iter().map(|t| t.0.to_vec()).flatten());
+        data.extend(model.tiles.iter().flat_map(|t| t.0.to_vec()));
 
         Ok(StBytes::from(data))
     }

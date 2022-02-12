@@ -103,7 +103,7 @@ impl From<&TilemapEntry> for usize {
 
 impl From<TilemapEntry> for usize {
     fn from(entry: TilemapEntry) -> Self {
-        (&entry).into()
+        entry.into()
     }
 }
 

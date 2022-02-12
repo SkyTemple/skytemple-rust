@@ -48,12 +48,11 @@ impl KaoImage {
     const IMG_DIM: usize = 40;
 
     pub fn new(raw_data: &[u8]) -> PyResult<Self> {
-        let cont_len: usize;
-        if let Some(x) = CommonAt::cont_size(&raw_data[Self::KAO_IMG_PAL_B_SIZE..], 0) {
-            cont_len = x as usize;
+        let cont_len: usize = if let Some(x) = CommonAt::cont_size(&raw_data[Self::KAO_IMG_PAL_B_SIZE..], 0) {
+            x as usize
         } else {
             return Err(exceptions::PyValueError::new_err("Invalid Kao image data; image not an AT container."));
-        }
+        };
         // palette size + at container size
         Ok(Self {
             pal_data: StBytesMut::from(&raw_data[..Self::KAO_IMG_PAL_B_SIZE]),
@@ -339,6 +338,7 @@ impl Kao {
 #[cfg(feature = "python")]
 /// Iterates over all KaoImages.
 impl PyIterProtocol for Kao {
+    #[allow(clippy::unnecessary_to_owned)]
     fn __iter__(slf: PyRef<Self>) -> PyResult<Py<KaoIterator>> {
         let mut reference = Box::new(slf.portraits.clone().into_iter()
             .map(

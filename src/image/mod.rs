@@ -18,8 +18,8 @@
  */
 
 use std::iter::zip;
-use std::slice::ChunksExact;
-use std::vec::IntoIter;
+use std::slice::{ChunksExact, Iter};
+use std::iter::Copied;
 use bytes::{Buf, Bytes, BytesMut};
 use crate::bytes::{StBytes, StBytesMut};
 use crate::image::tilemap_entry::TilemapEntry;
@@ -161,11 +161,11 @@ impl PixelGenerator<FourBppIterator> {
     }
 }
 
-impl PixelGenerator<IntoIter<u8>> {
-    pub fn pack8bpp(tiledata: &[u8], tile_dim: usize) -> Vec<Self> {
+impl<'a> PixelGenerator<Copied<Iter<'a, u8>>> {
+    pub fn pack8bpp(tiledata: &'a [u8], tile_dim: usize) -> Vec<Self> {
         let chunks: ChunksExact<u8> = tiledata.chunks_exact(tile_dim * tile_dim);
         debug_assert_eq!(chunks.remainder().len(), 0);
-        chunks.map(|x| PixelGenerator(x.to_vec().into_iter())).collect()
+        chunks.map(|x| PixelGenerator(x.iter().copied())).collect()
     }
 }
 

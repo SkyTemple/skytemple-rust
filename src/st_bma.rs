@@ -530,6 +530,7 @@ impl Bma {
     }
 
     #[allow(clippy::option_map_unit_fn)]
+    #[allow(clippy::wrong_self_convention)]
     fn from_pil_step(
         &mut self, is_upper: bool, bpc_layer_id: usize, img: IndexedImage,
         palette_offset: usize, bpc: &mut InputBpc, py: Python
@@ -579,7 +580,7 @@ impl Bma {
         layer.map(|x| *x = chunk_mappings);
         Ok(palettes.0
             .chunks(BPL_IMG_PAL_LEN * 3)
-            .map(|x| x.iter().copied().collect())
+            .map(|x| x.to_vec())
             .collect::<Vec<Vec<u8>>>()
         )
     }

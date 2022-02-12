@@ -149,7 +149,7 @@ impl Bpc {
         #[cfg(not(feature = "python"))]
             let mut l0borrowed = layers[0].borrow_mut(py);
         #[cfg(feature = "python")]
-            let mut l0borrowed = (&layers[0]).borrow_mut(py);
+            let mut l0borrowed = layers[0].borrow_mut(py);
         l0borrowed.tilemap = Self::read_tilemap_data(BpcTilemapDecompressor::run(
             &mut upper_cursor,
             (l0borrowed.chunk_tilemap_len - 1) as usize * (tiling_width * tiling_height) as usize * BPC_TILEMAP_BYTELEN

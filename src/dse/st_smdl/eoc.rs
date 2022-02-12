@@ -18,7 +18,7 @@
  */
 
 use bytes::{Buf, BufMut, BytesMut};
-use pyo3::PyResult;
+use crate::python::PyResult;
 use crate::bytes::StBytes;
 use gettextrs::gettext;
 

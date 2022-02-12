@@ -34,8 +34,7 @@ impl Custom999Compressor {
     {
         let data: Vec<u8> = buffer
             .into_iter()
-            .map(|x| [x % 16, x / 16])
-            .flatten()
+            .flat_map(|x| [x % 16, x / 16])
             .collect();
 
         // For the original algorithm:
@@ -67,12 +66,11 @@ impl Custom999Compressor {
                     diff = 0x10 - diff;  // For the original algorithm: diff = 0x100-diff
                     sign = -sign
                 }
-                let mut code: usize;
-                if sign > 0 {
-                    code = 0;
+                let mut code: usize = if sign > 0 {
+                    0
                 } else {
-                    code = 1;
-                }
+                    1
+                };
                 code = (code as i16 + (diff << 1)) as usize;
                 let len_code = format!("{:b}", code + 1).len() - 1;
                 code = (code + 1) % 2_usize.pow(len_code as u32);

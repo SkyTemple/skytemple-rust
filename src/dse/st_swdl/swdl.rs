@@ -19,7 +19,7 @@
 
 use bytes::{Buf, BufMut, Bytes, BytesMut};
 use gettextrs::gettext;
-use pyo3::PyResult;
+use crate::python::PyResult;
 use crate::bytes::StBytes;
 use crate::dse::date::DseDate;
 use crate::dse::filename::DseFilename;
