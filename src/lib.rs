@@ -18,8 +18,8 @@
  */
 
 #[macro_use] pub(crate) mod encoding_utils;
-
 #[macro_use] pub(crate) mod macros;
+
 pub(crate) mod util;
 pub(crate) mod err;
 pub mod bytes;
@@ -74,6 +74,5 @@ pub mod st_string;
 #[cfg(feature = "dse")]
 pub mod dse;
 
-#[cfg(feature = "python")]
 #[cfg(feature = "with_pmd_wan")]
 pub mod pmd_wan;

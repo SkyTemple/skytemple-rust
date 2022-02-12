@@ -19,9 +19,13 @@
 
 use crate::bytes::StBytes;
 use crate::python::*;
+use num_traits::FromPrimitive;
+use crate::dse::date::DseDate;
+use crate::dse::filename::DseFilename;
+use crate::dse::st_swdl::wavi::SampleFormatConsts;
 
 mod implem {
-    pub use crate::dse::st_swdl::model;
+    pub use crate::dse::st_swdl::swdl;
     pub use crate::dse::st_swdl::wavi;
     pub use crate::dse::st_swdl::pcmd;
     pub use crate::dse::st_swdl::prgi;
@@ -35,10 +39,11 @@ pub(crate) struct SwdlPcmd {
     chunk_data: StBytes
 }
 
-impl From<implem::pcmd::SwdlPcmd> for SwdlPcmd {
-    fn from(source: implem::pcmd::SwdlPcmd) -> Self {
+impl From<&implem::pcmd::SwdlPcmd> for SwdlPcmd {
+    fn from(source: &implem::pcmd::SwdlPcmd) -> Self {
         SwdlPcmd {
-            chunk_data: source.chunk_data,
+            // TODO: Work with references.
+            chunk_data: source.chunk_data.clone(),
         }
     }
 }
@@ -55,8 +60,6 @@ impl From<SwdlPcmd> for implem::pcmd::SwdlPcmd {
 #[derive(Clone)]
 pub(crate) struct SwdlPcmdReference {
     #[pyo3(get, set)]
-    pcmd: Py<SwdlPcmd>,
-    #[pyo3(get, set)]
     offset: u32,
     #[pyo3(get, set)]
     length: u32
@@ -64,25 +67,19 @@ pub(crate) struct SwdlPcmdReference {
 
 impl From<implem::wavi::SwdlPcmdReference> for SwdlPcmdReference {
     fn from(source: implem::wavi::SwdlPcmdReference) -> Self {
-        Python::with_gil(|py| {
-            SwdlPcmdReference {
-                pcmd: Py::new(py, SwdlPcmd::from(source.pcmd)).unwrap(),
-                offset: source.offset,
-                length: source.length,
-            }
-        })
+        SwdlPcmdReference {
+            offset: source.offset,
+            length: source.length,
+        }
     }
 }
 
 impl From<SwdlPcmdReference> for implem::wavi::SwdlPcmdReference {
     fn from(source: SwdlPcmdReference) -> Self {
-        Python::with_gil(|py| {
-            implem::wavi::SwdlPcmdReference {
-                pcmd: source.pcmd.extract::<SwdlPcmd>(py).unwrap().into(),
-                offset: source.offset,
-                length: source.length,
-            }
-        })
+        implem::wavi::SwdlPcmdReference {
+            offset: source.offset,
+            length: source.length,
+        }
     }
 }
 
@@ -90,33 +87,35 @@ impl From<SwdlPcmdReference> for implem::wavi::SwdlPcmdReference {
 #[derive(Clone)]
 pub(crate) struct SwdlSampleInfoTblEntry {
     #[pyo3(get, set)]
-    id: u32,
+    id: u16,
     #[pyo3(get, set)]
-    ftune: u32,
+    ftune: i8,
     #[pyo3(get, set)]
-    ctune: u32,
+    ctune: i8,
     #[pyo3(get, set)]
-    rootkey: u32,
+    rootkey: i8,
     #[pyo3(get, set)]
-    ktps: u32,
+    ktps: i8,
     #[pyo3(get, set)]
-    volume: u32,
+    volume: i8,
     #[pyo3(get, set)]
-    pan: u32,
+    pan: i8,
     #[pyo3(get, set)]
-    unk5: u32,
+    unk5: u8,
     #[pyo3(get, set)]
-    unk58: u32,
+    unk58: u8,
     #[pyo3(get, set)]
-    sample_format: u32,
+    sample_format: u16,
     #[pyo3(get, set)]
-    unk9: u32,
+    unk9: u8,
     #[pyo3(get, set)]
-    unk10: u32,
+    loops: bool,
     #[pyo3(get, set)]
-    unk11: u32,
+    unk10: u16,
     #[pyo3(get, set)]
-    unk12: u32,
+    unk11: u16,
+    #[pyo3(get, set)]
+    unk12: u16,
     #[pyo3(get, set)]
     unk13: u32,
     #[pyo3(get, set)]
@@ -128,33 +127,33 @@ pub(crate) struct SwdlSampleInfoTblEntry {
     #[pyo3(get, set)]
     loop_length: u32,
     #[pyo3(get, set)]
-    envelope: u32,
+    envelope: u8,
     #[pyo3(get, set)]
-    envelope_multiplier: u32,
+    envelope_multiplier: u8,
     #[pyo3(get, set)]
-    unk19: u32,
+    unk19: u8,
     #[pyo3(get, set)]
-    unk20: u32,
+    unk20: u8,
     #[pyo3(get, set)]
-    unk21: u32,
+    unk21: u16,
     #[pyo3(get, set)]
-    unk22: u32,
+    unk22: u16,
     #[pyo3(get, set)]
-    attack_volume: u32,
+    attack_volume: i8,
     #[pyo3(get, set)]
-    attack: u32,
+    attack: i8,
     #[pyo3(get, set)]
-    decay: u32,
+    decay: i8,
     #[pyo3(get, set)]
-    sustain: u32,
+    sustain: i8,
     #[pyo3(get, set)]
-    hold: u32,
+    hold: i8,
     #[pyo3(get, set)]
-    decay2: u32,
+    decay2: i8,
     #[pyo3(get, set)]
-    release: u32,
+    release: i8,
     #[pyo3(get, set)]
-    unk57: u32
+    unk57: i8
 }
 
 impl From<implem::wavi::SwdlSampleInfoTblEntry> for SwdlSampleInfoTblEntry {
@@ -176,7 +175,7 @@ impl From<implem::wavi::SwdlSampleInfoTblEntry> for SwdlSampleInfoTblEntry {
                 pan: source.pan,
                 unk5: source.unk5,
                 unk58: source.unk58,
-                sample_format: source.sample_format,
+                sample_format: source.sample_format.map_or(0, |x| x as u16),
                 unk9: source.unk9,
                 unk22: source.unk22,
                 envelope: source.envelope,
@@ -193,7 +192,8 @@ impl From<implem::wavi::SwdlSampleInfoTblEntry> for SwdlSampleInfoTblEntry {
                 unk10: source.unk10,
                 loop_length: source.loop_length,
                 unk21: source.unk21,
-                unk57: source.unk57
+                unk57: source.unk57,
+                loops: source.loops
             }
         })
     }
@@ -218,7 +218,7 @@ impl From<SwdlSampleInfoTblEntry> for implem::wavi::SwdlSampleInfoTblEntry {
                 pan: source.pan,
                 unk5: source.unk5,
                 unk58: source.unk58,
-                sample_format: source.sample_format,
+                sample_format: SampleFormatConsts::from_u16(source.sample_format),
                 unk9: source.unk9,
                 unk22: source.unk22,
                 envelope: source.envelope,
@@ -235,7 +235,9 @@ impl From<SwdlSampleInfoTblEntry> for implem::wavi::SwdlSampleInfoTblEntry {
                 unk10: source.unk10,
                 loop_length: source.loop_length,
                 unk21: source.unk21,
-                unk57: source.unk57
+                unk57: source.unk57,
+                loops: source.loops,
+                sample_pos: 0
             }
         })
     }
@@ -261,9 +263,17 @@ impl From<implem::wavi::SwdlWavi> for SwdlWavi {
 impl From<SwdlWavi> for implem::wavi::SwdlWavi {
     fn from(source: SwdlWavi) -> Self {
         Python::with_gil(|py| {
-            implem::wavi::SwdlWavi {
-                sample_info_table: source.sample_info_table.into_iter().map(|v| v.map(|v| v.extract::<SwdlSampleInfoTblEntry>(py).unwrap().into())).collect(),
-            }
+            implem::wavi::SwdlWavi::new(
+                source.sample_info_table
+                    .into_iter()
+                    .map(|v|
+                        v.map(|v| v
+                            .extract::<SwdlSampleInfoTblEntry>(py)
+                            .unwrap()
+                            .into()
+                        )
+                    ).collect()
+            )
         })
     }
 }
@@ -272,25 +282,25 @@ impl From<SwdlWavi> for implem::wavi::SwdlWavi {
 #[derive(Clone)]
 pub(crate) struct SwdlLfoEntry {
     #[pyo3(get, set)]
-    unk34: u32,
+    unk34: u8,
     #[pyo3(get, set)]
-    unk52: u32,
+    unk52: u8,
     #[pyo3(get, set)]
-    dest: u32,
+    dest: u8,
     #[pyo3(get, set)]
-    wshape: u32,
+    wshape: u8,
     #[pyo3(get, set)]
-    rate: u32,
+    rate: u8,
     #[pyo3(get, set)]
-    unk29: u32,
+    unk29: u16,
     #[pyo3(get, set)]
-    depth: u32,
+    depth: u16,
     #[pyo3(get, set)]
-    delay: u32,
+    delay: u16,
     #[pyo3(get, set)]
-    unk32: u32,
+    unk32: u16,
     #[pyo3(get, set)]
-    unk33: u32,
+    unk33: u16,
 }
 
 impl From<implem::prgi::SwdlLfoEntry> for SwdlLfoEntry {
@@ -331,73 +341,73 @@ impl From<SwdlLfoEntry> for implem::prgi::SwdlLfoEntry {
 #[derive(Clone)]
 pub(crate) struct SwdlSplitEntry {
     #[pyo3(get, set)]
-    id: u32,
+    id: u8,
     #[pyo3(get, set)]
-    unk11: u32,
+    unk11: u8,
     #[pyo3(get, set)]
-    unk25: u32,
+    unk25: u8,
     #[pyo3(get, set)]
-    lowkey: u32,
+    lowkey: i8,
     #[pyo3(get, set)]
-    hikey: u32,
+    hikey: i8,
     #[pyo3(get, set)]
-    lolevel: u32,
+    lolevel: i8,
     #[pyo3(get, set)]
-    hilevel: u32,
+    hilevel: i8,
     #[pyo3(get, set)]
-    unk16: u32,
+    unk16: i32,
     #[pyo3(get, set)]
-    unk17: u32,
+    unk17: i16,
     #[pyo3(get, set)]
-    sample_id: u32,
+    sample_id: u16,
     #[pyo3(get, set)]
-    ftune: u32,
+    ftune: i8,
     #[pyo3(get, set)]
-    ctune: u32,
+    ctune: i8,
     #[pyo3(get, set)]
-    rootkey: u32,
+    rootkey: i8,
     #[pyo3(get, set)]
-    ktps: u32,
+    ktps: i8,
     #[pyo3(get, set)]
-    sample_volume: u32,
+    sample_volume: i8,
     #[pyo3(get, set)]
-    sample_pan: u32,
+    sample_pan: i8,
     #[pyo3(get, set)]
-    keygroup_id: u32,
+    keygroup_id: i8,
     #[pyo3(get, set)]
-    unk22: u32,
+    unk22: u16,
     #[pyo3(get, set)]
-    unk23: u32,
+    unk23: u16,
     #[pyo3(get, set)]
-    unk24: u32,
+    unk24: u16,
     #[pyo3(get, set)]
-    envelope: u32,
+    envelope: u8,
     #[pyo3(get, set)]
-    envelope_multiplier: u32,
+    envelope_multiplier: u8,
     #[pyo3(get, set)]
-    unk37: u32,
+    unk37: u8,
     #[pyo3(get, set)]
-    unk38: u32,
+    unk38: u8,
     #[pyo3(get, set)]
-    unk39: u32,
+    unk39: u16,
     #[pyo3(get, set)]
-    unk40: u32,
+    unk40: u16,
     #[pyo3(get, set)]
-    attack_volume: u32,
+    attack_volume: i8,
     #[pyo3(get, set)]
-    attack: u32,
+    attack: i8,
     #[pyo3(get, set)]
-    decay: u32,
+    decay: i8,
     #[pyo3(get, set)]
-    sustain: u32,
+    sustain: i8,
     #[pyo3(get, set)]
-    hold: u32,
+    hold: i8,
     #[pyo3(get, set)]
-    decay2: u32,
+    decay2: i8,
     #[pyo3(get, set)]
-    release: u32,
+    release: i8,
     #[pyo3(get, set)]
-    unk53: u32,
+    unk53: i8,
 }
 
 impl From<implem::prgi::SwdlSplitEntry> for SwdlSplitEntry {
@@ -486,33 +496,33 @@ impl From<SwdlSplitEntry> for implem::prgi::SwdlSplitEntry {
 #[derive(Clone)]
 pub(crate) struct SwdlProgramTable {
     #[pyo3(get, set)]
-    id: u32,
+    id: u16,
     #[pyo3(get, set)]
-    prg_volume: u32,
+    prg_volume: i8,
     #[pyo3(get, set)]
-    prg_pan: u32,
+    prg_pan: i8,
     #[pyo3(get, set)]
-    unk3: u32,
+    unk3: u8,
     #[pyo3(get, set)]
-    that_f_byte: u32,
+    that_f_byte: u8,
     #[pyo3(get, set)]
-    unk4: u32,
+    unk4: u16,
     #[pyo3(get, set)]
-    unk5: u32,
+    unk5: u16,
     #[pyo3(get, set)]
-    unk7: u32,
+    unk7: u8,
     #[pyo3(get, set)]
-    unk8: u32,
+    unk8: u8,
     #[pyo3(get, set)]
-    unk9: u32,
+    unk9: u8,
     #[pyo3(get, set)]
     lfos: Vec<Py<SwdlLfoEntry>>,
     #[pyo3(get, set)]
     splits: Vec<Py<SwdlSplitEntry>>,
 }
 
-impl From<implem::prgi::SwdlProgramTable> for SwdlProgramTable {
-    fn from(source: implem::prgi::SwdlProgramTable) -> Self {
+impl From<implem::prgi::SwdlProgram> for SwdlProgramTable {
+    fn from(source: implem::prgi::SwdlProgram) -> Self {
         Python::with_gil(|py| {
             SwdlProgramTable {
                 id: source.id,
@@ -532,10 +542,10 @@ impl From<implem::prgi::SwdlProgramTable> for SwdlProgramTable {
     }
 }
 
-impl From<SwdlProgramTable> for implem::prgi::SwdlProgramTable {
+impl From<SwdlProgramTable> for implem::prgi::SwdlProgram {
     fn from(source: SwdlProgramTable) -> Self {
         Python::with_gil(|py| {
-            implem::prgi::SwdlProgramTable {
+            implem::prgi::SwdlProgram {
                 id: source.id,
                 prg_volume: source.prg_volume,
                 prg_pan: source.prg_pan,
@@ -548,6 +558,7 @@ impl From<SwdlProgramTable> for implem::prgi::SwdlProgramTable {
                 unk9: source.unk9,
                 lfos: source.lfos.into_iter().map(|v| v.extract::<SwdlLfoEntry>(py).unwrap().into()).collect(),
                 splits: source.splits.into_iter().map(|v| v.extract::<SwdlSplitEntry>(py).unwrap().into()).collect(),
+                delimiter: 0x00
             }
         })
     }
@@ -584,19 +595,19 @@ impl From<SwdlPrgi> for implem::prgi::SwdlPrgi {
 #[derive(Clone)]
 pub(crate) struct SwdlKeygroup {
     #[pyo3(get, set)]
-    id: u32,
+    id: u16,
     #[pyo3(get, set)]
-    poly: u32,
+    poly: i8,
     #[pyo3(get, set)]
-    priority: u32,
+    priority: u8,
     #[pyo3(get, set)]
-    vclow: u32,
+    vclow: u8,
     #[pyo3(get, set)]
-    vchigh: u32,
+    vchigh: u8,
     #[pyo3(get, set)]
-    unk50: u32,
+    unk50: u8,
     #[pyo3(get, set)]
-    unk51: u32,
+    unk51: u8,
 }
 
 impl From<implem::kgrp::SwdlKeygroup> for SwdlKeygroup {
@@ -658,13 +669,13 @@ impl From<SwdlKgrp> for implem::kgrp::SwdlKgrp {
 #[derive(Clone)]
 pub(crate) struct SwdlPcmdLen {
     #[pyo3(get, set)]
-    reference: Option<u32>,
+    reference: u32,
     #[pyo3(get, set)]
     external: bool,
 }
 
-impl From<implem::model::SwdlPcmdLen> for SwdlPcmdLen {
-    fn from(source: implem::model::SwdlPcmdLen) -> Self {
+impl From<implem::swdl::SwdlPcmdLen> for SwdlPcmdLen {
+    fn from(source: implem::swdl::SwdlPcmdLen) -> Self {
         SwdlPcmdLen {
             reference: source.reference,
             external: source.external,
@@ -672,9 +683,9 @@ impl From<implem::model::SwdlPcmdLen> for SwdlPcmdLen {
     }
 }
 
-impl From<SwdlPcmdLen> for implem::model::SwdlPcmdLen {
+impl From<SwdlPcmdLen> for implem::swdl::SwdlPcmdLen {
     fn from(source: SwdlPcmdLen) -> Self {
-        implem::model::SwdlPcmdLen {
+        implem::swdl::SwdlPcmdLen {
             reference: source.reference,
             external: source.external,
         }
@@ -685,11 +696,11 @@ impl From<SwdlPcmdLen> for implem::model::SwdlPcmdLen {
 #[derive(Clone)]
 pub(crate) struct SwdlHeader {
     #[pyo3(get, set)]
-    version: u32,
+    version: u16,
     #[pyo3(get, set)]
-    unk1: u32,
+    unk1: u8,
     #[pyo3(get, set)]
-    unk2: u32,
+    unk2: u8,
     #[pyo3(get, set)]
     modified_date: StBytes,
     #[pyo3(get, set)]
@@ -697,13 +708,13 @@ pub(crate) struct SwdlHeader {
     #[pyo3(get, set)]
     unk13: u32,
     #[pyo3(get, set)]
-    pcmdlen: u32,
+    pcmdlen: SwdlPcmdLen,
     #[pyo3(get, set)]
-    unk17: u32,
+    unk17: u16,
 }
 
-impl From<implem::model::SwdlHeader> for SwdlHeader {
-    fn from(source: implem::model::SwdlHeader) -> Self {
+impl From<implem::swdl::SwdlHeader> for SwdlHeader {
+    fn from(source: implem::swdl::SwdlHeader) -> Self {
         SwdlHeader {
             version: source.version,
             unk1: source.unk1,
@@ -711,24 +722,24 @@ impl From<implem::model::SwdlHeader> for SwdlHeader {
             modified_date: source.modified_date.into(),
             file_name: source.file_name.into(),
             unk13: source.unk13,
-            pcmdlen: source.pcmdlen,
+            pcmdlen: source.pcmdlen.into(),
             unk17: source.unk17,
         }
     }
 }
 
-impl From<SwdlHeader> for implem::model::SwdlHeader {
+impl From<SwdlHeader> for implem::swdl::SwdlHeader {
     fn from(mut source: SwdlHeader) -> Self {
-        implem::model::SwdlHeader {
-            version: source.version,
-            unk1: source.unk1,
-            unk2: source.unk2,
-            modified_date: (&mut source.modified_date).into(),
-            file_name: (&mut source.file_name).into(),
-            unk13: source.unk13,
-            pcmdlen: source.pcmdlen,
-            unk17: source.unk17,
-        }
+        implem::swdl::SwdlHeader::new(
+            source.version,
+            source.unk1,
+            source.unk2,
+            DseDate::from(&mut source.modified_date),
+            DseFilename::from(&mut source.file_name),
+            source.unk13,
+            source.pcmdlen.into(),
+            source.unk17
+        )
     }
 }
 
@@ -750,8 +761,8 @@ pub(crate) struct Swdl {
 #[pymethods]
 impl Swdl {
     #[new]
-    pub fn new(data: StBytes) -> Self {
-        implem::model::Swdl::from(data).into()
+    pub fn new(data: StBytes) -> PyResult<Self> {
+        Ok(<PyResult<implem::swdl::Swdl>>::from(data)?.into())
     }
 }
 
@@ -765,18 +776,18 @@ impl SwdlWriter {
     pub fn new() -> Self {
         Self
     }
-    pub fn write(&self, model: Swdl, py: Python) -> StBytes {
-        implem::model::Swdl::from(model).into()
+    pub fn write(&self, model: Swdl) -> StBytes {
+        implem::swdl::Swdl::from(model).into()
     }
 }
 
-impl From<implem::model::Swdl> for Swdl {
-    fn from(source: implem::model::Swdl) -> Self {
+impl From<implem::swdl::Swdl> for Swdl {
+    fn from(source: implem::swdl::Swdl) -> Self {
         Python::with_gil(|py| {
             Swdl {
                 header: Py::new(py, SwdlHeader::from(source.header)).unwrap(),
                 wavi: Py::new(py, SwdlWavi::from(source.wavi)).unwrap(),
-                pcmd: source.pcmd.map(|v| Py::new(py, SwdlPcmd::from(v)).unwrap()),
+                pcmd: source.pcmd.map(|v| Py::new(py, SwdlPcmd::from(&v)).unwrap()),
                 prgi: source.prgi.map(|v| Py::new(py, SwdlPrgi::from(v)).unwrap()),
                 kgrp: source.kgrp.map(|v| Py::new(py, SwdlKgrp::from(v)).unwrap()),
             }
@@ -784,10 +795,10 @@ impl From<implem::model::Swdl> for Swdl {
     }
 }
 
-impl From<Swdl> for implem::model::Swdl {
+impl From<Swdl> for implem::swdl::Swdl {
     fn from(source: Swdl) -> Self {
         Python::with_gil(|py| {
-            implem::model::Swdl {
+            implem::swdl::Swdl {
                 header: source.header.extract::<SwdlHeader>(py).unwrap().into(),
                 wavi: source.wavi.extract::<SwdlWavi>(py).unwrap().into(),
                 pcmd: source.pcmd.map(|v| v.extract::<SwdlPcmd>(py).unwrap().into()),

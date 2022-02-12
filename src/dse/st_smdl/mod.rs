@@ -19,4 +19,8 @@
 
 #[cfg(feature = "python")]
 pub(crate) mod python;
-pub mod model;
+pub mod smdl;
+pub mod trk;
+pub mod song;
+pub mod eoc;
+pub mod event;

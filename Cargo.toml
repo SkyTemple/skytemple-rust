@@ -22,7 +22,7 @@ kao = ["compression", "image", "arr_macro"]
 map_bg = ["compression", "image"]
 dse = ["chrono"]
 
-with_pmd_wan = ["pmd_wan", "anyhow"]
+with_pmd_wan = ["pmd_wan", "anyhow", "python"]
 
 [dependencies]
 skytemple_rust_macros = { path = "skytemple_rust_macros" }

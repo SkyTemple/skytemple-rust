@@ -20,7 +20,7 @@
 use crate::bytes::StBytes;
 use crate::encoding::{BufEncoding, BufMutEncoding};
 use encoding::codec::ascii::ASCIIEncoding;
-use std::iter::{once, repeat};
+use std::iter::repeat;
 use bytes::{BytesMut, BufMut};
 use encoding::{DecoderTrap, EncoderTrap};
 

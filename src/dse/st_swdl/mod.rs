@@ -19,7 +19,7 @@
 
 #[cfg(feature = "python")]
 pub(crate) mod python;
-pub mod model;
+pub mod swdl;
 pub mod kgrp;
 pub mod pcmd;
 pub mod prgi;

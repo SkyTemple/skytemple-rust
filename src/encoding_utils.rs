@@ -128,6 +128,7 @@ impl<'a, St: Default, Data> crate::encoding_utils::StatefulDecoderHelper<'a, St,
     }
 }
 
+#[cfg(feature = "strings")]
 /// Defines a stateful decoder from given state machine.
 macro_rules! stateful_decoder {
     (
