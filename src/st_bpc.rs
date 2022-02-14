@@ -776,10 +776,9 @@ impl BpcWriter {
         let mut data = BytesMut::with_capacity(length as usize * BPC_TILEMAP_BYTELEN);
         // Skip first chunk (null)
         for entry in layer.tilemap.iter().skip((model.tiling_width * model.tiling_height) as usize) {
-            let entry = entry.extract::<TilemapEntry>(py)?;
-            data.put_u16_le(usize::from(entry) as u16)
+            let entry = entry.extract::<InputTilemapEntry>(py)?;
+            data.put_u16_le(entry.0.borrow(py).to_int() as u16);
         }
-
         BpcTilemapCompressor::run(data.freeze())
     }
 }
