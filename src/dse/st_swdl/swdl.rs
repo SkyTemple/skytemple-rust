@@ -59,15 +59,16 @@ impl From<SwdlPcmdLen> for StBytes {
     fn from(source: SwdlPcmdLen) -> Self {
         let mut b = BytesMut::with_capacity(4);
         if source.external {
-            b.put_u32_le(source.reference + (0xAAAA << 0x10))
+            b.put_u32_le((source.reference & 0x10) + (0xAAAA << 0x10))
         } else {
             b.put_u32_le(source.reference)
         }
+        debug_assert_eq!(source, <PyResult<SwdlPcmdLen>>::from(&mut StBytes::from(b.clone())).unwrap());
         b.into()
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct SwdlHeader {
     pub version: u16,
     pub unk1: u8,
@@ -218,11 +219,11 @@ impl From<StBytes> for PyResult<Swdl> {
 
 impl From<Swdl> for StBytes {
     fn from(source: Swdl) -> Self {
-        let pcmd = StBytes::from(source.pcmd.unwrap_or_default()).0;
-        let pcmdlen = if !pcmd.is_empty() {
-            SwdlPcmdLen::new(pcmd.len() as u32, false)
-        } else {
-            SwdlPcmdLen::new(source.header.pcmdlen.reference, true)
+        let (pcmdlen, pcmd) = if let Some(pcmd) = source.pcmd { (
+            SwdlPcmdLen::new(pcmd.chunk_data.len() as u32, false),
+            StBytes::from(pcmd).0
+        ) } else {
+            (SwdlPcmdLen::new(source.header.pcmdlen.reference, true), Bytes::new())
         };
 
         // The file might have PRGI slots set, even if none are defined
@@ -236,8 +237,16 @@ impl From<Swdl> for StBytes {
         let wavi_len = wavi.len() - 0x10;
 
         let data = wavi.into_iter()
-            .chain(StBytes::from(source.prgi.unwrap_or_default()).0.into_iter())
-            .chain(StBytes::from(source.kgrp.unwrap_or_default()).0.into_iter())
+            .chain(if let Some(prgi) = source.prgi {
+                StBytes::from(prgi).0
+            } else {
+                Bytes::new()
+            }.into_iter())
+            .chain(if let Some(kgrp) = source.kgrp {
+                StBytes::from(kgrp).0
+            } else {
+                Bytes::new()
+            }.into_iter())
             .chain(pcmd.into_iter())
             .chain(b"eod \x00\x00\x15\x04\x10\x00\x00\x00\x00\x00\x00\x00".iter().copied())
             .collect::<Bytes>();

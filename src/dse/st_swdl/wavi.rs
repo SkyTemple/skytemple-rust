@@ -37,7 +37,7 @@ pub enum SampleFormatConsts {
     Psg = 0x0300,  // possibly
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct SwdlPcmdReference {
     pub offset: u32,
     pub length: u32
@@ -53,7 +53,7 @@ impl SwdlPcmdReference {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct SwdlSampleInfoTblEntry {
     pub id: u16,
     pub ftune: i8,
@@ -171,8 +171,8 @@ impl From<SwdlSampleInfoTblEntry> for StBytes {
         b.put_i8(source.pan);
         b.put_u8(source.unk5);
         b.put_u8(source.unk58);
-        b.put(&[0xAA, 0xAA, 0x15, 0x04][..]);
-        b.put_u16(source.sample_format.map_or(0, |x| x as u16));
+        b.put(&[0x00, 0x00, 0xAA, 0xAA, 0x15, 0x04][..]);
+        b.put_u16_le(source.sample_format.map_or(0, |x| x as u16));
         b.put_u8(source.unk9);
         b.put_u8(source.loops as u8);
         b.put_u16_le(source.unk10);
@@ -203,7 +203,7 @@ impl From<SwdlSampleInfoTblEntry> for StBytes {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct SwdlWavi {
     pub sample_info_table: Vec<Option<SwdlSampleInfoTblEntry>>,
     initial_length: usize
@@ -227,9 +227,10 @@ impl SwdlWavi {
         // 0x00, 0x00, 0x15, 0x04, 0x10, 0x00, 0x00, 0x00:
         source.advance(8);
         let len_chunk_data = source.get_u32_le();
+        let mut toc = source.clone();
         let sample_info_table = (0..(number_slots))
             .map(|_| {
-                let pnt = source.get_u16_le();
+                let pnt = toc.get_u16_le();
                 pyr_assert!((pnt as u32) < len_chunk_data, gettext("SWDL Wavi length invalid; tried to read past EOF."));
                 if pnt > 0 {
                     let mut dst = source.clone();
@@ -241,7 +242,7 @@ impl SwdlWavi {
                 }
             })
             .collect::<PyResult<Vec<Option<SwdlSampleInfoTblEntry>>>>()?;
-        source.advance(number_slots as usize * 2);
+        source.advance(len_chunk_data as usize);
         Ok(Self {
             sample_info_table, initial_length: (len_chunk_data + 0x10) as usize
         })
@@ -262,17 +263,19 @@ impl From<SwdlWavi> for StBytes {
         for wav in source.sample_info_table.into_iter() {
             match wav {
                 Some(wav) => {
-                    toc.put_u16_le(content.len() as u16);
+                    toc.put_u16_le((toc_len + content.len()) as u16);
                     content.put(StBytes::from(wav).0)
                 }
                 None => toc.put_u16_le(0)
             }
         }
+        debug_assert_eq!(toc.len(), toc_len);
 
         let mut data = BytesMut::with_capacity(0x10);
-        data.put(&b"wavi\0\0\x15\x04\x10\0\0\0\0\0\0\0"[..]);
+        data.put(&b"wavi\0\0\x15\x04\x10\0\0\0"[..]);
         data.put_u32_le((toc_len + content.len()) as u32);
         data.put(toc);
+        debug_assert_eq!(0x10 + toc_len, data.len());
         data.put(content);
         data.into()
     }

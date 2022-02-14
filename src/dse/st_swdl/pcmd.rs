@@ -56,9 +56,8 @@ impl From<SwdlPcmd> for StBytes {
             // TODO: is this ok???
             padding.extend(repeat(0).take(16 - ((source.chunk_data.len() + padding.len()) % 16)))
         }
-
-        let mut data = BytesMut::with_capacity(0x10);
-        data.put(&b"pcmd\0\0\x15\x04\x10\0\0\0\0\0\0\0"[..]);
+        let mut data = BytesMut::with_capacity(0x10 + source.chunk_data.len() + padding.len());
+        data.put(&b"pcmd\0\0\x15\x04\x10\0\0\0"[..]);
         data.put_u32_le((source.chunk_data.len()) as u32);
         data.put(source.chunk_data.0);
         data.put(padding);

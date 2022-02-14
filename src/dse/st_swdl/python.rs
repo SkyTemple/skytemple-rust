@@ -153,7 +153,8 @@ pub(crate) struct SwdlSampleInfoTblEntry {
     #[pyo3(get, set)]
     release: i8,
     #[pyo3(get, set)]
-    unk57: i8
+    unk57: i8,
+    sample_pos: u32
 }
 
 impl From<implem::wavi::SwdlSampleInfoTblEntry> for SwdlSampleInfoTblEntry {
@@ -193,7 +194,8 @@ impl From<implem::wavi::SwdlSampleInfoTblEntry> for SwdlSampleInfoTblEntry {
                 loop_length: source.loop_length,
                 unk21: source.unk21,
                 unk57: source.unk57,
-                loops: source.loops
+                loops: source.loops,
+                sample_pos: source.sample_pos
             }
         })
     }
@@ -237,7 +239,7 @@ impl From<SwdlSampleInfoTblEntry> for implem::wavi::SwdlSampleInfoTblEntry {
                 unk21: source.unk21,
                 unk57: source.unk57,
                 loops: source.loops,
-                sample_pos: 0
+                sample_pos: source.sample_pos
             }
         })
     }
@@ -290,7 +292,7 @@ pub(crate) struct SwdlLfoEntry {
     #[pyo3(get, set)]
     wshape: u8,
     #[pyo3(get, set)]
-    rate: u8,
+    rate: u16,
     #[pyo3(get, set)]
     unk29: u16,
     #[pyo3(get, set)]
@@ -375,7 +377,7 @@ pub(crate) struct SwdlSplitEntry {
     #[pyo3(get, set)]
     keygroup_id: i8,
     #[pyo3(get, set)]
-    unk22: u16,
+    unk22: u8,
     #[pyo3(get, set)]
     unk23: u16,
     #[pyo3(get, set)]
@@ -508,7 +510,7 @@ pub(crate) struct SwdlProgramTable {
     #[pyo3(get, set)]
     unk4: u16,
     #[pyo3(get, set)]
-    unk5: u16,
+    unk5: u8,
     #[pyo3(get, set)]
     unk7: u8,
     #[pyo3(get, set)]

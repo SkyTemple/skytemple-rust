@@ -104,7 +104,7 @@ impl From<SwdlKgrp> for StBytes {
         }
 
         let mut data = BytesMut::with_capacity(0x10);
-        data.put(&b"kgrp\0\0\x15\x04\x10\0\0\0\0\0\0\0"[..]);
+        data.put(&b"kgrp\0\0\x15\x04\x10\0\0\0"[..]);
         data.put_u32_le(len_content as u32);
         data.put(content);
         data.into()
