@@ -32,12 +32,6 @@ impl TilemapEntry {
     pub fn new(idx: usize, flip_x: bool, flip_y: bool, pal_idx: u8, ignore_too_large: bool) -> Self {
         Self(idx, flip_x, flip_y, pal_idx)
     }
-    pub fn to_int(&self) -> usize {
-        (self.0 & 0x3FF) +
-            (if self.1 { 1 } else { 0 } << 10) +
-            (if self.2 { 1 } else { 0 } << 11) +
-            ((self.3 as usize & 0x3F) << 12) as usize
-    }
     #[classmethod]
     pub fn from_int(_cls: &PyType, i: usize) -> Self {
         Self::from(i)
@@ -95,15 +89,24 @@ impl From<usize> for TilemapEntry {
     }
 }
 
-impl From<&TilemapEntry> for usize {
-    fn from(entry: &TilemapEntry) -> Self {
-        entry.to_int()
-    }
-}
-
 impl From<TilemapEntry> for usize {
     fn from(entry: TilemapEntry) -> Self {
         entry.into()
+    }
+}
+
+impl TilemapEntry {
+    pub fn to_int(&self) -> usize {
+        (self.0 & 0x3FF) +
+            (if self.1 { 1 } else { 0 } << 10) +
+            (if self.2 { 1 } else { 0 } << 11) +
+            ((self.3 as usize & 0x3F) << 12) as usize
+    }
+}
+
+impl From<&TilemapEntry> for usize {
+    fn from(entry: &TilemapEntry) -> Self {
+        entry.to_int()
     }
 }
 
