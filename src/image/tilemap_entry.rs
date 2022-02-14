@@ -17,6 +17,7 @@
  * along with SkyTemple.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+use std::borrow::Borrow;
 use crate::python::*;
 
 #[derive(PartialEq, Eq, Debug, Clone)]
@@ -96,7 +97,7 @@ impl From<TilemapEntry> for usize {
 }
 
 impl TilemapEntry {
-    pub fn to_int(&self) -> usize {
+    fn _to_int(&self) -> usize {
         (self.0 & 0x3FF) +
             (if self.1 { 1 } else { 0 } << 10) +
             (if self.2 { 1 } else { 0 } << 11) +
@@ -160,6 +161,7 @@ pub trait ProvidesTilemapEntry {
     fn flip_x(&self) -> bool;
     fn flip_y(&self) -> bool;
     fn pal_idx(&self) -> u8;
+    fn to_int(&self) -> usize;
 }
 
 impl ProvidesTilemapEntry for TilemapEntry {
@@ -177,6 +179,10 @@ impl ProvidesTilemapEntry for TilemapEntry {
 
     fn pal_idx(&self) -> u8 {
         self.3
+    }
+
+    fn to_int(&self) -> usize {
+        TilemapEntry::_to_int(self)
     }
 }
 
@@ -196,6 +202,10 @@ impl ProvidesTilemapEntry for &TilemapEntry {
     fn pal_idx(&self) -> u8 {
         self.3
     }
+
+    fn to_int(&self) -> usize {
+        TilemapEntry::_to_int(self)
+    }
 }
 
 #[cfg(feature = "python")]
@@ -214,5 +224,32 @@ impl<'py> ProvidesTilemapEntry for PyRef<'py, TilemapEntry> {
 
     fn pal_idx(&self) -> u8 {
         self.3
+    }
+
+    fn to_int(&self) -> usize {
+        TilemapEntry::_to_int(self)
+    }
+}
+
+#[cfg(feature = "python")]
+impl ProvidesTilemapEntry for InputTilemapEntry {
+    fn idx(&self) -> usize {
+        Python::with_gil(|py| self.0.borrow(py).0)
+    }
+
+    fn flip_x(&self) -> bool {
+        Python::with_gil(|py| self.0.borrow(py).1)
+    }
+
+    fn flip_y(&self) -> bool {
+        Python::with_gil(|py| self.0.borrow(py).2)
+    }
+
+    fn pal_idx(&self) -> u8 {
+        Python::with_gil(|py| self.0.borrow(py).3)
+    }
+
+    fn to_int(&self) -> usize {
+        Python::with_gil(|py| self.0.borrow(py)._to_int())
     }
 }

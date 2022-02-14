@@ -26,7 +26,7 @@ use crate::compression::bpc_image::{BpcImageCompressor, BpcImageDecompressor};
 use crate::compression::bpc_tilemap::{BpcTilemapCompressor, BpcTilemapDecompressor};
 use crate::image::{In16ColIndexedImage, In256ColIndexedImage, IndexedImage, InIndexedImage, PixelGenerator};
 use crate::image::tiled::TiledImage;
-use crate::image::tilemap_entry::{InputTilemapEntry, TilemapEntry};
+use crate::image::tilemap_entry::{InputTilemapEntry, ProvidesTilemapEntry, TilemapEntry};
 use crate::python::*;
 // For non-Python
 #[allow(unused_imports)]
@@ -777,7 +777,7 @@ impl BpcWriter {
         // Skip first chunk (null)
         for entry in layer.tilemap.iter().skip((model.tiling_width * model.tiling_height) as usize) {
             let entry = entry.extract::<InputTilemapEntry>(py)?;
-            data.put_u16_le(entry.0.borrow(py).to_int() as u16);
+            data.put_u16_le(entry.to_int() as u16);
         }
         BpcTilemapCompressor::run(data.freeze())
     }
