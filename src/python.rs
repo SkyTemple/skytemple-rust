@@ -37,7 +37,7 @@ pub use crate::python_image::*;
 pub type PyClonedByRef<T> = Py<T>;
 
 #[cfg(not(feature = "python"))]
-pub use crate::no_python::*;
+pub(crate) use crate::no_python::*;
 
 #[inline]
 #[allow(unused)]

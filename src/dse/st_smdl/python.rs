@@ -78,7 +78,7 @@ impl From<SmdlHeader> for implem::smdl::SmdlHeader {
             unk1: source.unk1,
             unk2: source.unk2,
             modified_date: DseDate::from(&mut source.modified_date),
-            file_name: DseFilename::from(&mut source.file_name),
+            file_name: DseFilename::from(&mut source.file_name.0),
             unk5: source.unk5,
             unk6: source.unk6,
             unk8: source.unk8,

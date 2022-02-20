@@ -36,15 +36,17 @@ impl<'source> FromPyObject<'source> for RomSource<&'source PyAny> {
 }
 
 pub trait RomFileProvider {
-    #[allow(non_snake_case)]
-    fn getFileByName(&self, filename: &str) -> PyResult<Vec<u8>>;
+    fn get_file_by_name(&self, filename: &str) -> PyResult<Vec<u8>>;
+    fn list_files_in_folder(&self, filename: &str) -> PyResult<Vec<String>>;
 }
 
 #[cfg(feature = "python")]
 impl RomFileProvider for &PyAny {
-    #[allow(non_snake_case)]
-    fn getFileByName(&self, filename: &str) -> PyResult<Vec<u8>> {
+    fn get_file_by_name(&self, filename: &str) -> PyResult<Vec<u8>> {
         let args = PyTuple::new(self.py(), [filename]);
         self.call_method1("getFileByName", args)?.extract()
+    }
+    fn list_files_in_folder(&self, _filename: &str) -> PyResult<Vec<String>> {
+        unimplemented!()
     }
 }

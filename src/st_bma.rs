@@ -299,7 +299,7 @@ impl Bma {
 
                     fimg.0.paste_masked(
                         img.0.crop(0, *mt_idx as usize * chunk_width, chunk_width, chunk_height),
-                        x * chunk_width, y * chunk_height
+                        x * chunk_width, y * chunk_height, true
                     );
                 }
                 if single_frame {

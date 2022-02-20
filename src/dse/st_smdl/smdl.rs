@@ -43,6 +43,16 @@ pub struct SmdlHeader {
     pub unk9: u32,
 }
 
+impl Smdl {
+    /// Returns the inner name of a SWDL file (stored in the header), without
+    /// the overhead of reading in the entire file.
+    /// This won't do any checks, so if an invalid / non-SWDL file is passed in,
+    /// this will likely panic.
+    pub fn name_for<T: AsRef<[u8]> + Buf>(raw: &T) -> DseFilename {
+        DseFilename::from(&mut (&raw.as_ref()[0x20..0x30]))
+    }
+}
+
 impl From<&mut StBytes> for PyResult<SmdlHeader> {
     fn from(source: &mut StBytes) -> Self {
         pyr_assert!(source.len() >= 64, gettext("SMDL file too short (Header EOF)."));

@@ -12,6 +12,7 @@ name = "skytemple_rust"
 
 [features]
 default = ["python", "strings", "compression", "image", "kao", "map_bg", "dse", "with_pmd_wan"]
+# non default: romfs
 python = ["pyo3", "pyo3-log"]
 
 strings = ["encoding-index-singlebyte"]
@@ -23,6 +24,8 @@ map_bg = ["compression", "image"]
 dse = ["chrono"]
 
 with_pmd_wan = ["pmd_wan", "anyhow", "python"]
+
+romfs = ["nitro_fs", "memmap"]
 
 [dependencies]
 skytemple_rust_macros = { path = "skytemple_rust_macros" }
@@ -40,3 +43,5 @@ encoding-index-singlebyte = { version = "1", optional = true }
 chrono = { version = "0.4", optional = true }
 pmd_wan = { version = "3.0.1", optional = true }
 anyhow = { version = "1", optional = true }
+nitro_fs = { version = "0.1", optional = true }
+memmap = { version = "0.7", optional = true }

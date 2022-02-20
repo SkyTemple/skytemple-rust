@@ -737,7 +737,7 @@ impl From<SwdlHeader> for implem::swdl::SwdlHeader {
             source.unk1,
             source.unk2,
             DseDate::from(&mut source.modified_date),
-            DseFilename::from(&mut source.file_name),
+            DseFilename::from(&mut source.file_name.0),
             source.unk13,
             source.pcmdlen.into(),
             source.unk17

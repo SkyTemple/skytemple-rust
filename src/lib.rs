@@ -76,3 +76,7 @@ pub mod dse;
 
 #[cfg(feature = "with_pmd_wan")]
 pub mod pmd_wan;
+#[cfg(feature = "romfs")]
+pub mod romfs;
+
+pub type PyResult<T> = crate::python::PyResult<T>;

@@ -76,7 +76,7 @@ impl BgListEntry {
             RomSource::Folder(f) => fs::read(
                 Path::new(f).join(path)
             ).map(StBytes::from).map_err(convert_io_err),
-            RomSource::Rom(r) => r.getFileByName(path).map(StBytes::from)
+            RomSource::Rom(r) => r.get_file_by_name(path).map(StBytes::from)
         }
     }
 }

@@ -17,7 +17,6 @@
  * along with SkyTemple.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-use std::borrow::Borrow;
 use crate::python::*;
 
 #[derive(PartialEq, Eq, Debug, Clone)]

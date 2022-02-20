@@ -24,7 +24,7 @@ use std::fmt::{Display, Formatter};
 use std::io;
 pub use skytemple_rust_macros::*;
 
-pub type PyResult<T> = Result<T, PyErr>;
+pub(crate) type PyResult<T> = Result<T, PyErr>;
 
 /// Dummy. Just pass this when you don't use Python.
 #[derive(Copy, Clone)]

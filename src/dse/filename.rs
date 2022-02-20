@@ -17,11 +17,12 @@
  * along with SkyTemple.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+use std::fmt::{Display, Formatter};
 use crate::bytes::StBytes;
 use crate::encoding::{BufEncoding, BufMutEncoding};
 use encoding::codec::ascii::ASCIIEncoding;
 use std::iter::repeat;
-use bytes::{BytesMut, BufMut};
+use bytes::{BytesMut, BufMut, Buf};
 use encoding::{DecoderTrap, EncoderTrap};
 
 #[derive(Clone, Debug)]
@@ -33,8 +34,8 @@ impl DseFilename {
     }
 }
 
-impl From<&mut StBytes> for DseFilename {
-    fn from(source: &mut StBytes) -> Self {
+impl<T: AsRef<[u8]> + Buf> From<&mut T> for DseFilename {
+    fn from(source: &mut T) -> Self {
         Self(source.get_c_string(ASCIIEncoding, DecoderTrap::Ignore).unwrap())
     }
 }
@@ -56,5 +57,11 @@ impl From<DseFilename> for StBytes {
             target.extend(repeat(0xFF).take(16 - target.len()))
         }
         target.into()
+    }
+}
+
+impl Display for DseFilename {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        self.0.fmt(f)
     }
 }

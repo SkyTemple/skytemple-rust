@@ -25,10 +25,17 @@ macro_rules! pyr_assert {
             ));
         }
     }};
-    ($cond:expr, $($arg:tt)+) => {{
+    ($cond:expr, $msg:expr) => {{
         if !$cond {
             return Err(crate::python::exceptions::PyAssertionError::new_err(
-                format!("{} | {} [{}:{}]", $($arg)*, stringify!($cond), file!(), line!())
+                format!("{} | {} [{}:{}]", $msg, stringify!($cond), file!(), line!())
+            ));
+        }
+    }};
+    ($cond:expr, $msg:expr, $exc:ident) => {{
+        if !$cond {
+            return Err($exc::new_err(
+                format!("{} | {} [{}:{}]", $msg, stringify!($cond), file!(), line!())
             ));
         }
     }};

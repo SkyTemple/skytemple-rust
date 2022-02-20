@@ -11,6 +11,7 @@ jobs:
           - ""
           - "python"
           - "default"
+          - "default,romfs"
           - "image"
           - "image,python"
           - "compression"
@@ -23,7 +24,10 @@ jobs:
           - "map_bg,kao,python"
           - "strings"
           - "strings,python"
-          - "strings,map_bg,kao,python,python,with_pmd_wan"
+          - "dse"
+          - "dse,python"
+          - "romfs"
+          - "strings,map_bg,kao,python,python,with_pmd_wan,dse"
     name: Build
     runs-on: ubuntu-latest
     steps:

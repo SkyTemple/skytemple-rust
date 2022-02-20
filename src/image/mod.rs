@@ -60,8 +60,8 @@ impl Raster {
         }
     }
 
-    // Like paste, but if a value in source is 0, it is not copied.
-    pub fn paste_masked(&mut self, source: Self, x: usize, y: usize) {
+    // Like paste, but if a value in source is 0 (or % 16 == 0 if uses_sub_palettes), it is not copied.
+    pub fn paste_masked(&mut self, source: Self, x: usize, y: usize, uses_sub_palettes: bool) {
         for (self_row, source_row) in zip(
             self.0.chunks_mut(self.1).skip(y).take(source.2),
             source.0.chunks(source.1)
@@ -70,7 +70,7 @@ impl Raster {
                 self_row.iter_mut().skip(x).take(source.1),
                 source_row.iter()
             ) {
-                if *source_px != 0 {
+                if (!uses_sub_palettes && *source_px != 0) || *source_px % 16 != 0 {
                     *self_px = *source_px
                 }
             }
