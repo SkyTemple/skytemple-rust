@@ -36,6 +36,9 @@ impl TilemapEntry {
     pub fn from_int(_cls: &PyType, i: usize) -> Self {
         Self::from(i)
     }
+    pub fn to_int(&self) -> usize {
+        self._to_int()
+    }
     #[getter]
     fn get_idx(&self) -> PyResult<usize> {
         Ok(self.0)
@@ -106,7 +109,7 @@ impl TilemapEntry {
 
 impl From<&TilemapEntry> for usize {
     fn from(entry: &TilemapEntry) -> Self {
-        entry.to_int()
+        entry._to_int()
     }
 }
 
