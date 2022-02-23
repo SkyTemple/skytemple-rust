@@ -177,3 +177,26 @@ pub enum SmdlEvent {
     Pause { value: SmdlPause },
     Note { velocity: u8, octave_mod: i8 /* MIN: -2 */, note: SmdlNote, key_down_duration: Option<u32> },
 }
+
+impl SmdlEvent {
+    /// Length of the event in ticks
+    pub fn length(&self, previous_wait_time: usize) -> usize {
+        match self {
+            SmdlEvent::Special { op, params } => {
+                match op {
+                    SmdlSpecialOpCode::WaitAgain => previous_wait_time,
+                    SmdlSpecialOpCode::WaitAdd => previous_wait_time + params[0] as usize,
+                    SmdlSpecialOpCode::Wait1Byte => params[0] as usize,
+                    SmdlSpecialOpCode::Wait2Byte => ((params[1] as usize) << 8) + (params[0] as usize),
+                    SmdlSpecialOpCode::Wait3Byte => ((params[2] as usize) << 16) + ((params[1] as usize) << 8) + (params[0] as usize),
+                    _ => 0
+                }
+            }
+            SmdlEvent::Pause { value } => value.length(),
+            SmdlEvent::Note { .. } => {
+                // Playing notes doesn't add to the tick count.
+                0
+            }
+        }
+    }
+}

@@ -215,12 +215,11 @@ impl From<StBytes> for PyResult<Swdl> {
 
         let mut slf = Swdl { header, wavi, pcmd, prgi, kgrp };
 
-        if let Some(pcmd) = &slf.pcmd {
-            // Add pcmd samples to wavi
-            for sample in slf.wavi.sample_info_table.iter_mut().flatten() {
+        for sample in slf.wavi.sample_info_table.iter_mut().flatten() {
+            if let Some(pcmd) = &slf.pcmd {
                 pyr_assert!(sample.get_initial_sample_pos() + sample.get_sample_length() <= pcmd.chunk_data.len() as u32, gettext("Swdl read: Invalid sample data"));
-                sample.sample = Some(SwdlPcmdReference::new(sample.get_initial_sample_pos(), sample.get_sample_length()));
             }
+            sample.sample = Some(SwdlPcmdReference::new(sample.get_initial_sample_pos(), sample.get_sample_length()));
         }
 
         Ok(slf)
