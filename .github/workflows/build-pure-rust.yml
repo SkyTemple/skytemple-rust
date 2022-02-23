@@ -22,12 +22,16 @@ jobs:
           - "kao,python"
           - "map_bg,kao"
           - "map_bg,kao,python"
+          - "misc_graphics"
+          - "misc_graphics,python"
+          - "dungeon_graphics"
+          - "dungeon_graphics,python"
           - "strings"
           - "strings,python"
           - "dse"
           - "dse,python"
           - "romfs"
-          - "strings,map_bg,kao,python,python,with_pmd_wan,dse"
+          - "strings,map_bg,kao,python,python,with_pmd_wan,dse,dungeon_graphics,misc_graphics,romfs"
     name: Build
     runs-on: ubuntu-latest
     steps:

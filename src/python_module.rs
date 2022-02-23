@@ -35,7 +35,8 @@ use crate::st_at_common::create_st_at_common_module;
 use crate::st_atupx::create_st_atupx_module;
 #[cfg(feature = "map_bg")]
 use crate::st_bg_list_dat::create_st_bg_list_dat_module;
-//use crate::st_bgp::create_st_bgp_module;
+#[cfg(feature = "misc_graphics")]
+use crate::st_bgp::create_st_bgp_module;
 #[cfg(feature = "map_bg")]
 use crate::st_bma::create_st_bma_module;
 #[cfg(feature = "map_bg")]
@@ -44,12 +45,18 @@ use crate::st_bpa::create_st_bpa_module;
 use crate::st_bpc::create_st_bpc_module;
 #[cfg(feature = "map_bg")]
 use crate::st_bpl::create_st_bpl_module;
-//use crate::st_dbg::create_st_dbg_module;
-//use crate::st_dma::create_st_dma_module;
-//use crate::st_dpc::create_st_dpc_module;
-//use crate::st_dpci::create_st_dpci_module;
-//use crate::st_dpl::create_st_dpl_module;
-//use crate::st_dpla::create_st_dpla_module;
+#[cfg(feature = "dungeon_graphics")]
+use crate::st_dbg::create_st_dbg_module;
+#[cfg(feature = "dungeon_graphics")]
+use crate::st_dma::create_st_dma_module;
+#[cfg(feature = "dungeon_graphics")]
+use crate::st_dpc::create_st_dpc_module;
+#[cfg(feature = "dungeon_graphics")]
+use crate::st_dpci::create_st_dpci_module;
+#[cfg(feature = "dungeon_graphics")]
+use crate::st_dpl::create_st_dpl_module;
+#[cfg(feature = "dungeon_graphics")]
+use crate::st_dpla::create_st_dpla_module;
 #[cfg(feature = "kao")]
 use crate::st_kao::create_st_kao_module;
 #[cfg(feature = "compression")]
@@ -97,7 +104,8 @@ fn skytemple_rust(py: Python, module: &PyModule) -> PyResult<()> {
     add_submodule(module, create_st_kao_module(py)?, modules)?;
     #[cfg(feature = "map_bg")]
     add_submodule(module, create_st_bg_list_dat_module(py)?, modules)?;
-    //add_submodule(module, create_st_bgp_module(py)?, modules)?;
+    #[cfg(feature = "misc_graphics")]
+    add_submodule(module, create_st_bgp_module(py)?, modules)?;
     #[cfg(feature = "map_bg")]
     add_submodule(module, create_st_bma_module(py)?, modules)?;
     #[cfg(feature = "map_bg")]
@@ -106,12 +114,18 @@ fn skytemple_rust(py: Python, module: &PyModule) -> PyResult<()> {
     add_submodule(module, create_st_bpc_module(py)?, modules)?;
     #[cfg(feature = "map_bg")]
     add_submodule(module, create_st_bpl_module(py)?, modules)?;
-    //add_submodule(module, create_st_dbg_module(py)?, modules)?;
-    //add_submodule(module, create_st_dma_module(py)?, modules)?;
-    //add_submodule(module, create_st_dpc_module(py)?, modules)?;
-    //add_submodule(module, create_st_dpci_module(py)?, modules)?;
-    //add_submodule(module, create_st_dpl_module(py)?, modules)?;
-    //add_submodule(module, create_st_dpla_module(py)?, modules)?;
+    #[cfg(feature = "dungeon_graphics")]
+    add_submodule(module, create_st_dbg_module(py)?, modules)?;
+    #[cfg(feature = "dungeon_graphics")]
+    add_submodule(module, create_st_dma_module(py)?, modules)?;
+    #[cfg(feature = "dungeon_graphics")]
+    add_submodule(module, create_st_dpc_module(py)?, modules)?;
+    #[cfg(feature = "dungeon_graphics")]
+    add_submodule(module, create_st_dpci_module(py)?, modules)?;
+    #[cfg(feature = "dungeon_graphics")]
+    add_submodule(module, create_st_dpl_module(py)?, modules)?;
+    #[cfg(feature = "dungeon_graphics")]
+    add_submodule(module, create_st_dpla_module(py)?, modules)?;
     #[cfg(feature = "dse")]
     add_submodule(module, create_st_smdl_module(py)?, modules)?;
     #[cfg(feature = "dse")]

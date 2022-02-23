@@ -295,7 +295,7 @@ impl Bpc {
     /// The image must have a palette containing the 16 sub-palettes with 16 colors each (256 colors).
     ///
     /// If a pixel in a tile uses a color outside of it's 16 color range the color is replaced with
-    /// 0 of the palette (transparent). The "_force_import" parameter is ignored.
+    /// 0 of the palette (transparent). The "force_import" parameter is ignored.
     ///
     /// Returns the palettes stored in the image for further processing (eg. replacing the BPL palettes).
     #[allow(unused_variables)]

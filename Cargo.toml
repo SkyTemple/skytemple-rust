@@ -11,8 +11,13 @@ crate-type = ["cdylib", "rlib"]
 name = "skytemple_rust"
 
 [features]
-default = ["python", "strings", "compression", "image", "kao", "map_bg", "dse", "with_pmd_wan"]
+default = [
+    "python", "strings", "compression", "image",
+    "kao", "map_bg", "dungeon_graphics", "misc_graphics", "dse",
+    "with_pmd_wan"
+]
 # non default: romfs
+
 python = ["pyo3", "pyo3-log"]
 
 strings = ["encoding-index-singlebyte"]
@@ -21,6 +26,8 @@ image = []
 
 kao = ["compression", "image", "arr_macro"]
 map_bg = ["compression", "image"]
+misc_graphics = ["image"]
+dungeon_graphics = ["image"]
 dse = ["chrono"]
 
 with_pmd_wan = ["pmd_wan", "anyhow", "python"]
