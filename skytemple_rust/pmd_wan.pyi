@@ -26,7 +26,7 @@ class WanImage:
     raw_particule_table: List[int]
     is_256_color: bool
     sprite_type: SpriteType
-    unk_1: int
+    size_to_allocate_for_all_metaframe: int
     unk2: int
 
 
@@ -49,7 +49,7 @@ class MetaFrameStore:
 
 class MetaFrame:
     unk1: int
-    unk2: int
+    image_alloc_counter: int
     unk3_4: Optional[Tuple[bool, bool]]
     image_index: int
     offset_y: int
