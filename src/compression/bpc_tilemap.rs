@@ -147,7 +147,7 @@ impl<'a, T> BpcTilemapDecompressor<'a, T> where T: AsRef<[u8]> {
             // We skip over the nb of words indicated by the cmd
             self.phase2_out_pos += (cmd as usize + 1) * 2;
             //debug_assert!(self.phase2_out_pos <= self.stop_when_size);
-        } else if CMD_2_FILL_LOW <= cmd && cmd < CMD_2_COPY_LOW {
+        } else if (CMD_2_FILL_LOW..CMD_2_COPY_LOW).contains(&cmd) {
             // cmd - CMD_2_SEEK_OFFSET is the nb of words to write with the next byte as low byte
             let cmd_value = self.compressed_data.get_u8() as u16;
             for _ in CMD_2_SEEK_OFFSET-1..cmd {

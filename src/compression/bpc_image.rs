@@ -439,7 +439,7 @@ impl<'a, T> BpcImageDecompressor<'a, T> where T: 'a + AsRef<[u8]> {
 
     #[inline]
     fn is_loading_pattern_from_next_byte(cmd: u8) -> bool {
-        CMD_LOAD_BYTE_AS_PATTERN_AND_CP <= cmd && cmd < CMD_USE_LAST_PATTERN_AND_CP
+        (CMD_LOAD_BYTE_AS_PATTERN_AND_CP..CMD_USE_LAST_PATTERN_AND_CP).contains(&cmd)
     }
 
     #[inline]

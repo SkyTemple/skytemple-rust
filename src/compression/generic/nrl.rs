@@ -251,7 +251,7 @@ pub(crate) fn decompression_step<T, U, S>(
         for _ in 0..cmd+1 {
             decompressed_data.nrl_put(S::null());
         }
-    } else if CMD_FILL_OUT <= cmd && cmd < CMD_COPY_BYTES {
+    } else if (CMD_FILL_OUT..CMD_COPY_BYTES).contains(&cmd) {
         // cmd - CMD_FILL_OUT is the nb of bytes to write
         let param = compressed_data.nrl_get();
         for _ in CMD_FILL_OUT-1..cmd {
