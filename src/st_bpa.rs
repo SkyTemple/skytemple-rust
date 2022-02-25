@@ -96,18 +96,21 @@ impl Bpa {
         // Create a dummy tile map containing all the tiles.
         // The tiles in the BPA are stored so, that each tile of the each frame is next
         // to each other. So the second frame of the first tile is at self.number_of_images + 1.
-        let dummy_chunks = (0..self.number_of_tiles)
-            .zip(0..self.number_of_frames)
-            .map(|(tile_idx, frame_idx)| TilemapEntry(
-                (frame_idx * self.number_of_tiles + tile_idx) as usize, false, false, 0
-            ));
+        let mut dummy_chunks = Vec::with_capacity((self.number_of_tiles * self.number_of_frames) as usize);
+        for tile_idx in 0..self.number_of_tiles {
+            for frame_idx in 0..self.number_of_frames {
+                dummy_chunks.push(TilemapEntry(
+                    (frame_idx * self.number_of_tiles + tile_idx) as usize, false, false, 0
+                ));
+            }
+        }
 
         let etr = (self.number_of_frames * self.number_of_tiles) as usize;
         let width = self.number_of_frames as usize * BPA_TILE_DIM as usize;
         let height = ((etr as f32 / self.number_of_frames as f32).ceil()) as usize * BPA_TILE_DIM as usize;
 
         TiledImage::tiled_to_native(
-            dummy_chunks,
+            dummy_chunks.into_iter(),
             PixelGenerator::tiled4bpp(&self.tiles[..]),
             palette.iter().copied(), BPA_TILE_DIM as usize, width, height, 1
         )
