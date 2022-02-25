@@ -16,6 +16,7 @@
  * You should have received a copy of the GNU General Public License
  * along with SkyTemple.  If not, see <https://www.gnu.org/licenses/>.
  */
+use std::cmp::{max, min};
 use std::iter::{once, repeat, repeat_with};
 use bytes::{Buf, BufMut, Bytes, BytesMut};
 use itertools::Itertools;
@@ -63,6 +64,7 @@ impl Bgp {
     #[new]
     pub fn new(mut data: StBytes, py: Python) -> PyResult<Self> {
         let palette_begin = data.get_u32_le() as usize;
+        debug_assert_eq!(BGP_HEADER_LENGTH as usize, palette_begin);
         let palette_length = data.get_u32_le() as usize;
         let tiles_begin = data.get_u32_le() as usize;
         let tiles_length = data.get_u32_le() as usize;
@@ -74,7 +76,7 @@ impl Bgp {
         Ok(Self {
             palettes: Self::extract_palette(&data[palette_begin..(palette_begin + palette_length)]),
             tilemap: Self::extract_tilemap(&data[tilemap_data_begin..(tilemap_data_begin + tilemap_data_length)], py)?,
-            tiles: Self::extract_tiles(&data[tiles_begin..(tiles_begin + tiles_length)]),
+            tiles: Self::extract_tiles(&data[tiles_begin..min(tiles_begin + tiles_length, data.len())]),
             unknown1, unknown2
         })
     }
@@ -87,12 +89,8 @@ impl Bgp {
     ///
     /// The image returned will have the size 256x192.
     pub fn to_pil(&self, ignore_flip_bits: bool, py: Python) -> PyResult<IndexedImage> {
-        //         return to_pil(
-        //             self.tilemap[:BGP_TOTAL_NUMBER_TILES], self.tiles, self.palettes, BGP_TILE_DIM, BGP_RES_WIDTH,
-        //             BGP_RES_HEIGHT, 1, 1, ignore_flip_bits
-        //         )
         Ok(TiledImage::tiled_to_native(
-            self.tilemap.iter().map(|x| x.borrow(py)),
+            self.tilemap.iter().map(|x| x.borrow(py)).take(BGP_TOTAL_NUMBER_TILES),
             PixelGenerator::tiled4bpp(&self.tiles[..]),
              self.palettes.iter().flatten().copied(),
             BGP_TILE_DIM, BGP_RES_WIDTH, BGP_RES_HEIGHT, 1
@@ -123,11 +121,13 @@ impl Bgp {
         // Add the 0 tile (used to clear bgs)
         self.tiles = once(StBytes::from(vec![0; BGP_TILE_DIM * BGP_TILE_DIM / 2]))
             .chain(tiles.into_iter().map(|x| x.0.into()))
-            .chain(repeat(StBytes::from(vec![0; BGP_TILE_DIM * BGP_TILE_DIM / 2])).take(BGP_TOTAL_NUMBER_TILES_ACTUALLY - tiles_len))
+            .chain(repeat(StBytes::from(vec![0; BGP_TILE_DIM * BGP_TILE_DIM / 2]))
+                .take(max(0isize, BGP_TOTAL_NUMBER_TILES_ACTUALLY as isize - tiles_len as isize) as usize))
             .collect();
         // Shift tile indices by 1
         self.tilemap = tilemap.into_iter().map(|mut x| {x.0 += 1; Py::new(py, x)})
-            .chain(repeat_with(|| Py::new(py, TilemapEntry::default())).take(BGP_TOTAL_NUMBER_TILES_ACTUALLY - tiles_len))
+            .chain(repeat_with(|| Py::new(py, TilemapEntry::default()))
+                .take(max(0isize, BGP_TOTAL_NUMBER_TILES_ACTUALLY as isize - tiles_len as isize) as usize))
             .collect::<PyResult<Vec<Py<TilemapEntry>>>>()?;
 
         self.palettes = palettes.0.chunks(BGP_PAL_NUMBER_COLORS * 3).map(|x| x.to_vec()).collect::<Vec<Vec<u8>>>();
@@ -153,6 +153,7 @@ impl Bgp {
     }
 
     fn extract_tiles(data: &[u8]) -> Vec<StBytes> {
+        let data_len = data.len();
         data.chunks(BGP_TILE_DIM * BGP_TILE_DIM / 2)
             .map(StBytes::from)
             .collect()
