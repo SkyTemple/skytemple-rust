@@ -21,7 +21,6 @@ use crate::image::IndexedImage;
 use crate::python::*;
 use num_derive::FromPrimitive;
 use num_traits::FromPrimitive;
-use pyo3::exceptions::PyValueError;
 
 #[repr(u8)]
 #[derive(PartialEq, PartialOrd, FromPrimitive)]
@@ -31,10 +30,11 @@ pub enum DmaType {
     Floor = 2
 }
 
+#[cfg(feature = "python")]
 impl<'source> FromPyObject<'source> for DmaType {
     fn extract(ob: &'source PyAny) -> PyResult<Self> {
         let int: u8 = ob.extract()?;
-        DmaType::from_u8(int).ok_or_else(|| PyValueError::new_err(format!("Invalid value {} for DmaType", int)))
+        DmaType::from_u8(int).ok_or_else(|| exceptions::PyValueError::new_err(format!("Invalid value {} for DmaType", int)))
     }
 }
 
@@ -46,10 +46,11 @@ pub enum DmaExtraType {
     Floor2 = 2
 }
 
+#[cfg(feature = "python")]
 impl<'source> FromPyObject<'source> for DmaExtraType {
     fn extract(ob: &'source PyAny) -> PyResult<Self> {
         let int: u8 = ob.extract()?;
-        DmaExtraType::from_u8(int).ok_or_else(|| PyValueError::new_err(format!("Invalid value {} for DmaExtraType", int)))
+        DmaExtraType::from_u8(int).ok_or_else(|| exceptions::PyValueError::new_err(format!("Invalid value {} for DmaExtraType", int)))
     }
 }
 
