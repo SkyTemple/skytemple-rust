@@ -19,7 +19,7 @@
 
 use std::fmt::Debug;
 use std::vec::IntoIter;
-use gettextrs::gettext;
+use crate::gettext::gettext;
 use log::warn;
 use crate::bytes::StBytesMut;
 use crate::python::*;

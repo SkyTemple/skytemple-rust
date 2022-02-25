@@ -24,7 +24,7 @@ use std::io::Cursor;
 use std::mem::swap;
 use std::vec;
 use bytes::{Buf, BufMut};
-use gettextrs::gettext;
+use crate::gettext::gettext;
 use crate::image::{In16ColIndexedImage, IndexedImage, InIndexedImage, PixelGenerator};
 use crate::image::tiled::TiledImage;
 use crate::python::*;

@@ -21,7 +21,7 @@ use std::iter::repeat;
 use bytes::{Buf, BufMut, BytesMut};
 use crate::python::PyResult;
 use crate::bytes::StBytes;
-use gettextrs::gettext;
+use crate::gettext::gettext;
 
 const PCMD_HEADER: &[u8] = b"pcmd";
 

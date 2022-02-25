@@ -24,7 +24,7 @@ use std::io::Cursor;
 use crate::bytes::{StBytes, StBytesMut};
 use crate::dse::st_smdl::event::{SmdlEvent, SmdlNote, SmdlPause, SmdlSpecialOpCode, PAUSE_NOTE_MAX, PLAY_NOTE_MAX};
 use num_traits::FromPrimitive;
-use gettextrs::gettext;
+use crate::gettext::gettext;
 
 const TRK_HEADER: &[u8] = b"trk\x20";
 

@@ -20,7 +20,7 @@ use std::iter::repeat;
 use bytes::{Buf, BufMut, BytesMut};
 use crate::python::PyResult;
 use crate::bytes::StBytes;
-use gettextrs::gettext;
+use crate::gettext::gettext;
 
 pub const PRGI_HEADER: &[u8] = "prgi".as_bytes();
 const LEN_LFO: usize = 16;

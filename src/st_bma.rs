@@ -20,7 +20,7 @@ use std::io::Cursor;
 use std::iter::{Copied, Enumerate};
 use std::slice::Iter;
 use bytes::{Buf, BufMut, Bytes, BytesMut};
-use gettextrs::gettext;
+use crate::gettext::gettext;
 use itertools::Itertools;
 use crate::bytes::{StBytes};
 use crate::compression::bma_collision_rle::{BmaCollisionRleCompressor, BmaCollisionRleDecompressor};

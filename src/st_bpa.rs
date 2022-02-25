@@ -19,7 +19,7 @@
 use std::cmp::Ordering;
 use std::mem::take;
 use bytes::{Buf, BufMut};
-use gettextrs::gettext;
+use crate::gettext::gettext;
 use crate::bytes::StBytes;
 use crate::image::{In256ColIndexedImage, IndexedImage, InIndexedImage, PixelGenerator};
 use crate::image::tiled::TiledImage;

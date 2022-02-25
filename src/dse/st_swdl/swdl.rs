@@ -18,7 +18,7 @@
  */
 
 use bytes::{Buf, BufMut, Bytes, BytesMut};
-use gettextrs::gettext;
+use crate::gettext::gettext;
 use crate::python::PyResult;
 use crate::bytes::StBytes;
 use crate::dse::date::DseDate;

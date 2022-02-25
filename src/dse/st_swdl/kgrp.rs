@@ -20,7 +20,7 @@
 use bytes::{Buf, BufMut, BytesMut};
 use crate::python::PyResult;
 use crate::bytes::StBytes;
-use gettextrs::gettext;
+use crate::gettext::gettext;
 
 const KGRP_HEADER: &[u8] = b"kgrp";
 const KEYGROUP_LEN: usize = 8;

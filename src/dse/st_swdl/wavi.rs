@@ -23,7 +23,7 @@ use crate::python::PyResult;
 use crate::bytes::StBytes;
 use num_derive::FromPrimitive;
 use num_traits::FromPrimitive;
-use gettextrs::gettext;
+use crate::gettext::gettext;
 use crate::dse::st_swdl::pcmd::SwdlPcmd;
 
 const WAVI_HEADER: &[u8] = b"wavi";
