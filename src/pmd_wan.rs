@@ -47,7 +47,7 @@ struct WanImage {
     #[pyo3(get)]
     pub sprite_type: SpriteType,
     #[pyo3(get)]
-    pub unk_1: u32,
+    pub size_to_allocate_for_all_metaframe: u32,
     #[pyo3(get)]
     pub unk2: u16,
 }
@@ -122,7 +122,7 @@ pub struct MetaFrame {
     #[pyo3(get)]
     pub unk1: u16,
     #[pyo3(get)]
-    pub unk2: u16,
+    pub image_alloc_counter: u16,
     #[pyo3(get)]
     pub unk3_4: Option<(bool, bool)>,
     #[pyo3(get)]
@@ -282,7 +282,7 @@ fn wrap_meta_frame_store(lib_ent: &lib::MetaFrameStore) -> MetaFrameStore {
 fn wrap_meta_frame(lib_ent: &lib::MetaFrame) -> MetaFrame {
     MetaFrame {
         unk1: lib_ent.unk1,
-        unk2: lib_ent.unk2,
+        image_alloc_counter: lib_ent.image_alloc_counter,
         unk3_4: lib_ent.unk3_4,
         unk5: lib_ent.unk5,
         image_index: lib_ent.image_index,
@@ -362,7 +362,7 @@ impl WanImage {
                 raw_particule_table: lib_img.raw_particule_table,
                 is_256_color: lib_img.is_256_color,
                 sprite_type: convert_sprite_type(&lib_img.sprite_type),
-                unk_1: lib_img.unk_1,
+                size_to_allocate_for_all_metaframe: lib_img.size_to_allocate_for_all_metaframe,
                 unk2: lib_img.unk2,
             }),
             Err(err) => Err(convert_error(err)),
@@ -406,11 +406,11 @@ pub fn encode_image_to_static_wan_file(py: Python, image: PyObject) -> PyResult<
         raw_particule_table: Vec::new(),
         is_256_color: false,
         sprite_type: lib::SpriteType::PropsUI,
-        unk_1: 0,
+        size_to_allocate_for_all_metaframe: 0,
         unk2: 0,
     };
 
-    let meta_frame_group_id = lib::insert_frame_in_wanimage(
+    let meta_frame_group_id = lib::insert_meta_frame_in_wanimage(
         indexed_image.0.0.0.to_vec(),
         indexed_image.0.1.try_into().map_err(|_| exceptions::PyValueError::new_err("The image is far too wide"))?,
         indexed_image.0.2.try_into().map_err(|_| exceptions::PyValueError::new_err("The image is far too high"))?,
