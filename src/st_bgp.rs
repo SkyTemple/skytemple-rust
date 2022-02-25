@@ -16,11 +16,33 @@
  * You should have received a copy of the GNU General Public License
  * along with SkyTemple.  If not, see <https://www.gnu.org/licenses/>.
  */
+use std::iter::{once, repeat, repeat_with};
 use bytes::Buf;
 use crate::bytes::StBytes;
-use crate::image::{In256ColIndexedImage, IndexedImage};
+use crate::image::{In256ColIndexedImage, IndexedImage, PixelGenerator, InIndexedImage};
+use crate::image::tiled::TiledImage;
 use crate::image::tilemap_entry::TilemapEntry;
 use crate::python::*;
+
+pub const BGP_RES_WIDTH: usize = 256;
+pub const BGP_RES_HEIGHT: usize = 192;
+pub const BGP_HEADER_LENGTH: u8 = 32;
+pub const BGP_PAL_ENTRY_LEN: u8 = 4;
+pub const BGP_PAL_UNKNOWN4_COLOR_VAL: u8 = 0x80;
+// The palette is actually a list of smaller palettes. Each palette has this many colors:
+pub const BGP_PAL_NUMBER_COLORS: usize = 16;
+// The maximum number of palettes supported
+pub const BGP_MAX_PAL: u8 = 16;
+pub const BGP_TILEMAP_ENTRY_BYTELEN: u8 = 2;
+pub const BGP_PIXEL_BITLEN: u8 = 4;
+pub const BGP_TILE_DIM: usize = 8;
+pub const BGP_RES_WIDTH_IN_TILES: usize = BGP_RES_WIDTH / BGP_TILE_DIM;
+pub const BGP_RES_HEIGHT_IN_TILES: usize = BGP_RES_HEIGHT / BGP_TILE_DIM;
+pub const BGP_TOTAL_NUMBER_TILES: usize = BGP_RES_WIDTH_IN_TILES * BGP_RES_HEIGHT_IN_TILES;
+// All BPGs have this many tiles and tilemapping entries for some reason
+pub const BGP_TOTAL_NUMBER_TILES_ACTUALLY: usize = 1024;
+// NOTE: Tile 0 is always 0x0.
+
 
 #[pyclass(module = "skytemple_rust.st_bgp")]
 #[derive(Clone)]
@@ -53,32 +75,23 @@ impl Bgp {
     }
 
     #[args(ignore_flip_bits = "false")]
-    // #[allow(unused_variables)]
+    #[allow(unused_variables)]
     /// Convert all tiles of the BGP to one big image.
     /// The resulting image has one large palette with 256 colors.
-    /// If ignore_flip_bits is set, tiles are not flipped. TODO
+    /// The ignore_flip_bits is not used.
     ///
     /// The image returned will have the size 256x192.
-    pub fn to_pil(&self, ignore_flip_bits: bool) -> PyResult<IndexedImage> {
+    pub fn to_pil(&self, ignore_flip_bits: bool, py: Python) -> PyResult<IndexedImage> {
         //         return to_pil(
         //             self.tilemap[:BGP_TOTAL_NUMBER_TILES], self.tiles, self.palettes, BGP_TILE_DIM, BGP_RES_WIDTH,
         //             BGP_RES_HEIGHT, 1, 1, ignore_flip_bits
         //         )
-        todo!()
-    }
-
-    #[args(ignore_flip_bits = "false")]
-    // #[allow(unused_variables)]
-    /// Convert all tiles of the BGP into separate images.
-    /// Each image has one palette with 16 colors.
-    /// If ignore_flip_bits is set, tiles are not flipped. TODO
-    ///
-    /// 768 tiles are returned.
-    pub fn to_pil_tiled(&self, ignore_flip_bits: bool) -> PyResult<Vec<IndexedImage>> {
-        //         return to_pil_tiled(
-        //             self.tilemap[:BGP_TOTAL_NUMBER_TILES], self.tiles, self.palettes, BGP_TILE_DIM, ignore_flip_bits
-        //         )
-        todo!()
+        Ok(TiledImage::tiled_to_native(
+            self.tilemap.iter().map(|x| x.borrow(py)),
+            PixelGenerator::tiled4bpp(&self.tiles[..]),
+             self.palettes.iter().flatten().copied(),
+            BGP_TILE_DIM, BGP_RES_WIDTH, BGP_RES_HEIGHT, 1
+        ))
     }
 
     #[args(force_import = "false")]
@@ -92,27 +105,28 @@ impl Bgp {
     /// 0 of the palette (transparent). The "force_import" parameter is ignored.
     ///
     /// The image must have the size 256x192.
-    pub fn from_pil(&mut self, pil: In256ColIndexedImage, force_import: bool) {
-        //         self.tiles, self.tilemap, self.palettes = from_pil(
-        //             pil, BGP_PAL_NUMBER_COLORS, BGP_MAX_PAL, BGP_TILE_DIM, BGP_RES_WIDTH,
-        //             BGP_RES_HEIGHT, 1, 1, force_import
-        //         )
-        //
-        //         if len(self.tiles) == 0x3FF:
-        //             raise AttributeError(f"Error when importing: max tile count reached.")
-        //
-        //         # Add the 0 tile (used to clear bgs)
-        //         self.tiles.insert(0, bytearray(int(BGP_TILE_DIM * BGP_TILE_DIM / 2)))
-        //         # Shift tile indices by 1
-        //         for x in self.tilemap:
-        //             x.idx += 1
-        //
-        //         # Fill up the tiles and tilemaps to 1024, which seems to be the required default
-        //         for _ in range(len(self.tiles), BGP_TOTAL_NUMBER_TILES_ACTUALLY):
-        //             self.tiles.append(bytearray(int(BGP_TILE_DIM * BGP_TILE_DIM / 2)))
-        //         for _ in range(len(self.tilemap), BGP_TOTAL_NUMBER_TILES_ACTUALLY):
-        //             self.tilemap.append(TilemapEntry.from_int(0))
-        todo!()
+    pub fn from_pil(&mut self, pil: In256ColIndexedImage, force_import: bool, py: Python) -> PyResult<()> {
+        let (tiles, palettes, tilemap) = TiledImage::native_to_tiled(
+            pil.extract(py)?, BGP_PAL_NUMBER_COLORS as u8, BGP_TILE_DIM,
+            BGP_RES_WIDTH, BGP_RES_HEIGHT, 1, 0, true
+        )?;
+        let tiles_len = tiles.len();
+        if tiles_len >= 0x3FF {
+            return Err(exceptions::PyValueError::new_err("Error when importing: max tile count reached."))
+        }
+        // + Fill up the tiles and tilemaps to 1024, which seems to be the required default
+        // Add the 0 tile (used to clear bgs)
+        self.tiles = once(StBytes::from(vec![0; BGP_TILE_DIM * BGP_TILE_DIM / 2]))
+            .chain(tiles.into_iter().map(|x| x.0.into()))
+            .chain(repeat(StBytes::from(vec![0; BGP_TILE_DIM * BGP_TILE_DIM / 2])).take(BGP_TOTAL_NUMBER_TILES_ACTUALLY - tiles_len))
+            .collect();
+        // Shift tile indices by 1
+        self.tilemap = tilemap.into_iter().map(|mut x| {x.0 += 1; Py::new(py, x)})
+            .chain(repeat_with(|| Py::new(py, TilemapEntry::default())).take(BGP_TOTAL_NUMBER_TILES_ACTUALLY - tiles_len))
+            .collect::<PyResult<Vec<Py<TilemapEntry>>>>()?;
+
+        self.palettes = palettes.0.chunks(BGP_PAL_NUMBER_COLORS * 3).map(|x| x.to_vec()).collect::<Vec<Vec<u8>>>();
+        Ok(())
     }
 }
 

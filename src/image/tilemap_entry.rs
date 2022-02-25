@@ -19,7 +19,7 @@
 
 use crate::python::*;
 
-#[derive(PartialEq, Eq, Debug, Clone)]
+#[derive(PartialEq, Eq, Debug, Clone, Default)]
 #[pyclass(module = "skytemple_rust")]
 pub struct TilemapEntry(pub usize, pub bool, pub bool, pub u8);  // idx, flip_x, flip_y, pal_idx
 
