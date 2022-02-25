@@ -17,7 +17,8 @@
  * along with SkyTemple.  If not, see <https://www.gnu.org/licenses/>.
  */
 use std::iter::{once, repeat, repeat_with};
-use bytes::Buf;
+use bytes::{Buf, BufMut, Bytes, BytesMut};
+use itertools::Itertools;
 use crate::bytes::StBytes;
 use crate::image::{In256ColIndexedImage, IndexedImage, PixelGenerator, InIndexedImage};
 use crate::image::tiled::TiledImage;
@@ -26,14 +27,14 @@ use crate::python::*;
 
 pub const BGP_RES_WIDTH: usize = 256;
 pub const BGP_RES_HEIGHT: usize = 192;
-pub const BGP_HEADER_LENGTH: u8 = 32;
+pub const BGP_HEADER_LENGTH: u32 = 32;
 pub const BGP_PAL_ENTRY_LEN: u8 = 4;
 pub const BGP_PAL_UNKNOWN4_COLOR_VAL: u8 = 0x80;
 // The palette is actually a list of smaller palettes. Each palette has this many colors:
 pub const BGP_PAL_NUMBER_COLORS: usize = 16;
 // The maximum number of palettes supported
 pub const BGP_MAX_PAL: u8 = 16;
-pub const BGP_TILEMAP_ENTRY_BYTELEN: u8 = 2;
+pub const BGP_TILEMAP_ENTRY_BYTELEN: usize = 2;
 pub const BGP_PIXEL_BITLEN: u8 = 4;
 pub const BGP_TILE_DIM: usize = 8;
 pub const BGP_RES_WIDTH_IN_TILES: usize = BGP_RES_WIDTH / BGP_TILE_DIM;
@@ -53,24 +54,28 @@ pub struct Bgp {
     pub tilemap: Vec<Py<TilemapEntry>>,
     #[pyo3(get, set)]
     pub tiles: Vec<StBytes>,
+    unknown1: u32,
+    unknown2: u32,
 }
 
 #[pymethods]
 impl Bgp {
     #[new]
-    pub fn new(mut data: StBytes) -> PyResult<Self> {
+    pub fn new(mut data: StBytes, py: Python) -> PyResult<Self> {
         let palette_begin = data.get_u32_le() as usize;
         let palette_length = data.get_u32_le() as usize;
         let tiles_begin = data.get_u32_le() as usize;
         let tiles_length = data.get_u32_le() as usize;
         let tilemap_data_begin = data.get_u32_le() as usize;
         let tilemap_data_length = data.get_u32_le() as usize;
-        // after that 2 unknown values.
+        let unknown1 = data.get_u32_le();
+        let unknown2 = data.get_u32_le();
 
         Ok(Self {
             palettes: Self::extract_palette(&data[palette_begin..(palette_begin + palette_length)]),
-            tilemap: Self::extract_tilemap(&data[tilemap_data_begin..(tilemap_data_begin + tilemap_data_length)]),
+            tilemap: Self::extract_tilemap(&data[tilemap_data_begin..(tilemap_data_begin + tilemap_data_length)], py)?,
             tiles: Self::extract_tiles(&data[tiles_begin..(tiles_begin + tiles_length)]),
+            unknown1, unknown2
         })
     }
 
@@ -132,49 +137,25 @@ impl Bgp {
 
 impl Bgp {
     fn extract_palette(data: &[u8]) -> Vec<Vec<u8>> {
-//         if self.header.palette_length % 16 != 0:
-//             raise ValueError("Invalid BGP image: Palette must be dividable by 16")
-//         pal_end = self.header.palette_begin + self.header.palette_length
-//         self.palettes = []
-//         current_palette = []
-//         colors_read_for_current_palette = 0
-//         for pal_entry in iter_bytes(self.data, BGP_PAL_ENTRY_LEN, self.header.palette_begin, pal_end):
-//             r, g, b, unk = pal_entry
-//             current_palette.append(r)
-//             current_palette.append(g)
-//             current_palette.append(b)
-//             colors_read_for_current_palette += 1
-//             if colors_read_for_current_palette >= 16:
-//                 self.palettes.append(current_palette)
-//                 current_palette = []
-//                 colors_read_for_current_palette = 0
-        todo!()
+        data.chunks(data.len() / BGP_PAL_NUMBER_COLORS)
+            .chunks(BGP_PAL_ENTRY_LEN as usize)
+            .into_iter()
+            .map(|bl| bl.flat_map(|bll| vec![bll[0], bll[1], bll[2]]).collect())
+            .collect::<Vec<Vec<u8>>>()
     }
 
-    fn extract_tilemap(data: &[u8]) -> Vec<Py<TilemapEntry>> {
-//         tilemap_end = self.header.tilemap_data_begin + self.header.tilemap_data_length
-//         self.tilemap = []
-//         for i, entry in enumerate(iter_bytes(self.data, BGP_TILEMAP_ENTRY_BYTELEN, self.header.tilemap_data_begin, tilemap_end)):
-//             # NOTE: There will likely be more than 768 (BGP_TOTAL_NUMBER_TILES) tiles. Why is unknown, but the
-//             #       rest is just zero padding.
-//             self.tilemap.append(TilemapEntry.from_int(int.from_bytes(entry, 'little')))
-//         if len(self.tilemap) < BGP_TOTAL_NUMBER_TILES:
-//             raise ValueError(f"Invalid BGP image: Too few tiles ({len(self.tilemap)}) in tile mapping."
-//                              f"Must be at least {BGP_TOTAL_NUMBER_TILES}.")
-        todo!()
+    fn extract_tilemap(mut data: &[u8], py: Python) -> PyResult<Vec<Py<TilemapEntry>>> {
+        let mut tilemap = Vec::with_capacity(data.len() / 2);
+        while data.has_remaining() {
+            tilemap.push(Py::new(py, TilemapEntry::from(data.get_u16_le() as usize))?)
+        }
+        Ok(tilemap)
     }
 
     fn extract_tiles(data: &[u8]) -> Vec<StBytes> {
-//         self.tiles = []
-//         tiles_end = self.header.tiles_begin + self.header.tiles_length
-//         # (8 / BGP_PIXEL_BITLEN) = 8 / 4 = 2
-//         for tile in iter_bytes(self.data, int(BGP_TILE_DIM * BGP_TILE_DIM / 2), self.header.tiles_begin, tiles_end):
-//             # NOTE: Again, the number of tiles is probably bigger than BGP_TOTAL_NUMBER_TILES... (zero padding)
-//             self.tiles.append(bytearray(tile))
-//         if len(self.tiles) < BGP_TOTAL_NUMBER_TILES:
-//             raise ValueError(f"Invalid BGP image: Too few tiles ({len(self.tiles)}) in tile data."
-//                              f"Must be at least {BGP_TOTAL_NUMBER_TILES}.")
-        todo!()
+        data.chunks(BGP_TILE_DIM * BGP_TILE_DIM / 2)
+            .map(StBytes::from)
+            .collect()
     }
 }
 
@@ -189,7 +170,40 @@ impl BgpWriter {
         Self
     }
     pub fn write(&self, model: Py<Bgp>, py: Python) -> PyResult<StBytes> {
-        todo!()
+        let model = model.borrow(py);
+        let palettes_length = model.palettes.len() as u32 * BGP_PAL_NUMBER_COLORS as u32 * BGP_PAL_ENTRY_LEN as u32;
+        let tiles_length = (model.tiles.len() * (BGP_TILE_DIM * BGP_TILE_DIM / 2)) as u32;
+        let tilemapping_length = (model.tilemap.len() * BGP_TILEMAP_ENTRY_BYTELEN) as u32;
+        let palettes_begin = BGP_HEADER_LENGTH;
+        let tilemapping_begin = palettes_begin + palettes_length;
+        let tiles_begin = tilemapping_begin + tilemapping_length;
+
+        let mut header = BytesMut::with_capacity(32);
+        header.put_u32_le(palettes_begin);
+        header.put_u32_le(palettes_length);
+        header.put_u32_le(tiles_begin);
+        header.put_u32_le(tiles_length);
+        header.put_u32_le(tilemapping_begin);
+        header.put_u32_le(tilemapping_length);
+        header.put_u32_le(model.unknown1);
+        header.put_u32_le(model.unknown2);
+
+        Ok(StBytes(
+            header.into_iter()
+                .chain(model.palettes
+                    .iter()
+                    .flatten()
+                    .chunks(3)
+                    .into_iter()
+                    .flat_map(|c| c.into_iter().copied().chain(once(BGP_PAL_UNKNOWN4_COLOR_VAL)))
+                ).chain(model.tilemap
+                    .iter()
+                    .flat_map(|tm| (tm.borrow(py).to_int() as u16).to_le_bytes())
+                ).chain(model.tiles
+                    .iter()
+                    .flat_map(|v| v.0.iter().copied())
+                ).collect::<Bytes>()
+        ))
     }
 }
 
