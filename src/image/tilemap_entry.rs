@@ -99,7 +99,7 @@ impl From<TilemapEntry> for usize {
 }
 
 impl TilemapEntry {
-    fn _to_int(&self) -> usize {
+    pub(crate) fn _to_int(&self) -> usize {
         (self.0 & 0x3FF) +
             (if self.1 { 1 } else { 0 } << 10) +
             (if self.2 { 1 } else { 0 } << 11) +

@@ -329,8 +329,8 @@ impl Bpc {
         let dim = self.tiling_width as usize * self.tiling_height as usize;
         let mtidx = index * dim;
         let b = self.layers[layer].borrow_mut(py);
-        if b.tilemap.len() <= mtidx+dim {
-            Ok(vec![])
+        if b.tilemap.len() < mtidx+dim {
+            Err(exceptions::PyValueError::new_err("Invalid chunk."))
         } else {
             b.tilemap[mtidx..mtidx+dim].iter().map(|x| x.extract::<TilemapEntry>(py)).collect()
         }
@@ -550,7 +550,9 @@ impl Bpc {
                 if is_using_bpa {
                     is_using_bpa = false;
                     // Also check if any of the tiles in the chunk even uses BPA tiles
-                    for tilem in self.get_chunk(layer_id, chunk_idx, py)? {
+                    let check_chunk = self.get_chunk(layer_id, chunk_idx, py)?;
+                    assert_eq!(9, check_chunk.len());
+                    for tilem in check_chunk {
                         if tilem.0 > number_tiles as usize {
                             is_using_bpa = true;
                             break;
@@ -575,9 +577,13 @@ impl Bpc {
             // For each frame: Insert all BPA current frame tiles into their slots
             for (bpaidx, bpa) in bpas_for_layer.iter().enumerate() {
                 // Add the BPA tiles for this frame to the set of BPC tiles:
-                ldata.tiles.append(&mut bpa.0.provide_tiles_for_frame(bpa_animation_indices[bpaidx], py)?);
-                bpa_animation_indices[bpaidx] += 1;
-                bpa_animation_indices[bpaidx] %= bpa.0.get_number_of_frames(py)?;
+                let mut bpa_tiles = bpa.0.provide_tiles_for_frame(bpa_animation_indices[bpaidx], py)?;
+                debug_assert_eq!(bpa.0.get_number_of_tiles(py)? as usize, bpa_tiles.len());
+                ldata.tiles.append(&mut bpa_tiles);
+                if bpa.0.get_number_of_frames(py)? > 0 {
+                    bpa_animation_indices[bpaidx] += 1;
+                    bpa_animation_indices[bpaidx] %= bpa.0.get_number_of_frames(py)?;
+                }
             }
             #[cfg(feature = "python")]
                 drop(ldata);

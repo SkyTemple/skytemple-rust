@@ -199,7 +199,7 @@ impl BgpWriter {
                     .flat_map(|c| c.into_iter().copied().chain(once(BGP_PAL_UNKNOWN4_COLOR_VAL)))
                 ).chain(model.tilemap
                     .iter()
-                    .flat_map(|tm| (tm.borrow(py).to_int() as u16).to_le_bytes())
+                    .flat_map(|tm| (tm.borrow(py)._to_int() as u16).to_le_bytes())
                 ).chain(model.tiles
                     .iter()
                     .flat_map(|v| v.0.iter().copied())
