@@ -274,7 +274,7 @@ impl Bpc {
 
     /// Imports tiles that are in a format as described in the documentation for tiles_to_pil.
     /// Tile mappings, chunks and palettes are not updated.
-    pub fn pil_to_tiles(&mut self, layer_id: usize, image: In16ColIndexedImage, py: Python) -> PyResult<()> {
+    pub fn pil_to_tiles(&mut self, layer_id: usize, image: In256ColIndexedImage, py: Python) -> PyResult<()> {
         let image = image.extract(py)?;
         let w = *&image.0.1;
         let h = *&image.0.2;
