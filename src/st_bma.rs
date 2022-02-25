@@ -484,6 +484,36 @@ impl Bma {
             };
         }
     }
+
+    /// Set the collision at the X and Y position. No error checking is done.
+    pub fn place_collision(&mut self, collision_layer_id: u8, x: usize, y: usize, is_solid: bool) {
+        let bma_index = y * self.map_width_camera as usize + x;
+        if collision_layer_id == 0 {
+            match &mut self.collision {
+                None => panic!("No collision layer exists"),
+                Some(collision) => collision[bma_index] = is_solid
+            };
+        } else {
+            match &mut self.collision2 {
+                None => panic!("No second collision layer exists"),
+                Some(collision2) => collision2[bma_index] = is_solid
+            };
+        }
+    }
+
+    /// Set data at the X and Y position. No error checking is done.
+    pub fn place_data(&mut self, x: usize, y: usize, data: u8) {
+        let bma_index = y * self.map_width_camera as usize + x;
+        match &mut self.unknown_data_block {
+            None => panic!("No unknown data layer exists"),
+            Some(unknown_data_block) => unknown_data_block[bma_index] = data
+        };
+    }
+
+    pub fn deepcopy(&self) -> Self {
+        // Cloning isn't enough (pyo3 weirdness).
+        self.clone()
+    }
 }
 
 impl Bma {
