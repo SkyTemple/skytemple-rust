@@ -124,7 +124,7 @@ pub struct In16ColIndexedImage(pub IndexedImage);
 pub struct In256ColIndexedImage(pub IndexedImage);
 
 impl InIndexedImage<'_> for In16ColIndexedImage {
-    const MAX_COLORS: usize = 256; /// TODO - quantizing is a bit broken here; should be 16 of course.
+    const MAX_COLORS: usize = 16;
     #[cfg(feature = "python")]
     fn unwrap_py(self) -> PyObject { self.0 }
     #[cfg(not(feature = "python"))]

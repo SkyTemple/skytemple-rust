@@ -30,7 +30,8 @@ pub fn in_from_py<'py, T>(img: T, py: Python<'py>) -> PyResult<(StBytesMut, StBy
     if iimg.getattr(py, "mode")?.extract::<&str>(py)? == "P" {
         if T::MAX_COLORS == 16 {
             // Quantize
-            iimg = pil_simple_quant(py, iimg)?;
+            // TODO: This seems to be lossy atm... Just change the mode for now
+            //iimg = pil_simple_quant(py, iimg)?;
         }
         // Otherwise we don't support checking further..., we will assume all goes well.
         // TODO: Maybe support in the future via (automatic) Tilequant?
