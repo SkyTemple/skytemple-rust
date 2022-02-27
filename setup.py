@@ -17,9 +17,10 @@ setup(
     packages=["skytemple_rust"],
     package_data={"skytemple_rust": ["py.typed", "*.pyi"]},
     description='Binary Rust extension for skytemple-files',
-    requirements=[
-        #'Pillow >= 6.1.0',
-    ],
+    extras_require={
+        # required for some methods in st_ssb (ExplorerScript v1 and SsbScript export)
+        'explorerscript':  ["explorerscript"]
+    },
     long_description=long_description,
     long_description_content_type='text/x-rst',
     url='https://github.com/SkyTemple/skytemple-rust/',
