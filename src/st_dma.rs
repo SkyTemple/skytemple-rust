@@ -104,7 +104,7 @@ impl Dma {
     }
 
     /// Sets the mapping for the given configuration and the given variation of it.
-    pub fn set(&mut self, get_type: DmaType, neighbors_same: usize, variation_index: usize, value: U8) {
+    pub fn set(&mut self, get_type: DmaType, neighbors_same: usize, variation_index: usize, value: u8) {
         let high_two = match get_type {
             DmaType::Wall => 0,
             DmaType::Water => 0x100,
