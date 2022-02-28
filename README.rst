@@ -35,6 +35,8 @@ Additionally it has Python bindings for the following Rust crates:
 
 - `pmd_wan`_ by marius851000_.
 
+PLEASE NOTE that version 1.3.4 is an intermediate release. The only stable thing in it are the pmd_wan bindings!
+
 Unit Tests
 ~~~~~~~~~~
 Unit tests for the ``st_`` modules are located as Python Tests in `SkyTemple Files`_. The reason
