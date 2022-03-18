@@ -386,6 +386,15 @@ impl WritableRomFs {
     }
 }
 
+impl Clone for WritableRomFs {
+    fn clone(&self) -> Self {
+        Self {
+            fs: self.fs.clone(),
+            data: self.data.clone()
+        }
+    }
+}
+
 static CRC16_TABLE: [u16; 256] = [
     0x0000, 0xC0C1, 0xC181, 0x0140, 0xC301, 0x03C0, 0x0280, 0xC241,
     0xC601, 0x06C0, 0x0780, 0xC741, 0x0500, 0xC5C1, 0xC481, 0x0440,

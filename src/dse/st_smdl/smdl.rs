@@ -272,3 +272,9 @@ impl From<Smdl> for StBytes {
         res
     }
 }
+
+impl AsRef<Smdl> for Smdl {
+    fn as_ref(&self) -> &Smdl {
+        self
+    }
+}
