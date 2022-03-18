@@ -35,7 +35,6 @@ pub struct Python;
 pub struct PyErr {
     type_name: String,
     value: String,
-    rust_source: Option<Box<dyn Error>>
 }
 
 impl Display for PyErr {
@@ -49,7 +48,6 @@ impl From<io::Error> for PyErr {
         let value = err.to_string();
         Self {
             type_name: "FromRust".to_string(),
-            rust_source: Some(Box::new(err)),
             value
         }
     }
@@ -111,7 +109,7 @@ pub mod exceptions {
             impl $name {
                 pub fn new_err<S>(value: S) -> PyErr where S: Into<String>
                 {
-                    PyErr { type_name: String::from(stringify!($name)), value: value.into(), rust_source: None}
+                    PyErr { type_name: String::from(stringify!($name)), value: value.into()}
                 }
             }
         );

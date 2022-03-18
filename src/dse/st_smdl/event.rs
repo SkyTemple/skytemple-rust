@@ -171,7 +171,7 @@ impl SmdlSpecialOpCode {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum SmdlEvent {
     Special { op: SmdlSpecialOpCode, params: Vec<u8> },
     Pause { value: SmdlPause },

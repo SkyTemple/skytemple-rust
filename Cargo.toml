@@ -32,7 +32,7 @@ dse = ["time"]
 
 with_pmd_wan = ["pmd_wan", "anyhow", "python"]
 
-romfs = ["nitro_fs", "memmap2"]
+romfs = ["nitro_fs", "memmap2", "strings"]
 
 [dependencies]
 skytemple_rust_macros = { path = "skytemple_rust_macros" }

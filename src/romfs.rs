@@ -21,16 +21,25 @@
 //! This is largely based on existing research and a modified version of the nds crate
 //! (which only supports extracting to whole directories; no API).
 
+use std::cmp::Ordering;
+use std::collections::BTreeMap;
+use std::fs;
 use std::fs::File;
+use std::iter::once;
 use std::path::{Path, PathBuf};
-use bytes::Buf;
+use bytes::{Buf, BufMut, Bytes, BytesMut};
 use memmap2::Mmap;
-use crate::python::PyResult;
+use crate::python::{exceptions, PyResult};
 use crate::gettext::gettext;
 use crate::python::exceptions::PyValueError;
 use nitro_fs::FileSystem;
-use nitro_fs::fnt::FileEntry;
+use nitro_fs::fnt::{Directory, FileEntry};
+use crate::bytes::StBytes;
 use crate::rom_source::RomFileProvider;
+use encoding::all::ISO_8859_1;
+use encoding::{EncoderTrap, Encoding};
+use itertools::{Either, Itertools};
+use num_traits::ToPrimitive;
 
 const NOT_ENOUGH_DATA: &str = "The ROM file does not contain enough data.";
 
@@ -47,75 +56,139 @@ enum Header {
 }
 
 /// Provides access to a ROM file system, overlays and ARM9/ARM7 binaries.
-pub struct RomFs {
-    /// A memmap of the ROM to allow easy reading for potentially large files.
-    data: Mmap,
+pub struct GenericRomFs<T: AsRef<[u8]>> {
+    data: T,
     fs: FileSystem
 }
+
+pub type RomFs = GenericRomFs<Mmap>;
+pub type WritableRomFs = GenericRomFs<BytesMut>;
 
 impl RomFs {
     pub fn new<P: AsRef<Path>>(path: P, check_crc: bool) -> PyResult<Self> {
         let root = path.as_ref();
-
         let file = File::open(root)?;
         let data = unsafe { Mmap::map(&file)? };
+        Self::create(data, check_crc)
+    }
+}
 
-        pyr_assert!(data.len() >= 0x160, gettext(NOT_ENOUGH_DATA), PyValueError);
+impl WritableRomFs {
+    pub fn new<P: AsRef<Path>>(path: P, check_crc: bool) -> PyResult<Self> {
+        let root = path.as_ref();
+        let data = BytesMut::from(&fs::read(root)?[..]);
+        Self::create(data, check_crc)
+    }
+}
 
+impl<T: AsRef<[u8]>> GenericRomFs<T> {
+    pub fn create(data: T, check_crc: bool) -> PyResult<Self> {
+        pyr_assert!(data.as_ref().len() >= 0x160, gettext(NOT_ENOUGH_DATA), PyValueError);
         if check_crc {
-            let checksum = (&data[0x15E..]).get_u16_le();
-            let crc = crc16(&data[0..0x15E]);
+            let checksum = (&data.as_ref()[0x15E..]).get_u16_le();
+            let crc = crc16(&data.as_ref()[0..0x15E]);
 
             pyr_assert!(crc == checksum, gettext("ROM Header checksum does not match contents."), PyValueError);
         }
 
         Ok(Self { fs: FileSystem::new(
-            Self::fnt(&data)?, Self::fat(&data)?
+            Self::fnt(data.as_ref())?, Self::fat(data.as_ref())?
         ).map_err(|e| PyValueError::new_err(gettext!(
             "Error reading the filesystem from ROM: {}", e.to_string()
         )))?, data })
     }
 
     pub fn header_bin(&self) -> &[u8] {
-        &self.data[
+        &self.data.as_ref()[
             0
-            ..
-            self.get_u32_le(Header::Size as usize)
-        ]
+                ..
+                self.get_u32_le(Header::Size as usize)
+            ]
     }
 
     pub fn arm9_bin(&self) -> &[u8] {
-        &self.data[
+        &self.data.as_ref()[
             self.get_u32_le(Header::Arm9Offset as usize)
-            ..
-            self.get_u32_le(Header::Arm9Len as usize)
-        ]
+                ..
+                self.get_u32_le(Header::Arm9Len as usize)
+            ]
     }
 
     pub fn arm7_bin(&self) -> &[u8] {
-        &self.data[
+        &self.data.as_ref()[
             self.get_u32_le(Header::Arm7Offset as usize)
-            ..
-            self.get_u32_le(Header::Arm7Len as usize)
-        ]
+                ..
+                self.get_u32_le(Header::Arm7Len as usize)
+            ]
     }
 
     pub fn get_fs(&self) -> &FileSystem {
         &self.fs
     }
 
+    pub fn get_overlay(&mut self, idx: usize) -> &[u8] {
+        let ov = &self.get_fs().overlays()[idx];
+        &self.data.as_ref()[ov.alloc.start as usize..ov.alloc.end as usize]
+    }
+
     pub fn get_file_contents(&self, file_id: usize) -> PyResult<&[u8]> {
-        let files = self.fs.files();
-        pyr_assert!(file_id < files.len(), "The file does not exist.", PyValueError);
-        let f_entry = files[file_id];
+        let f_entry: &FileEntry = self.fs.dirs
+            .iter()
+            .flat_map(|(_, dir)| &dir.files)
+            .find(|f| f.id == file_id as u16)
+            .ok_or_else(|| PyValueError::new_err("The file does not exist."))?;
+        assert_eq!(f_entry.id, file_id as u16);
         pyr_assert!(f_entry.alloc.end > f_entry.alloc.start, "The file is invalid.", PyValueError);
-        pyr_assert!((f_entry.alloc.end as usize) < self.data.len(), "The file is invalid.", PyValueError);
-        Ok(&self.data[(f_entry.alloc.start) as usize..(f_entry.alloc.end) as usize])
+        pyr_assert!((f_entry.alloc.end as usize) < self.data.as_ref().len(), "The file is invalid.", PyValueError);
+        Ok(&self.data.as_ref()[(f_entry.alloc.start) as usize..(f_entry.alloc.end) as usize])
+    }
+
+    /// Writes ROMs. WARNING: This is currently pretty limited. It will fail if the fat/fnt size
+    /// changed. This also does not update / work correctly with any potential RSA signature or the like.
+    pub fn to_bytes(&self) -> PyResult<StBytes> {
+        // Clone data
+        let mut data = BytesMut::from(self.data.as_ref());
+        let data_len = data.len();
+        // ROM size
+        (&mut data[0x80..]).put_u32_le(data_len as u32);
+        // Recalc crc16
+        let crc = crc16(&data.as_ref()[0..0x15E]);
+        (&mut data[0x15E..]).put_u16_le(crc);
+        // Write fat + fnt
+        let (fat, fnt) = self.fat_and_fnt_to_bytes()?;
+        let fat_start = Self::get_u32_le_static(&data[..], Header::FatOffset as usize);
+        let fat_len = Self::get_u32_le_static(&data[..], Header::FatLen as usize);
+        match fat.len().cmp(&fat_len) {
+            Ordering::Less => {
+                let offset = Header::FatLen as usize;
+                (&mut data[offset..offset + 4]).put_u32_le(fat.len() as u32);
+                (&mut data[fat_start..fat_start + fat.len()]).copy_from_slice(&fat[..]);
+            }
+            Ordering::Equal => (&mut data[fat_start..fat_start + fat_len]).copy_from_slice(&fat[..]),
+            Ordering::Greater => {
+                return Err(exceptions::PyValueError::new_err("The FAT size increased. This is currently not supported."))
+            }
+        }
+        let fnt_start = Self::get_u32_le_static(&data[..], Header::FntOffset as usize);
+        let fnt_len = Self::get_u32_le_static(&data[..], Header::FntLen as usize);
+        match fnt.len().cmp(&fnt_len) {
+            Ordering::Less => {
+                let offset = Header::FntLen as usize;
+                (&mut data[offset..offset + 4]).put_u32_le(fnt.len() as u32);
+                (&mut data[fnt_start..fnt_start + fnt.len()]).copy_from_slice(&fnt[..]);
+            }
+            Ordering::Equal => (&mut data[fnt_start..fnt_start + fnt_len]).copy_from_slice(&fnt[..]),
+            Ordering::Greater => {
+                return Err(exceptions::PyValueError::new_err("The FNT size increased. This is currently not supported."))
+            }
+        }
+        pyr_assert!(fnt.len() == fnt_len, "The FNT size increased. This is currently not supported.", PyValueError);
+        Ok(StBytes::from(data))
     }
 
     #[inline(always)]
     fn get_u32_le(&self, offset: usize) -> usize {
-        Self::get_u32_le_static(&self.data, offset)
+        Self::get_u32_le_static(self.data.as_ref(), offset)
     }
 
     #[inline(always)]
@@ -124,7 +197,7 @@ impl RomFs {
         (&data[offset..]).get_u32_le() as usize
     }
 
-    fn fat(data: &[u8]) -> PyResult<&[u8]> {
+    pub(crate) fn fat(data: &[u8]) -> PyResult<&[u8]> {
         let fat_start = Self::get_u32_le_static(data, Header::FatOffset as usize);
         let fat_len = Self::get_u32_le_static(data, Header::FatLen as usize);
 
@@ -133,7 +206,7 @@ impl RomFs {
         Ok(&data[fat_start..fat_start + fat_len])
     }
 
-    fn fnt(data: &[u8]) -> PyResult<&[u8]> {
+    pub(crate) fn fnt(data: &[u8]) -> PyResult<&[u8]> {
         let fnt_start = Self::get_u32_le_static(data, Header::FntOffset as usize);
         let fnt_len = Self::get_u32_le_static(data, Header::FntLen as usize);
 
@@ -141,12 +214,75 @@ impl RomFs {
 
         Ok(&data[fnt_start..fnt_start + fnt_len])
     }
+
+    fn fat_and_fnt_to_bytes(&self) -> PyResult<(Bytes, Bytes)> {
+        // Part of this was inspired / taken from ndspy.
+
+        let fat = self.fs.overlays().iter().chain(self.fs.files().iter().cloned())
+            .flat_map(|fe| [fe.alloc.start.to_le_bytes(), fe.alloc.end.to_le_bytes()])
+            .flatten()
+            .collect::<Bytes>();
+
+        fn sub_directories<'a>(dirs: &'a BTreeMap<u16, Directory>, d: &Directory) -> Vec<&'a Directory> {
+            return dirs.values()
+                .filter(|id| id.path.parent().map_or(false, |idp| idp == d.path.as_path()))
+                .collect()
+        }
+        let mut end_cursor: u32 = (self.fs.dirs.len() * 8) as u32;
+
+        let (fnt_header, fnt_content): (Vec<Vec<u8>>, Vec<Vec<u8>>) = self.fs.dirs.values()
+            .flat_map(|d| {
+                // Create an entries table and add filenames and folders to it
+                let entries_table = d
+                    .files.iter().flat_map(|f| {
+                    let str = ISO_8859_1.encode(f.path
+                                                    .file_name().unwrap()
+                                                    .to_os_string()
+                                                    .into_string().unwrap()
+                                                    .as_str(), EncoderTrap::Replace
+                    ).unwrap();
+                    assert!(str.len() < 127);
+                    once(str.len().to_u8().unwrap())
+                        .chain(str.into_iter())
+                }).chain(
+                    sub_directories(&self.fs.dirs, d).into_iter().flat_map(|f| {
+                        let str = ISO_8859_1.encode(f.path
+                                                        .file_name().unwrap()
+                                                        .to_os_string()
+                                                        .into_string().unwrap()
+                                                        .as_str(), EncoderTrap::Replace
+                        ).unwrap();
+                        assert!(str.len() < 127);
+                        once(str.len().to_u8().unwrap() | 0x80)
+                            .chain(str.into_iter())
+                            .chain(f.id().to_le_bytes())
+                    })
+                ).chain(
+                    // And the entries table needs to end with a null byte to mark
+                    // its end.
+                    once(0)
+                ).collect::<Vec<u8>>();
+
+                let header: Vec<u8> = end_cursor.to_le_bytes().iter().chain(
+                    d.start_id().to_le_bytes().iter()
+                ).chain(
+                    if d.is_root() { self.fs.dirs.len() as u16 } else { d.parent_id() }.to_le_bytes().iter()
+                ).copied().collect();
+                end_cursor += entries_table.len() as u32;
+                [header, entries_table]
+            }).enumerate().partition_map(|(id, v)| if id % 2 == 0 {
+            Either::Left(v)
+        } else {
+            Either::Right(v)
+        });
+        Ok((fat, fnt_header.into_iter().flatten().chain(fnt_content.into_iter().flatten()).collect()))
+    }
 }
 
-impl RomFileProvider for RomFs {
+impl<T: AsRef<[u8]>> RomFileProvider for GenericRomFs<T> {
     fn get_file_by_name(&self, filename: &str) -> PyResult<Vec<u8>> {
         let filename = PathBuf::from(filename);
-        let files = self._list_files_in_folder(filename.parent().unwrap_or(Path::new("")))?;
+        let files = self._list_files_in_folder(filename.parent().unwrap_or_else(|| Path::new("")))?;
         if let Some(file) = files.iter().find(|e| e.path == filename) {
             Ok(self.get_file_contents(file.id as usize)?.to_vec())
         } else {
@@ -154,14 +290,14 @@ impl RomFileProvider for RomFs {
         }
     }
     fn list_files_in_folder(&self, filename: &str) -> PyResult<Vec<String>> {
-        Ok(self._list_files_in_folder(filename)?.into_iter().map(
+        Ok(self._list_files_in_folder(filename)?.iter().map(
             |f| f.path.file_name().unwrap().to_os_string().into_string().unwrap()
         ).collect::<Vec<String>>())
     }
 }
 
-impl RomFs {
-    fn _list_files_in_folder<T: Into<PathBuf>>(&self, path: T) -> PyResult<&Vec<FileEntry>> {
+impl<T: AsRef<[u8]>> GenericRomFs<T> {
+    fn _list_files_in_folder<U: Into<PathBuf>>(&self, path: U) -> PyResult<&Vec<FileEntry>> {
         let path = path.into();
         for dir in self.fs.dirs.values() {
             if dir.path == path {
@@ -169,6 +305,84 @@ impl RomFs {
             }
         }
         Err(PyValueError::new_err("Directory not found."))
+    }
+}
+
+impl WritableRomFs {
+    pub fn header_bin_mut(&mut self) -> &mut [u8] {
+        let end = self.get_u32_le(Header::Size as usize);
+        &mut self.data.as_mut()[0..end]
+    }
+
+    pub fn arm9_bin_mut(&mut self) -> &mut [u8] {
+        let begin = self.get_u32_le(Header::Arm9Offset as usize);
+        let end = self.get_u32_le(Header::Arm9Len as usize);
+        &mut self.data.as_mut()[begin..end]
+    }
+
+    pub fn arm7_bin_mut(&mut self) -> &mut [u8] {
+        let begin = self.get_u32_le(Header::Arm7Offset as usize);
+        let end = self.get_u32_le(Header::Arm7Len as usize);
+        &mut self.data.as_mut()[begin..end]
+    }
+
+    pub fn get_fs_mut(&mut self) -> &mut FileSystem {
+        &mut self.fs
+    }
+
+    pub fn get_overlay_mut(&mut self, idx: usize) -> &mut [u8] {
+        let ov = &self.get_fs().overlays()[idx];
+        let start = ov.alloc.start as usize;
+        let end = ov.alloc.end as usize;
+        &mut self.data.as_mut()[start..end]
+    }
+
+    pub fn set_file_by_name(&mut self, filename: &str, content: StBytes) -> PyResult<()> {
+        let filename = PathBuf::from(filename);
+        let files = self._list_files_in_folder(filename.parent().unwrap_or_else(|| Path::new("")))?;
+        if let Some(file) = files.iter().find(|e| e.path == filename) {
+            let file_id = file.id as usize;
+            self.set_file_contents(file_id, content)
+        } else {
+            Err(PyValueError::new_err("File not found."))
+        }
+    }
+
+    pub fn set_file_contents(&mut self, file_id: usize, content: StBytes) -> PyResult<()> {
+        let f_entry: &mut FileEntry = self.fs.dirs
+            .iter_mut()
+            .flat_map(|(_, dir)| &mut dir.files)
+            .find(|f| f.id == file_id as u16)
+            .ok_or_else(|| PyValueError::new_err("The file does not exist."))?;
+        pyr_assert!(f_entry.alloc.end > f_entry.alloc.start, "The file is invalid.", PyValueError);
+        pyr_assert!((f_entry.alloc.end as usize) < self.data.as_ref().len(), "The file is invalid.", PyValueError);
+
+        let old_len = f_entry.alloc.end - f_entry.alloc.start;
+        let old_end = f_entry.alloc.end;
+        f_entry.alloc.end = f_entry.alloc.start + (content.len() as u32);
+        if content.len() as u32 > old_len  {
+            let increased_size = content.len() as u32 - old_len;
+            // Add content
+            self.data = self.data
+                .iter()
+                .copied()
+                .take(f_entry.alloc.start as usize)
+                .chain(content)
+                .chain(self.data.iter().skip(old_end as usize).copied())
+                .collect();
+            // Starts and ends
+            self.fs.dirs
+                .iter_mut()
+                .flat_map(|(_, dir)| &mut dir.files)
+                .filter(|f| f.alloc.start >= old_end)
+                .for_each(|f| {
+                    f.alloc.start += increased_size;
+                    f.alloc.end += increased_size;
+                });
+        } else {
+            (&mut self.data[(f_entry.alloc.start as usize)..(f_entry.alloc.end as usize)]).copy_from_slice(&content[..]);
+        }
+        Ok(())
     }
 }
 
@@ -213,3 +427,26 @@ pub fn crc16(data: &[u8]) -> u16 {
             (crc >> 8) ^ CRC16_TABLE[(crc as u8 ^ *byte) as usize]
         })
 }
+
+// #[cfg(test)]
+// #[test]
+// fn test_rom_fat_fnt_save() {
+//     let in_rom = WritableRomFs::new("/tmp/rom.nds", true).unwrap();
+//
+//     let in_fat = WritableRomFs::fat(&in_rom.data).unwrap();
+//     let in_fnt = WritableRomFs::fnt(&in_rom.data).unwrap();
+//
+//     let (out_fat, out_fnt) = in_rom.fat_and_fnt_to_bytes().unwrap();
+//
+//     assert_eq!(in_fat.len(), out_fat.len());
+//     assert_eq!(in_fat, &out_fat[..]);
+//     assert_eq!(in_fnt.len(), out_fnt.len());
+//
+//     std::fs::write("/tmp/a.fnt", &in_fnt).unwrap();
+//     std::fs::write("/tmp/b.fnt", &out_fnt[..]).unwrap();
+//
+//     assert_eq!(in_fnt, &out_fnt[..]);
+//
+//     let out_rom = WritableRomFs::create(BytesMut::from(&in_rom.to_bytes().unwrap()[..]), true).unwrap();
+//     assert_eq!(in_rom.fs, out_rom.fs);
+// }

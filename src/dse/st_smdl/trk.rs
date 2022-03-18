@@ -28,7 +28,7 @@ use crate::gettext::gettext;
 
 const TRK_HEADER: &[u8] = b"trk\x20";
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct SmdlTrackHeader {
     pub param1: u32,
     pub param2: u32,
@@ -36,6 +36,7 @@ pub struct SmdlTrackHeader {
 }
 
 impl SmdlTrackHeader {
+    #[allow(dead_code)]  // if python is not enabled.
     pub(crate) fn new(param1: u32, param2: u32) -> Self {
         Self {param1, param2, len: 0}
     }
@@ -69,7 +70,7 @@ impl SmdlTrackHeader {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct SmdlTrackPreamble {
     pub track_id: u8,
     pub channel_id: u8,
@@ -103,7 +104,7 @@ impl From<SmdlTrackPreamble> for StBytes {
 
 const TRACK_EOF_MESSAGE: &str = "Reached EOF while reading tracks from SMDL.";
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct SmdlTrack {
     pub header: SmdlTrackHeader,
     pub preamble: SmdlTrackPreamble,

@@ -21,6 +21,8 @@ pub use pyo3::exceptions;
 #[cfg(feature = "python")]
 pub use pyo3::prelude::*;
 #[cfg(feature = "python")]
+pub use pyo3::PyErr;
+#[cfg(feature = "python")]
 pub use pyo3::types::PyBytes;
 #[cfg(feature = "python")]
 pub use pyo3::types::PyByteArray;
@@ -38,6 +40,10 @@ pub type PyClonedByRef<T> = Py<T>;
 
 #[cfg(not(feature = "python"))]
 pub(crate) use crate::no_python::*;
+#[cfg(not(feature = "python"))]
+pub use crate::no_python::PyErr;
+#[cfg(not(feature = "python"))]
+pub use crate::no_python::exceptions;
 
 #[inline]
 #[allow(unused)]

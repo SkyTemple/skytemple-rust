@@ -68,7 +68,7 @@ impl From<SwdlPcmdLen> for StBytes {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct SwdlHeader {
     pub version: u16,
     pub unk1: u8,
@@ -166,7 +166,7 @@ impl SwdlHeader {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq)]
 pub struct Swdl {
     pub header: SwdlHeader,
     pub wavi: SwdlWavi,

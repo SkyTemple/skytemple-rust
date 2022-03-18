@@ -26,7 +26,7 @@ pub const PRGI_HEADER: &[u8] = "prgi".as_bytes();
 const LEN_LFO: usize = 16;
 const LEN_SPLITS: usize = 48;
 
-#[derive(Clone, Default)]
+#[derive(Clone, Default, PartialEq)]
 pub struct SwdlLfoEntry {
     pub unk34: u8,
     pub unk52: u8,
@@ -77,7 +77,7 @@ impl From<SwdlLfoEntry> for StBytes {
 }
 
 
-#[derive(Clone, Default)]
+#[derive(Clone, Default, PartialEq)]
 pub struct SwdlSplitEntry {
     pub id: u8,
     pub unk11: u8,
@@ -216,7 +216,7 @@ impl From<SwdlSplitEntry> for StBytes {
     }
 }
 
-#[derive(Clone, Default)]
+#[derive(Clone, Default, PartialEq)]
 pub struct SwdlProgram {
     pub id: u16,
     pub prg_volume: i8,
@@ -288,7 +288,7 @@ impl From<SwdlProgram> for StBytes {
     }
 }
 
-#[derive(Clone, Default)]
+#[derive(Clone, Default, PartialEq)]
 pub struct SwdlPrgi {
     pub program_table: Vec<Option<SwdlProgram>>
 }

@@ -21,7 +21,7 @@ macro_rules! pyr_assert {
     ($cond:expr $(,)?) => {{
         if !$cond {
             return Err(crate::python::exceptions::PyAssertionError::new_err(
-                format!("{} | {} [{}:{}]", stringify!($cond), file!(), line!())
+                format!("{} [{}:{}]", stringify!($cond), file!(), line!())
             ));
         }
     }};

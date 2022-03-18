@@ -37,7 +37,7 @@ pub enum SampleFormatConsts {
     Psg = 0x0300,  // possibly
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct SwdlPcmdReference {
     pub offset: u32,
     pub length: u32
@@ -53,7 +53,7 @@ impl SwdlPcmdReference {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct SwdlSampleInfoTblEntry {
     pub id: u16,
     pub ftune: i8,
@@ -203,7 +203,7 @@ impl From<SwdlSampleInfoTblEntry> for StBytes {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct SwdlWavi {
     pub sample_info_table: Vec<Option<SwdlSampleInfoTblEntry>>,
     initial_length: usize

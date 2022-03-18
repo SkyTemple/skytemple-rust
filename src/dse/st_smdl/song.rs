@@ -25,7 +25,7 @@ use crate::gettext::gettext;
 
 const SONG_HEADER: &[u8] = b"song";
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct SmdlSong {
     pub unk1: u32,
     pub unk2: u32,
@@ -46,6 +46,7 @@ pub struct SmdlSong {
 
 impl SmdlSong {
     #[allow(clippy::too_many_arguments)]
+    #[allow(dead_code)]  // if python is not enabled.
     pub(crate) fn new(
         unk1: u32, unk2: u32, unk3: u32, unk4: u16, tpqn: u16, unk5: u16, nbchans: u8,
         unk6: u32, unk7: u32, unk8: u32, unk9: u32, unk10: u16, unk11: u16, unk12: u32
