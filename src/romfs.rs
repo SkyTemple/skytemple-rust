@@ -24,7 +24,7 @@
 use std::fs::File;
 use std::path::{Path, PathBuf};
 use bytes::Buf;
-use memmap::Mmap;
+use memmap2::Mmap;
 use crate::python::PyResult;
 use crate::gettext::gettext;
 use crate::python::exceptions::PyValueError;
