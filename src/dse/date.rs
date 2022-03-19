@@ -19,7 +19,7 @@
 
 use bytes::{Buf, BufMut, BytesMut};
 use crate::bytes::StBytes;
-use chrono::{Datelike, Timelike, Utc};
+use time::OffsetDateTime;
 
 #[derive(Clone, Debug)]
 pub struct DseDate {
@@ -37,14 +37,14 @@ impl DseDate {
         DseDate { year, month, day, hour, minute, second, centisecond }
     }
     pub fn now() -> Self {
-        let now = Utc::now();
+        let now = OffsetDateTime::now_utc();
         DseDate {
             year: now.year() as u16,
             month: now.month() as u8,
-            day: now.day() as u8,
-            hour: now.hour() as u8,
-            minute: now.minute() as u8,
-            second: now.second() as u8,
+            day: now.day(),
+            hour: now.hour(),
+            minute: now.minute(),
+            second: now.second(),
             centisecond: 0
         }
     }
