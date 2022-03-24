@@ -21,6 +21,7 @@ use crate::python::{PyResult, exceptions};
 use bytes::{Buf, BufMut, BytesMut};
 use core::iter::repeat;
 use std::io::Cursor;
+use std::slice;
 use crate::bytes::{StBytes, StBytesMut};
 use crate::dse::st_smdl::event::{SmdlEvent, SmdlNote, SmdlPause, SmdlSpecialOpCode, PAUSE_NOTE_MAX, PLAY_NOTE_MAX};
 use num_traits::FromPrimitive;
@@ -104,11 +105,45 @@ impl From<SmdlTrackPreamble> for StBytes {
 
 const TRACK_EOF_MESSAGE: &str = "Reached EOF while reading tracks from SMDL.";
 
+struct SmdlTrackIter<'a> {
+    event_iter: slice::Iter<'a, SmdlEvent>,
+    previous: usize,
+    sum: u32,
+}
+
+impl<'a> SmdlTrackIter<'a> {
+    fn new(event_iter: slice::Iter<'a, SmdlEvent>) -> Self {
+        Self { event_iter, previous: 0, sum: 0 }
+    }
+}
+
+impl<'a> Iterator for SmdlTrackIter<'a> {
+    type Item = (u32, &'a SmdlEvent);
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.event_iter.next().map(|e| {
+            let previous_c = e.length(self.previous);
+            if previous_c > 0 {
+                self.previous = previous_c;
+            }
+            self.sum += previous_c as u32;
+            (self.sum, e)
+        })
+    }
+}
+
 #[derive(Clone, Debug, PartialEq)]
 pub struct SmdlTrack {
     pub header: SmdlTrackHeader,
     pub preamble: SmdlTrackPreamble,
     pub events: Vec<SmdlEvent>,
+}
+
+impl SmdlTrack {
+    /// Iterates over all events as tuples of their tick/beat and the event itself.
+    pub fn iter_events_timed(&self) -> impl Iterator<Item=(u32, &SmdlEvent)> {
+        SmdlTrackIter::new(self.events.iter())
+    }
 }
 
 impl From<&mut StBytes> for PyResult<SmdlTrack> {

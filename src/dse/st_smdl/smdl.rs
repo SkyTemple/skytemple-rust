@@ -132,22 +132,17 @@ impl Smdl {
     }
 
     fn single_track_length_in_beats(trk: &SmdlTrack, until: Until) -> u32 {
-        let mut previous = 0usize;
-        let mut sum = 0u32;
-        for e in trk.events.iter() {
-            let previous_c = e.length(previous);
-            if previous_c > 0 {
-                previous = previous_c;
-            }
-            sum += previous_c as u32;
+        let mut highest = 0u32;
+        for (beat, e) in trk.iter_events_timed() {
+            highest = beat;
             match &until {
                 Until::End => {}
-                Until::Loop => if let SmdlEvent::Special { op: SmdlSpecialOpCode::LoopPoint, .. } = e { return sum }
-                Until::Special(opc) => if let SmdlEvent::Special { op, .. } = e { if op == opc { return sum } }
-                Until::Event(em) => if e == em { return sum }
+                Until::Loop => if let SmdlEvent::Special { op: SmdlSpecialOpCode::LoopPoint, .. } = e { return highest }
+                Until::Special(opc) => if let SmdlEvent::Special { op, .. } = e { if op == opc { return highest } }
+                Until::Event(em) => if e == em { return highest }
             }
         }
-        sum
+        highest
     }
 
     fn single_track_length_in_microseconds(trk: &SmdlTrack, tpqn: u16, until: Until) -> u64 {

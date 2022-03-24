@@ -82,7 +82,8 @@ impl WritableRomFs {
 }
 
 impl<T: AsRef<[u8]>> GenericRomFs<T> {
-    pub fn create(data: T, check_crc: bool) -> PyResult<Self> {
+    pub fn create<U>(data: U, check_crc: bool) -> PyResult<Self> where U: Into<T> {
+        let data = data.into();
         pyr_assert!(data.as_ref().len() >= 0x160, gettext(NOT_ENOUGH_DATA), PyValueError);
         if check_crc {
             let checksum = (&data.as_ref()[0x15E..]).get_u16_le();

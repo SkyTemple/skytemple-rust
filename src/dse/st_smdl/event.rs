@@ -18,6 +18,7 @@
  */
 
 use num_derive::FromPrimitive;
+use num_traits::FromPrimitive;
 
 pub const PLAY_NOTE_MAX: u8 = 0x7F;
 pub const PAUSE_NOTE_MAX: u8 = 0x8F;
@@ -41,6 +42,18 @@ pub enum SmdlNote {
     InvalidD = 0xD,
     InvalidE = 0xE,
     Unknown = 0xF,
+}
+
+impl SmdlNote {
+    pub fn valid(&self) -> bool {
+        self != &Self::InvalidC && self != &Self::InvalidD && self != &Self::InvalidE && self != &Self::Unknown
+    }
+}
+
+impl From<u8> for SmdlNote {
+    fn from(v: u8) -> Self {
+        Self::from_u8(v).expect("Only numbers from 0-15 can be converted to SmdlNote.")
+    }
 }
 
 #[repr(u8)]
