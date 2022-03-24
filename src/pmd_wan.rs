@@ -19,8 +19,7 @@
 
 use pmd_wan as lib;
 use pmd_wan::WanError;
-use pyo3::exceptions;
-use pyo3::prelude::*;
+use crate::python::*;
 use std::convert::TryInto;
 use std::io::Cursor;
 
@@ -385,6 +384,10 @@ fn convert_anyhow_error(err: anyhow::Error) -> PyErr {
     exceptions::PyValueError::new_err(format!("{:?}", err))
 }
 
+fn convert_anyhow_error_to_user(err: anyhow::Error) -> PyErr {
+    create_value_user_error(format!("{:?}", err))
+}
+
 #[pyfunction]
 pub fn encode_image_to_static_wan_file(py: Python, image: PyObject) -> PyResult<StBytes> {
     let indexed_image = In16ColIndexedImage(image).extract(py)?;
@@ -412,11 +415,11 @@ pub fn encode_image_to_static_wan_file(py: Python, image: PyObject) -> PyResult<
 
     let meta_frame_group_id = lib::insert_meta_frame_in_wanimage(
         indexed_image.0.0.0.to_vec(),
-        indexed_image.0.1.try_into().map_err(|_| exceptions::PyValueError::new_err("The image is far too wide"))?,
-        indexed_image.0.2.try_into().map_err(|_| exceptions::PyValueError::new_err("The image is far too high"))?,
+        indexed_image.0.1.try_into().map_err(|_| create_value_user_error("The image is far too wide"))?,
+        indexed_image.0.2.try_into().map_err(|_| create_value_user_error("The image is far too high"))?,
         &mut wanimage,
         0,
-    ).map_err(convert_anyhow_error)?;
+    ).map_err(convert_anyhow_error_to_user)?;
 
     if let Some(meta_frame_group_id) = meta_frame_group_id {
         wanimage.anim_store.anim_groups.push(vec![
@@ -438,7 +441,7 @@ pub fn encode_image_to_static_wan_file(py: Python, image: PyObject) -> PyResult<
         wanimage.create_wan(&mut cursor).map_err(convert_anyhow_error)?;
         Ok(StBytes::from(buffer))
     } else {
-        Err(exceptions::PyValueError::new_err("The image doesn't contain any visible pixel"))
+        Err(create_value_user_error("The image doesn't contain any visible pixel"))
     }
 }
 

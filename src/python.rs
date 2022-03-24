@@ -16,6 +16,7 @@
  * You should have received a copy of the GNU General Public License
  * along with SkyTemple.  If not, see <https://www.gnu.org/licenses/>.
  */
+
 #[cfg(feature = "python")]
 pub use pyo3::exceptions;
 #[cfg(feature = "python")]
@@ -31,6 +32,8 @@ pub use pyo3::types::PyType;
 #[cfg(feature = "python")]
 #[cfg(feature = "image")]
 pub use crate::python_image::*;
+
+const USER_ERROR_MARK: &str = "_skytemple__user_error";
 
 // The Py::clone_ref method returns a copy of the Py container with Python.
 // Without Python, it returns a reference instead.
@@ -50,4 +53,12 @@ pub use crate::no_python::exceptions;
 // Clonability is required for non-Python use cases.
 pub(crate) fn return_option<T>(py: Python, opt: &Option<Py<T>>) -> PyResult<Option<PyClonedByRef<T>>> where T: Clone {
     Ok(opt.as_ref().map(|x| x.clone_ref(py)))
+}
+
+/// Creates a PyValueError that is marked as an user error for Python contexts (for error reporting purposes).
+pub fn create_value_user_error<S: Into<String> + IntoPy<PyObject> + Send + Sync + 'static>(msg: S) -> PyErr {
+    let exc = exceptions::PyValueError::new_err(msg);
+    #[cfg(feature = "python")]
+    Python::with_gil(|py | exc.instance(py).setattr(USER_ERROR_MARK, true).ok());
+    exc
 }
