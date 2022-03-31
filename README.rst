@@ -35,7 +35,7 @@ Additionally it has Python bindings for the following Rust crates:
 
 - `pmd_wan`_ by marius851000_.
 
-PLEASE NOTE that version 1.3.4 is an intermediate release. The only stable thing in it are the pmd_wan bindings!
+PLEASE NOTE that versions 1.3.4-1.3.x are intermediate releases. The only stable thing in it are the pmd_wan bindings!
 
 Unit Tests
 ~~~~~~~~~~
