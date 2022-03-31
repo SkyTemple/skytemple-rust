@@ -105,7 +105,8 @@ impl From<SmdlTrackPreamble> for StBytes {
 
 const TRACK_EOF_MESSAGE: &str = "Reached EOF while reading tracks from SMDL.";
 
-struct SmdlTrackIter<'a> {
+#[derive(Debug, Clone)]
+pub struct SmdlTrackIter<'a> {
     event_iter: slice::Iter<'a, SmdlEvent>,
     previous: usize,
     sum: u32,
@@ -141,7 +142,7 @@ pub struct SmdlTrack {
 
 impl SmdlTrack {
     /// Iterates over all events as tuples of their tick/beat and the event itself.
-    pub fn iter_events_timed(&self) -> impl Iterator<Item=(u32, &SmdlEvent)> {
+    pub fn iter_events_timed<'a>(&'a self) -> SmdlTrackIter<'a> {
         SmdlTrackIter::new(self.events.iter())
     }
 }

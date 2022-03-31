@@ -166,7 +166,7 @@ impl SwdlHeader {
     }
 }
 
-#[derive(Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Swdl {
     pub header: SwdlHeader,
     pub wavi: SwdlWavi,

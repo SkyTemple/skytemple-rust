@@ -25,7 +25,7 @@ use crate::gettext::gettext;
 const KGRP_HEADER: &[u8] = b"kgrp";
 const KEYGROUP_LEN: usize = 8;
 
-#[derive(Clone, Default, PartialEq)]
+#[derive(Debug, Clone, Default, PartialEq)]
 pub struct SwdlKeygroup {
     pub id: u16,
     pub poly: i8,
@@ -66,7 +66,7 @@ impl From<SwdlKeygroup> for StBytes {
 }
 
 
-#[derive(Clone, Default, PartialEq)]
+#[derive(Debug, Clone, Default, PartialEq)]
 pub struct SwdlKgrp {
     pub keygroups: Vec<SwdlKeygroup>
 }

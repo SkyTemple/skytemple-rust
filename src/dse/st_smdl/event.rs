@@ -24,7 +24,7 @@ pub const PLAY_NOTE_MAX: u8 = 0x7F;
 pub const PAUSE_NOTE_MAX: u8 = 0x8F;
 
 #[repr(u8)]
-#[derive(Clone, PartialEq, PartialOrd, FromPrimitive, Debug)]
+#[derive(Clone, Copy, PartialEq, PartialOrd, FromPrimitive, Debug)]
 pub enum SmdlNote {
     C = 0x0,
     CS = 0x1,

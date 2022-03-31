@@ -33,6 +33,7 @@ pub use pyo3::types::PyType;
 #[cfg(feature = "image")]
 pub use crate::python_image::*;
 
+#[cfg(feature = "python")]
 const USER_ERROR_MARK: &str = "_skytemple__user_error";
 
 // The Py::clone_ref method returns a copy of the Py container with Python.
@@ -56,9 +57,15 @@ pub(crate) fn return_option<T>(py: Python, opt: &Option<Py<T>>) -> PyResult<Opti
 }
 
 /// Creates a PyValueError that is marked as an user error for Python contexts (for error reporting purposes).
+#[cfg(feature = "python")]
 pub fn create_value_user_error<S: Into<String> + IntoPy<PyObject> + Send + Sync + 'static>(msg: S) -> PyErr {
     let exc = exceptions::PyValueError::new_err(msg);
-    #[cfg(feature = "python")]
     Python::with_gil(|py | exc.instance(py).setattr(USER_ERROR_MARK, true).ok());
     exc
+}
+
+/// Creates a PyValueError that is marked as an user error for Python contexts (for error reporting purposes).
+#[cfg(not(feature = "python"))]
+pub fn create_value_user_error<S: Into<String> + Send + Sync + 'static>(msg: S) -> PyErr {
+    exceptions::PyValueError::new_err(msg)
 }
