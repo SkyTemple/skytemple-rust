@@ -29,7 +29,7 @@ use crate::dse::st_swdl::pcmd::SwdlPcmd;
 const WAVI_HEADER: &[u8] = b"wavi";
 
 #[repr(u16)]
-#[derive(Clone, PartialEq, PartialOrd, FromPrimitive, Debug)]
+#[derive(Clone, Copy, PartialEq, PartialOrd, FromPrimitive, Debug)]
 pub enum SampleFormatConsts {
     Pcm8bit = 0x0000,
     Pcm16bit = 0x0100,

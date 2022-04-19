@@ -37,7 +37,7 @@ pub enum Until {
     End, Loop, Event(SmdlEvent), Special(SmdlSpecialOpCode)
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Default)]
 pub struct SmdlHeader {
     pub version: u16,
     pub unk1: u8,
@@ -50,57 +50,35 @@ pub struct SmdlHeader {
     pub unk9: u32,
 }
 
-// mod testing {
-//     use crate::bytes::StBytes;
-//     use crate::dse::st_smdl::event::{SmdlEvent, SmdlSpecialOpCode};
-//     use crate::dse::st_smdl::smdl::{Smdl, Until};
-//     use crate::dse::st_smdl::trk::SmdlTrack;
-//     use crate::PyResult;
-//     use crate::rom_source::RomFileProvider;
-//     use crate::romfs::RomFs;
-//
-//     #[cfg(test)]
-//     #[test]
-//     fn test_smdl_len() {
-//         let rom = RomFs::new("/home/marco/dev/skytemple/skytemple/CLEAN_ROM/4468 - Pokemon Mystery Dungeon - Explorers of Sky (Europe) (En,Fr,De,Es,It).nds", true).unwrap();
-//         //let main_bank = rom.get_file_by_name("SOUND/BGM/bgm.swd").unwrap();
-//         //let bank = rom.get_file_by_name("SOUND/BGM/bgm0001.swd").unwrap();
-//         println!("All SMDLS:");
-//         for i in 0..99 {
-//             let smdl: Smdl = <PyResult<Smdl>>::from(StBytes::from(rom.get_file_by_name(&format!("SOUND/BGM/bgm{:04}.smd", i)).unwrap())).unwrap();
-//             println!("{:04}: {}", i, smdl.header.file_name);
-//             for (tid, track) in smdl.tracks.iter().enumerate() {
-//                 let total_time = Smdl::single_track_length_in_beats(track, Until::End);
-//                 let loop_time = Smdl::single_track_length_in_beats(track, Until::Loop);
-//                 let tempo_time = Smdl::single_track_length_in_beats(track, Until::Special(SmdlSpecialOpCode::SetTempo));
-//                 let set_tempo_count: u32 = track.events.iter().map(|e| if let SmdlEvent::Special {op: SmdlSpecialOpCode::SetTempo, .. } = e { 1 } else { 0 }).sum();
-//                 println!("Track {:02} Length: {:06} - Loop: {:06} - SetTempo: {:06} ({} total)", tid, total_time, if total_time == loop_time { -1 } else { loop_time as i64 }, if total_time == tempo_time { -1 } else { tempo_time as i64 }, set_tempo_count)
-//             }
-//             println!("---------------------")
-//         }
-//         let smdl: Smdl = <PyResult<Smdl>>::from(StBytes::from(rom.get_file_by_name("SOUND/BGM/bgm0001.smd").unwrap())).unwrap();
-//
-//         println!("=========================");
-//         println!("{}", smdl.header.file_name);
-//         println!("tpqn:                {}", smdl.song.tpqn);
-//         let len_in_beats = smdl.len_in_beats(Until::End);
-//         let len_in_mis = smdl.len_in_microseconds(Until::End);
-//         let len_in_ticks = smdl.len_in_ticks(Until::End);
-//         let len_in_beats_until_loop = smdl.len_in_beats(Until::Loop);
-//         let len_in_mis_until_loop = smdl.len_in_microseconds(Until::Loop);
-//         let len_in_ticks_until_loop = smdl.len_in_ticks(Until::Loop);
-//         println!("=========================");
-//         println!("       len in beats: {}", len_in_beats);
-//         println!("         len in mis: {}", len_in_mis);
-//         println!("         len in sec: {}", len_in_mis as f64 / 1000000.0);
-//         println!("         len in tks: {}", len_in_ticks);
-//         println!("=========================");
-//         println!("Until loop:       len in beats: {}", len_in_beats_until_loop);
-//         println!("Until loop:         len in mis: {}", len_in_mis_until_loop);
-//         println!("Until loop:         len in sec: {}", len_in_mis_until_loop as f64 / 1000000.0);
-//         println!("Until loop:         len in tks: {}", len_in_ticks_until_loop);
-//     }
-// }
+impl SmdlHeader {
+    fn to_bytes(&self, byte_len_smdl: u32) -> StBytes {
+        let mut b = BytesMut::with_capacity(64);
+        b.put_slice(SMDL_HEADER);
+        b.put_u32_le(0);
+        b.put_u32_le(byte_len_smdl);
+        b.put_u16_le(self.version);
+        b.put_u8(self.unk1);
+        b.put_u8(self.unk2);
+        b.put_u64(0);
+        b.put(StBytes::from(self.modified_date.clone()).0);
+        b.put(StBytes::from(self.file_name.clone()).0);
+        b.put_u32_le(self.unk5);
+        b.put_u32_le(self.unk6);
+        b.put_u32_le(self.unk8);
+        b.put_u32_le(self.unk9);
+        debug_assert_eq!(64, b.len());
+        b.into()
+    }
+}
+
+
+#[derive(Clone, Debug, PartialEq, Default)]
+pub struct Smdl {
+    pub header: SmdlHeader,
+    pub song: SmdlSong,
+    pub tracks: Vec<SmdlTrack>,
+    pub eoc: SmdlEoc
+}
 
 impl Smdl {
     /// Returns the inner name of a SWDL file (stored in the header), without
@@ -199,35 +177,6 @@ impl From<&mut StBytes> for PyResult<SmdlHeader> {
             unk9: source.get_u32_le()
         })
     }
-}
-
-impl SmdlHeader {
-    fn to_bytes(&self, byte_len_smdl: u32) -> StBytes {
-        let mut b = BytesMut::with_capacity(64);
-        b.put_slice(SMDL_HEADER);
-        b.put_u32_le(0);
-        b.put_u32_le(byte_len_smdl);
-        b.put_u16_le(self.version);
-        b.put_u8(self.unk1);
-        b.put_u8(self.unk2);
-        b.put_u64(0);
-        b.put(StBytes::from(self.modified_date.clone()).0);
-        b.put(StBytes::from(self.file_name.clone()).0);
-        b.put_u32_le(self.unk5);
-        b.put_u32_le(self.unk6);
-        b.put_u32_le(self.unk8);
-        b.put_u32_le(self.unk9);
-        debug_assert_eq!(64, b.len());
-        b.into()
-    }
-}
-
-#[derive(Clone, Debug, PartialEq)]
-pub struct Smdl {
-    pub header: SmdlHeader,
-    pub song: SmdlSong,
-    pub tracks: Vec<SmdlTrack>,
-    pub eoc: SmdlEoc
 }
 
 impl From<StBytes> for PyResult<Smdl> {

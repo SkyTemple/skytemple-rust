@@ -42,6 +42,14 @@ impl SmdlTrackHeader {
         Self {param1, param2, len: 0}
     }
 
+    fn empty() -> Self {
+        Self {
+            param1: 16777216,  // UNKNOWN!! Value often used.
+            param2: 65284,  // UNKNOWN!! Value often used.
+            len: 0
+        }
+    }
+
     fn get_initial_length(&self) -> usize {
         self.len as usize
     }
@@ -77,6 +85,17 @@ pub struct SmdlTrackPreamble {
     pub channel_id: u8,
     pub unk1: u8,
     pub unk2: u8,
+}
+
+impl SmdlTrackPreamble {
+    fn new(track_id: u8, channel_id: u8) -> Self {
+        Self {
+            track_id,
+            channel_id,
+            unk1: 0, // Unknown!! Value often used.
+            unk2: 0  // Unknown!! Value often used.
+        }
+    }
 }
 
 impl From<&mut StBytes> for PyResult<SmdlTrackPreamble> {
@@ -141,8 +160,15 @@ pub struct SmdlTrack {
 }
 
 impl SmdlTrack {
+    pub fn new(track_id: u8, channel_id: u8) -> Self {
+        Self {
+            header: SmdlTrackHeader::empty(),
+            preamble: SmdlTrackPreamble::new(track_id, channel_id),
+            events: vec![]
+        }
+    }
     /// Iterates over all events as tuples of their tick/beat and the event itself.
-    pub fn iter_events_timed<'a>(&'a self) -> SmdlTrackIter<'a> {
+    pub fn iter_events_timed(&self) -> SmdlTrackIter {
         SmdlTrackIter::new(self.events.iter())
     }
 }

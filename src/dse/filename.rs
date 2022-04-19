@@ -25,7 +25,7 @@ use std::iter::repeat;
 use bytes::{BytesMut, BufMut, Buf};
 use encoding::{DecoderTrap, EncoderTrap};
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Default)]
 pub struct DseFilename(pub String);
 
 impl DseFilename {

@@ -25,7 +25,7 @@ use crate::gettext::gettext;
 
 const SONG_HEADER: &[u8] = b"song";
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Default)]
 pub struct SmdlSong {
     pub unk1: u32,
     pub unk2: u32,

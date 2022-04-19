@@ -21,7 +21,7 @@ use bytes::{Buf, BufMut, BytesMut};
 use crate::bytes::StBytes;
 use time::OffsetDateTime;
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Default)]
 pub struct DseDate {
     pub year: u16,
     pub month: u8,
