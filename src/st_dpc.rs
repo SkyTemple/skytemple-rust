@@ -31,11 +31,13 @@ pub struct Dpc {
 
 #[pymethods]
 impl Dpc {
+    #[allow(unused_variables)]
     #[new]
     pub fn new(data: StBytes) -> PyResult<Self> {
         todo!()
     }
 
+    #[allow(unused_variables)]
     #[args(width_in_mtiles = "16")]
     /// Convert all chunks of the DPC to one big image.
     /// The chunks are all placed next to each other.
@@ -47,6 +49,7 @@ impl Dpc {
         todo!()
     }
 
+    #[allow(unused_variables)]
     /// Convert a single chunk of the DPC into a image. For general notes, see chunks_to_pil.
     pub fn single_chunk_to_pil(&self, chunk_idx: usize, dpci: InputDpci, palettes: Vec<Vec<u8>>) -> PyResult<IndexedImage> {
         todo!()
@@ -66,6 +69,7 @@ impl Dpc {
         todo!()
     }
 
+    #[allow(unused_variables)]
     #[args(contains_null_chunk = "false", correct_tile_ids = "true")]
     /// Replace the tile mappings of the specified layer.
     /// If contains_null_tile is False, the null chunk is added to the list, at the beginning.
@@ -87,6 +91,7 @@ impl DpcWriter {
     pub fn new() -> Self {
         Self
     }
+    #[allow(unused_variables)]
     pub fn write(&self, model: Py<Dpc>, py: Python) -> PyResult<StBytes> {
         todo!()
     }

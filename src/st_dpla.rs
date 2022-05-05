@@ -27,6 +27,7 @@ pub struct Dpla {
 
 #[pymethods]
 impl Dpla {
+    #[allow(unused_variables)]
     #[new]
     pub fn new(data: StBytes) -> PyResult<Self> {
         todo!()

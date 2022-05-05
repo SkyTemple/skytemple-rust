@@ -27,6 +27,7 @@ pub struct Dpci {
 
 #[pymethods]
 impl Dpci {
+    #[allow(unused_variables)]
     #[new]
     pub fn new(data: StBytes) -> PyResult<Self> {
         todo!()
@@ -43,6 +44,7 @@ impl DpciWriter {
     pub fn new() -> Self {
         Self
     }
+    #[allow(unused_variables)]
     pub fn write(&self, model: Py<Dpci>, py: Python) -> PyResult<StBytes> {
         todo!()
     }

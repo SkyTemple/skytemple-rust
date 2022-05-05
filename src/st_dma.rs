@@ -17,7 +17,6 @@
  * along with SkyTemple.  If not, see <https://www.gnu.org/licenses/>.
  */
 use crate::bytes::StBytes;
-use crate::image::IndexedImage;
 use crate::python::*;
 use num_derive::FromPrimitive;
 use num_traits::FromPrimitive;
@@ -94,6 +93,7 @@ impl Dma {
     /// Returns a few extra chunk variations for the given type.
     /// How they are used exactly by the game is currently not know,
     /// this interface could change if we find out.
+    #[allow(unused_variables)]
     pub fn get_extra(&self, extra_type: DmaExtraType) -> Vec<u8> {
         //      cms = []
         //         for i in range(0x300 * 3, len(self.chunk_mappings)):
@@ -115,6 +115,7 @@ impl Dma {
     }
 
     /// Sets and extra tile entry.
+    #[allow(unused_variables)]
     pub fn set_extra(&mut self, extra_type: DmaExtraType, index: u8, value: usize) {
         //  self.chunk_mappings[(0x300 * 3) + extra_type + (3 * index)] = value
         todo!()

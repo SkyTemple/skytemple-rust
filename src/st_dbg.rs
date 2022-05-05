@@ -32,11 +32,13 @@ pub struct Dbg {
 
 #[pymethods]
 impl Dbg {
+    #[allow(unused_variables)]
     #[new]
     pub fn new(data: StBytes) -> PyResult<Self> {
         todo!()
     }
 
+    #[allow(unused_variables)]
     pub fn to_pil(&self, dpc: InputDpc, dpci: InputDpci, palettes: Vec<Vec<u8>>) -> PyResult<IndexedImage> {
         todo!()
     }
@@ -70,6 +72,7 @@ impl DbgWriter {
     pub fn new() -> Self {
         Self
     }
+    #[allow(unused_variables)]
     pub fn write(&self, model: Py<Dbg>, py: Python) -> PyResult<StBytes> {
         todo!()
     }

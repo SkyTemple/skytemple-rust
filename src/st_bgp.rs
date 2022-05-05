@@ -153,7 +153,6 @@ impl Bgp {
     }
 
     fn extract_tiles(data: &[u8]) -> Vec<StBytes> {
-        let data_len = data.len();
         data.chunks(BGP_TILE_DIM * BGP_TILE_DIM / 2)
             .map(StBytes::from)
             .collect()

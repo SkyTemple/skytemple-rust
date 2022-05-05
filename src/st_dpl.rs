@@ -28,6 +28,7 @@ pub struct Dpl {
 
 #[pymethods]
 impl Dpl {
+    #[allow(unused_variables)]
     #[new]
     pub fn new(data: StBytes) -> PyResult<Self> {
         todo!()
@@ -44,6 +45,7 @@ impl DplWriter {
     pub fn new() -> Self {
         Self
     }
+    #[allow(unused_variables)]
     pub fn write(&self, model: Py<Dpl>, py: Python) -> PyResult<StBytes> {
         todo!()
     }
