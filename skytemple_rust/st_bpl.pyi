@@ -16,16 +16,18 @@
 #  along with SkyTemple.  If not, see <https://www.gnu.org/licenses/>.
 from typing import List, Sequence
 
+from range_typed_integers import *
+
 
 class BplAnimationSpec:
-    duration_per_frame: int
-    number_of_frames: int
+    duration_per_frame: u16
+    number_of_frames: u16
 
-    def __init__(self, duration_per_frame: int, number_of_frames: int): ...
+    def __init__(self, duration_per_frame: u16, number_of_frames: u16): ...
 
 
 class Bpl:
-    number_palettes: int
+    number_palettes: u16
     has_palette_animation: bool
     palettes: Sequence[Sequence[int]]
     animation_specs: Sequence[BplAnimationSpec]

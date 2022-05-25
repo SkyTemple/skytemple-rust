@@ -20,15 +20,16 @@ from PIL import Image
 
 from skytemple_rust import TilemapEntry
 from skytemple_rust.st_bpa import Bpa
+from range_typed_integers import *
 
 
 class BpcLayer:
     # The actual number of tiles is one lower
-    number_tiles: int
+    number_tiles: u16
     # There must be 4 BPAs. (0 for not used)
-    bpas: Sequence[int]
+    bpas: Sequence[u16]
     # NOTE: Incosistent with number_tiles. We are including the null chunk in this count.
-    chunk_tilemap_len: int
+    chunk_tilemap_len: u16
     # May also be set from outside after creation:
     tiles:  Sequence[bytes]
     tilemap: Sequence[TilemapEntry]
@@ -71,7 +72,7 @@ class Bpc:
     def set_chunk(self, layer: int, index: int, new_tilemappings) -> None: ...  # : List[TilemapEntry]
     def remove_upper_layer(self) -> None: ...
     def add_upper_layer(self) -> None: ...
-    def process_bpa_change(self, bpa_index: int, tiles_bpa_new: int) -> None: ...
+    def process_bpa_change(self, bpa_index: int, tiles_bpa_new: u16) -> None: ...
 
 
 class BpcWriter:

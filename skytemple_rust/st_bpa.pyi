@@ -17,17 +17,18 @@
 from typing import List, Sequence
 
 from PIL import Image
+from range_typed_integers import *
 
 
 class BpaFrameInfo:
-    duration_per_frame: int
-    unk2: int
+    duration_per_frame: u16
+    unk2: u16
     def __init__(self, duration_per_frame: int, unk2: int): ...
 
 
 class Bpa:
-    number_of_tiles: int
-    number_of_frames: int
+    number_of_tiles: u16
+    number_of_frames: u16
     tiles: Sequence[bytes]
     frame_info: Sequence[BpaFrameInfo]
 

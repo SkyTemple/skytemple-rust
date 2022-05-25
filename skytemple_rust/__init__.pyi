@@ -1,6 +1,8 @@
 # __all__ contains all submodules.
 from typing import runtime_checkable, Protocol, Tuple, List, Optional, Any
 
+from range_typed_integers import u16
+
 
 class TilemapEntry:
     idx: int
@@ -9,9 +11,9 @@ class TilemapEntry:
     pal_idx: int
 
     def __init__(self, idx: int, flip_x: bool, flip_y: bool, pal_idx: int, ignore_too_large: bool = False): ...
-    def to_int(self) -> int: ...
+    def to_int(self) -> u16: ...
     @classmethod
-    def from_int(cls, entry: int) -> TilemapEntry: ...
+    def from_int(cls, entry: u16) -> TilemapEntry: ...
 
 
 @runtime_checkable

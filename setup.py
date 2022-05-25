@@ -1,4 +1,4 @@
-__version__ = '1.3.7'
+__version__ = '1.4.0'
 
 from setuptools import setup
 from setuptools_rust import Binding, RustExtension
@@ -17,6 +17,9 @@ setup(
     packages=["skytemple_rust"],
     package_data={"skytemple_rust": ["py.typed", "*.pyi"]},
     description='Binary Rust extension for skytemple-files',
+    install_requires=[
+        'range-typed-integers >= 1.0.0'
+    ],
     extras_require={
         # required for some methods in st_ssb (ExplorerScript v1 and SsbScript export)
         'explorerscript':  ["explorerscript"]

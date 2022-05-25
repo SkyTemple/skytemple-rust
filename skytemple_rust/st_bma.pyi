@@ -21,18 +21,19 @@ from PIL import Image
 from skytemple_rust.st_bpa import Bpa
 from skytemple_rust.st_bpc import Bpc
 from skytemple_rust.st_bpl import Bpl
+from range_typed_integers import *
 
 
 class Bma:
-    map_width_camera: int
-    map_height_camera: int
-    tiling_width: int
-    tiling_height: int
-    map_width_chunks: int
-    map_height_chunks: int
-    number_of_layers: int
-    unk6: int
-    number_of_collision_layers: int
+    map_width_camera: u8
+    map_height_camera: u8
+    tiling_width: u8
+    tiling_height: u8
+    map_width_chunks: u8
+    map_height_chunks: u8
+    number_of_layers: u16
+    unk6: u16
+    number_of_collision_layers: u16
 
     layer0: Sequence[int]
     layer1: Optional[Sequence[int]]
