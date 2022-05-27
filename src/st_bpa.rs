@@ -86,6 +86,16 @@ impl Bpa {
             frame_info
         })
     }
+    /// Returns a new empty Bpa.
+    #[classmethod]
+    pub fn new_empty(_cls: &PyType) -> PyResult<Self> {
+        Ok(Self {
+            number_of_tiles: 0,
+            number_of_frames: 0,
+            tiles: Vec::new(),
+            frame_info: Vec::new()
+        })
+    }
     /// Returns the tile data of tile no. tile_idx for frame frame_idx.
     pub fn get_tile(&self, tile_idx: usize, frame_idx: usize) -> StBytes {
         self.tiles[frame_idx * self.number_of_tiles as usize + tile_idx].clone()

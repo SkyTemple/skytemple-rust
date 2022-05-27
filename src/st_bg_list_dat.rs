@@ -168,6 +168,11 @@ impl BgList {
             )
         )
     }
+
+    /// Adds a level to the level list.
+    pub fn add_level(&mut self, level: Py<BgListEntry>) {
+        self.level.push(level)
+    }
 }
 
 #[pyclass(module = "skytemple_rust.st_bg_list_dat")]
