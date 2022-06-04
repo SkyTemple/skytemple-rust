@@ -16,11 +16,11 @@
  * You should have received a copy of the GNU General Public License
  * along with SkyTemple.  If not, see <https://www.gnu.org/licenses/>.
  */
-use std::iter::repeat;
-use bytes::{Buf, BufMut, BytesMut};
-use crate::python::PyResult;
 use crate::bytes::StBytes;
 use crate::gettext::gettext;
+use crate::python::PyResult;
+use bytes::{Buf, BufMut, BytesMut};
+use std::iter::repeat;
 
 pub const PRGI_HEADER: &[u8] = "prgi".as_bytes();
 const LEN_LFO: usize = 16;
@@ -42,7 +42,10 @@ pub struct SwdlLfoEntry {
 
 impl From<&mut StBytes> for PyResult<SwdlLfoEntry> {
     fn from(source: &mut StBytes) -> Self {
-        pyr_assert!(source.len() >= LEN_LFO, gettext("SWDL file too short (LFO EOF)."));
+        pyr_assert!(
+            source.len() >= LEN_LFO,
+            gettext("SWDL file too short (LFO EOF).")
+        );
         Ok(SwdlLfoEntry {
             unk34: source.get_u8(),
             unk52: source.get_u8(),
@@ -53,7 +56,7 @@ impl From<&mut StBytes> for PyResult<SwdlLfoEntry> {
             depth: source.get_u16_le(),
             delay: source.get_u16_le(),
             unk32: source.get_u16_le(),
-            unk33: source.get_u16_le()
+            unk33: source.get_u16_le(),
         })
     }
 }
@@ -75,7 +78,6 @@ impl From<SwdlLfoEntry> for StBytes {
         b.into()
     }
 }
-
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct SwdlSplitEntry {
@@ -117,7 +119,10 @@ pub struct SwdlSplitEntry {
 
 impl From<&mut StBytes> for PyResult<SwdlSplitEntry> {
     fn from(source: &mut StBytes) -> Self {
-        pyr_assert!(source.len() >= LEN_SPLITS, gettext("SWDL file too short (Split EOF)."));
+        pyr_assert!(
+            source.len() >= LEN_SPLITS,
+            gettext("SWDL file too short (Split EOF).")
+        );
         // One zero:
         source.advance(1);
         let id = source.get_u8();
@@ -125,12 +130,24 @@ impl From<&mut StBytes> for PyResult<SwdlSplitEntry> {
         let unk25 = source.get_u8();
         let lowkey = source.get_i8();
         let hikey = source.get_i8();
-        pyr_assert!(source.get_i8() == lowkey, gettext("SWDL file: Invalid lowkey duplicate (Split EOF)."));
-        pyr_assert!(source.get_i8() == hikey, gettext("SWDL file: Invalid hikey duplicate (Split EOF)."));
+        pyr_assert!(
+            source.get_i8() == lowkey,
+            gettext("SWDL file: Invalid lowkey duplicate (Split EOF).")
+        );
+        pyr_assert!(
+            source.get_i8() == hikey,
+            gettext("SWDL file: Invalid hikey duplicate (Split EOF).")
+        );
         let lolevel = source.get_i8();
         let hilevel = source.get_i8();
-        pyr_assert!(source.get_i8() == lolevel, gettext("SWDL file: Invalid lolevel duplicate (Split EOF)."));
-        pyr_assert!(source.get_i8() == hilevel, gettext("SWDL file: Invalid hilevel duplicate (Split EOF)."));
+        pyr_assert!(
+            source.get_i8() == lolevel,
+            gettext("SWDL file: Invalid lolevel duplicate (Split EOF).")
+        );
+        pyr_assert!(
+            source.get_i8() == hilevel,
+            gettext("SWDL file: Invalid hilevel duplicate (Split EOF).")
+        );
         let unk16 = source.get_i32_le();
         let unk17 = source.get_i16_le();
         let sample_id = source.get_u16_le();
@@ -160,10 +177,40 @@ impl From<&mut StBytes> for PyResult<SwdlSplitEntry> {
         let release = source.get_i8();
         let unk53 = source.get_i8();
         Ok(SwdlSplitEntry {
-            id, unk11, unk25, lowkey, hikey, lolevel, hilevel, unk16, unk17, sample_id, ftune, ctune,
-            rootkey, ktps, sample_volume, sample_pan, keygroup_id, unk22, unk23, unk24, envelope,
-            envelope_multiplier, unk37, unk38, unk39, unk40, attack_volume, attack, decay,
-            sustain, hold, decay2, release, unk53
+            id,
+            unk11,
+            unk25,
+            lowkey,
+            hikey,
+            lolevel,
+            hilevel,
+            unk16,
+            unk17,
+            sample_id,
+            ftune,
+            ctune,
+            rootkey,
+            ktps,
+            sample_volume,
+            sample_pan,
+            keygroup_id,
+            unk22,
+            unk23,
+            unk24,
+            envelope,
+            envelope_multiplier,
+            unk37,
+            unk38,
+            unk39,
+            unk40,
+            attack_volume,
+            attack,
+            decay,
+            sustain,
+            hold,
+            decay2,
+            release,
+            unk53,
         })
     }
 }
@@ -230,12 +277,15 @@ pub struct SwdlProgram {
     pub unk9: u8,
     pub lfos: Vec<SwdlLfoEntry>,
     pub splits: Vec<SwdlSplitEntry>,
-    pub(crate) delimiter: u8
+    pub(crate) delimiter: u8,
 }
 
 impl From<&mut StBytes> for PyResult<SwdlProgram> {
     fn from(source: &mut StBytes) -> Self {
-        pyr_assert!(source.len() >= 0x10, gettext("SWDL file too short (PRG EOF)."));
+        pyr_assert!(
+            source.len() >= 0x10,
+            gettext("SWDL file too short (PRG EOF).")
+        );
         let id = source.get_u16_le();
         let number_splits = source.get_u16_le();
         let prg_volume = source.get_i8();
@@ -252,20 +302,32 @@ impl From<&mut StBytes> for PyResult<SwdlProgram> {
         let lfos = (0..number_lfos)
             .map(|_| <&mut StBytes>::into(source))
             .collect::<PyResult<Vec<SwdlLfoEntry>>>()?;
-        source.advance(16);  // Delimiter
+        source.advance(16); // Delimiter
         let splits = (0..number_splits)
             .map(|_| <&mut StBytes>::into(source))
             .collect::<PyResult<Vec<SwdlSplitEntry>>>()?;
         Ok(SwdlProgram {
-            id, prg_volume, prg_pan, unk3, that_f_byte, unk4, unk5, unk7, unk8, unk9, lfos, splits,
-            delimiter
+            id,
+            prg_volume,
+            prg_pan,
+            unk3,
+            that_f_byte,
+            unk4,
+            unk5,
+            unk7,
+            unk8,
+            unk9,
+            lfos,
+            splits,
+            delimiter,
         })
     }
 }
 
 impl From<SwdlProgram> for StBytes {
     fn from(source: SwdlProgram) -> Self {
-        let expected_len = 0x10 + (source.lfos.len() * LEN_LFO) + 0x10 + (source.splits.len() * LEN_SPLITS);
+        let expected_len =
+            0x10 + (source.lfos.len() * LEN_LFO) + 0x10 + (source.splits.len() * LEN_SPLITS);
         let mut b = BytesMut::with_capacity(expected_len);
         b.put_u16_le(source.id);
         b.put_u16_le(source.splits.len() as u16);
@@ -276,12 +338,12 @@ impl From<SwdlProgram> for StBytes {
         b.put_u16_le(source.unk4);
         b.put_u8(source.unk5);
         b.put_u8(source.lfos.len() as u8);
-        b.put_u8(source.delimiter);  // TODO: Ok? This is the delimiter.
+        b.put_u8(source.delimiter); // TODO: Ok? This is the delimiter.
         b.put_u8(source.unk7);
         b.put_u8(source.unk8);
         b.put_u8(source.unk9);
         b.extend(source.lfos.into_iter().flat_map(|x| StBytes::from(x).0));
-        b.extend(repeat(source.delimiter).take(16));  // TODO: Ok? This is the delimiter.
+        b.extend(repeat(source.delimiter).take(16)); // TODO: Ok? This is the delimiter.
         b.extend(source.splits.into_iter().flat_map(|x| StBytes::from(x).0));
         debug_assert_eq!(expected_len, b.len());
         b.into()
@@ -290,12 +352,15 @@ impl From<SwdlProgram> for StBytes {
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct SwdlPrgi {
-    pub program_table: Vec<Option<SwdlProgram>>
+    pub program_table: Vec<Option<SwdlProgram>>,
 }
 
 impl SwdlPrgi {
     pub fn from_bytes(source: &mut StBytes, number_slots: u16) -> PyResult<Self> {
-        pyr_assert!(source.len() >= 16 + (number_slots as usize * 2), gettext("SWDL file too short (Prgi EOF)."));
+        pyr_assert!(
+            source.len() >= 16 + (number_slots as usize * 2),
+            gettext("SWDL file too short (Prgi EOF).")
+        );
         let header = source.copy_to_bytes(4);
         pyr_assert!(PRGI_HEADER == header, gettext("Invalid PRGI/Prgi header."));
         // 0x00, 0x00, 0x15, 0x04, 0x10, 0x00, 0x00, 0x00:
@@ -305,7 +370,10 @@ impl SwdlPrgi {
         let program_table = (0..(number_slots))
             .map(|_| {
                 let pnt = toc.get_u16_le();
-                pyr_assert!((pnt as u32) < len_chunk_data, gettext("SWDL Prgi length invalid; tried to read past EOF."));
+                pyr_assert!(
+                    (pnt as u32) < len_chunk_data,
+                    gettext("SWDL Prgi length invalid; tried to read past EOF.")
+                );
                 if pnt > 0 {
                     let mut dst = source.clone();
                     dst.advance(pnt as usize);
@@ -337,7 +405,7 @@ impl From<SwdlPrgi> for StBytes {
                     toc.put_u16_le((toc_len + content.len()) as u16);
                     content.put(StBytes::from(prg).0)
                 }
-                None => toc.put_u16_le(0)
+                None => toc.put_u16_le(0),
             }
         }
         debug_assert_eq!(toc.len(), toc_len);

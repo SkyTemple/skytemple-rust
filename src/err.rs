@@ -17,8 +17,8 @@
  * along with SkyTemple.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+use crate::python::{exceptions, PyErr};
 use std::borrow::Cow;
-use crate::python::{PyErr, exceptions};
 
 #[inline]
 #[allow(unused)]

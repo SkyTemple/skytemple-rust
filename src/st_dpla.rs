@@ -21,9 +21,7 @@ use crate::python::*;
 
 #[pyclass(module = "skytemple_rust.st_dpla")]
 #[derive(Clone)]
-pub struct Dpla {
-
-}
+pub struct Dpla {}
 
 #[pymethods]
 impl Dpla {

@@ -19,11 +19,11 @@
 
 //! Fork from encoding @ 0.2 util.rs
 
-use std::str::Chars;
-#[cfg(feature = "strings")]
-use std::marker::PhantomData;
 #[cfg(feature = "strings")]
 use encoding::types;
+#[cfg(feature = "strings")]
+use std::marker::PhantomData;
+use std::str::Chars;
 
 /// External iterator for a string's characters with its corresponding byte offset range.
 pub struct StrCharIndexIterator<'r> {
@@ -32,10 +32,10 @@ pub struct StrCharIndexIterator<'r> {
 }
 
 impl<'r> Iterator for StrCharIndexIterator<'r> {
-    type Item = ((usize,usize), char);
+    type Item = ((usize, usize), char);
 
     #[inline]
-    fn next(&mut self) -> Option<((usize,usize), char)> {
+    fn next(&mut self) -> Option<((usize, usize), char)> {
         if let Some(ch) = self.chars.next() {
             let prev = self.index;
             let next = prev + ch.len_utf8();
@@ -55,7 +55,10 @@ pub trait StrCharIndex<'r> {
 impl<'r> StrCharIndex<'r> for &'r str {
     /// Iterates over each character with corresponding byte offset range.
     fn index_iter(&self) -> StrCharIndexIterator<'r> {
-        StrCharIndexIterator { index: 0, chars: self.chars() }
+        StrCharIndexIterator {
+            index: 0,
+            chars: self.chars(),
+        }
     }
 }
 
@@ -80,18 +83,30 @@ pub struct StatefulDecoderHelper<'a, St, Data: 'a> {
 impl<'a, St: Default, Data> crate::encoding_utils::StatefulDecoderHelper<'a, St, Data> {
     /// Makes a new decoder context out of given buffer and output callback.
     #[inline(always)]
-    pub fn new(buf: &'a [u8], output: &'a mut (dyn types::StringWriter + 'a),
-               data: &'a Data) -> crate::encoding_utils::StatefulDecoderHelper<'a, St, Data> {
-        crate::encoding_utils::StatefulDecoderHelper { buf, pos: 0, output, err: None,
-            data, _marker: PhantomData }
+    pub fn new(
+        buf: &'a [u8],
+        output: &'a mut (dyn types::StringWriter + 'a),
+        data: &'a Data,
+    ) -> crate::encoding_utils::StatefulDecoderHelper<'a, St, Data> {
+        crate::encoding_utils::StatefulDecoderHelper {
+            buf,
+            pos: 0,
+            output,
+            err: None,
+            data,
+            _marker: PhantomData,
+        }
     }
 
     /// Reads one byte from the buffer if any.
     #[inline(always)]
     pub fn read(&mut self) -> Option<u8> {
         match self.buf.get(self.pos) {
-            Some(&c) => { self.pos += 1; Some(c) }
-            None => None
+            Some(&c) => {
+                self.pos += 1;
+                Some(c)
+            }
+            None => None,
         }
     }
 
@@ -115,7 +130,10 @@ impl<'a, St: Default, Data> crate::encoding_utils::StatefulDecoderHelper<'a, St,
     /// If this is the last expr in the rules, also resets back to the initial state.
     #[inline(always)]
     pub fn err(&mut self, msg: &'static str) -> St {
-        self.err = Some(types::CodecError { upto: self.pos as isize, cause: msg.into() });
+        self.err = Some(types::CodecError {
+            upto: self.pos as isize,
+            cause: msg.into(),
+        });
         Default::default()
     }
 
@@ -127,7 +145,10 @@ impl<'a, St: Default, Data> crate::encoding_utils::StatefulDecoderHelper<'a, St,
     #[inline(always)]
     pub fn backup_and_err(&mut self, backup: usize, msg: &'static str) -> St {
         let upto = self.pos as isize - backup as isize;
-        self.err = Some(types::CodecError { upto, cause: msg.into() });
+        self.err = Some(types::CodecError {
+            upto,
+            cause: msg.into(),
+        });
         Default::default()
     }
 }

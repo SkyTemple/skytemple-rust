@@ -17,11 +17,11 @@
  * along with SkyTemple.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-use bytes::{Buf, BufMut, BytesMut};
-use std::iter::repeat;
-use crate::python::PyResult;
 use crate::bytes::StBytes;
 use crate::gettext::gettext;
+use crate::python::PyResult;
+use bytes::{Buf, BufMut, BytesMut};
+use std::iter::repeat;
 
 const SONG_HEADER: &[u8] = b"song";
 
@@ -41,20 +41,44 @@ pub struct SmdlSong {
     pub unk10: u16,
     pub unk11: u16,
     pub unk12: u32,
-    initial_track_count: u8
+    initial_track_count: u8,
 }
 
 impl SmdlSong {
     #[allow(clippy::too_many_arguments)]
-    #[allow(dead_code)]  // if python is not enabled.
+    #[allow(dead_code)] // if python is not enabled.
     pub(crate) fn new(
-        unk1: u32, unk2: u32, unk3: u32, unk4: u16, tpqn: u16, unk5: u16, nbchans: u8,
-        unk6: u32, unk7: u32, unk8: u32, unk9: u32, unk10: u16, unk11: u16, unk12: u32
+        unk1: u32,
+        unk2: u32,
+        unk3: u32,
+        unk4: u16,
+        tpqn: u16,
+        unk5: u16,
+        nbchans: u8,
+        unk6: u32,
+        unk7: u32,
+        unk8: u32,
+        unk9: u32,
+        unk10: u16,
+        unk11: u16,
+        unk12: u32,
     ) -> Self {
         SmdlSong {
-            unk1, unk2, unk3, unk4, tpqn, unk5, nbchans,
-            unk6, unk7, unk8, unk9, unk10, unk11, unk12,
-            initial_track_count: 0
+            unk1,
+            unk2,
+            unk3,
+            unk4,
+            tpqn,
+            unk5,
+            nbchans,
+            unk6,
+            unk7,
+            unk8,
+            unk9,
+            unk10,
+            unk11,
+            unk12,
+            initial_track_count: 0,
         }
     }
 
@@ -65,7 +89,10 @@ impl SmdlSong {
 
 impl From<&mut StBytes> for PyResult<SmdlSong> {
     fn from(source: &mut StBytes) -> Self {
-        pyr_assert!(source.len() >= 64, gettext("SMDL file too short (Song EOF)."));
+        pyr_assert!(
+            source.len() >= 64,
+            gettext("SMDL file too short (Song EOF).")
+        );
         let header = source.copy_to_bytes(4);
         pyr_assert!(SONG_HEADER == header, gettext("Invalid SMDL/Song header."));
         let unk1 = source.get_u32_le();
@@ -86,8 +113,21 @@ impl From<&mut StBytes> for PyResult<SmdlSong> {
         // 16 0xFF bytes:
         source.advance(16);
         Ok(SmdlSong {
-            unk1, unk2, unk3, unk4, tpqn, unk5, nbchans, unk6,
-            unk7, unk8, unk9, unk10, unk11, unk12, initial_track_count
+            unk1,
+            unk2,
+            unk3,
+            unk4,
+            tpqn,
+            unk5,
+            nbchans,
+            unk6,
+            unk7,
+            unk8,
+            unk9,
+            unk10,
+            unk11,
+            unk12,
+            initial_track_count,
         })
     }
 }

@@ -17,15 +17,17 @@
  * along with SkyTemple.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-use crate::python::{PyResult, exceptions};
+use crate::bytes::{StBytes, StBytesMut};
+use crate::dse::st_smdl::event::{
+    SmdlEvent, SmdlNote, SmdlPause, SmdlSpecialOpCode, PAUSE_NOTE_MAX, PLAY_NOTE_MAX,
+};
+use crate::gettext::gettext;
+use crate::python::{exceptions, PyResult};
 use bytes::{Buf, BufMut, BytesMut};
 use core::iter::repeat;
+use num_traits::FromPrimitive;
 use std::io::Cursor;
 use std::slice;
-use crate::bytes::{StBytes, StBytesMut};
-use crate::dse::st_smdl::event::{SmdlEvent, SmdlNote, SmdlPause, SmdlSpecialOpCode, PAUSE_NOTE_MAX, PLAY_NOTE_MAX};
-use num_traits::FromPrimitive;
-use crate::gettext::gettext;
 
 const TRK_HEADER: &[u8] = b"trk\x20";
 
@@ -33,20 +35,24 @@ const TRK_HEADER: &[u8] = b"trk\x20";
 pub struct SmdlTrackHeader {
     pub param1: u32,
     pub param2: u32,
-    len: u32
+    len: u32,
 }
 
 impl SmdlTrackHeader {
-    #[allow(dead_code)]  // if python is not enabled.
+    #[allow(dead_code)] // if python is not enabled.
     pub(crate) fn new(param1: u32, param2: u32) -> Self {
-        Self {param1, param2, len: 0}
+        Self {
+            param1,
+            param2,
+            len: 0,
+        }
     }
 
     fn empty() -> Self {
         Self {
-            param1: 16777216,  // UNKNOWN!! Value often used.
-            param2: 65284,  // UNKNOWN!! Value often used.
-            len: 0
+            param1: 16777216, // UNKNOWN!! Value often used.
+            param2: 65284,    // UNKNOWN!! Value often used.
+            len: 0,
         }
     }
 
@@ -57,13 +63,20 @@ impl SmdlTrackHeader {
 
 impl From<&mut StBytes> for PyResult<SmdlTrackHeader> {
     fn from(source: &mut StBytes) -> Self {
-        pyr_assert!(source.len() >= 16, gettext("SMDL file too short (Track EOF)."));
+        pyr_assert!(
+            source.len() >= 16,
+            gettext("SMDL file too short (Track EOF).")
+        );
         let header = source.copy_to_bytes(4);
         pyr_assert!(TRK_HEADER == header, gettext("Invalid SMDL/Track header."));
         let param1 = source.get_u32_le();
         let param2 = source.get_u32_le();
         let len = source.get_u32_le();
-        Ok(SmdlTrackHeader { param1, param2, len })
+        Ok(SmdlTrackHeader {
+            param1,
+            param2,
+            len,
+        })
     }
 }
 
@@ -93,7 +106,7 @@ impl SmdlTrackPreamble {
             track_id,
             channel_id,
             unk1: 0, // Unknown!! Value often used.
-            unk2: 0  // Unknown!! Value often used.
+            unk2: 0, // Unknown!! Value often used.
         }
     }
 }
@@ -133,7 +146,11 @@ pub struct SmdlTrackIter<'a> {
 
 impl<'a> SmdlTrackIter<'a> {
     fn new(event_iter: slice::Iter<'a, SmdlEvent>) -> Self {
-        Self { event_iter, previous: 0, sum: 0 }
+        Self {
+            event_iter,
+            previous: 0,
+            sum: 0,
+        }
     }
 }
 
@@ -164,7 +181,7 @@ impl SmdlTrack {
         Self {
             header: SmdlTrackHeader::empty(),
             preamble: SmdlTrackPreamble::new(track_id, channel_id),
-            events: vec![]
+            events: vec![],
         }
     }
     /// Iterates over all events as tuples of their tick/beat and the event itself.
@@ -196,24 +213,33 @@ impl From<&mut StBytes> for PyResult<SmdlTrack> {
                 let number_params = (param1 >> 6) & 0x3;
                 let octave_mod: i8 = ((param1 as i8 >> 4) & 0x3) - 2;
                 let note = SmdlNote::from_u8(param1 & 0xF).unwrap();
-                pyr_assert!(number_params < 4, "Invalid amount of parameters for note event in SMDL.");
+                pyr_assert!(
+                    number_params < 4,
+                    "Invalid amount of parameters for note event in SMDL."
+                );
                 let key_down_duration = if number_params == 1 {
                     pyr_assert!(cursor.remaining() >= 1, TRACK_EOF_MESSAGE);
                     Some(cursor.get_u8() as u32)
                 } else if number_params == 2 {
                     pyr_assert!(cursor.remaining() >= 2, TRACK_EOF_MESSAGE);
-                    Some(cursor.get_u16() as u32)  // big endian?? really??
+                    Some(cursor.get_u16() as u32) // big endian?? really??
                 } else if number_params == 3 {
                     pyr_assert!(cursor.remaining() >= 3, TRACK_EOF_MESSAGE);
-                    Some(((cursor.get_u16() as u32) << 8) + cursor.get_u8() as u32)  // big endian?? really??
+                    Some(((cursor.get_u16() as u32) << 8) + cursor.get_u8() as u32)
+                // big endian?? really??
                 } else {
                     None
                 };
                 events.push(SmdlEvent::Note {
-                    note, velocity, octave_mod, key_down_duration
+                    note,
+                    velocity,
+                    octave_mod,
+                    key_down_duration,
                 });
             } else if op_code <= PAUSE_NOTE_MAX {
-                events.push(SmdlEvent::Pause { value: SmdlPause::from_u8(op_code).unwrap() });
+                events.push(SmdlEvent::Pause {
+                    value: SmdlPause::from_u8(op_code).unwrap(),
+                });
             } else if op_code == 0xAB {
                 // skip byte
                 pyr_assert!(cursor.remaining() >= 1, TRACK_EOF_MESSAGE);
@@ -223,7 +249,9 @@ impl From<&mut StBytes> for PyResult<SmdlTrack> {
                 pyr_assert!(cursor.remaining() >= 2, TRACK_EOF_MESSAGE);
                 cursor.advance(2);
             } else {
-                let op = SmdlSpecialOpCode::from_u8(op_code).ok_or_else(|| exceptions::PyAssertionError::new_err("Invalid SMDL track event."))?;
+                let op = SmdlSpecialOpCode::from_u8(op_code).ok_or_else(|| {
+                    exceptions::PyAssertionError::new_err("Invalid SMDL track event.")
+                })?;
                 let param_len = op.parameter_length();
                 pyr_assert!(cursor.remaining() >= param_len, TRACK_EOF_MESSAGE);
                 let params = (0..param_len).map(|_| cursor.get_u8()).collect::<Vec<u8>>();
@@ -237,7 +265,11 @@ impl From<&mut StBytes> for PyResult<SmdlTrack> {
         if padding_needed > 0 && padding_needed < 4 {
             source.advance(padding_needed);
         }
-        Ok(SmdlTrack { header, preamble, events })
+        Ok(SmdlTrack {
+            header,
+            preamble,
+            events,
+        })
     }
 }
 
@@ -247,16 +279,27 @@ impl From<SmdlTrack> for StBytesMut {
         let mut events = BytesMut::with_capacity(source.events.len());
         for event in source.events {
             match event {
-                SmdlEvent::Note { note, velocity, key_down_duration, octave_mod } => {
+                SmdlEvent::Note {
+                    note,
+                    velocity,
+                    key_down_duration,
+                    octave_mod,
+                } => {
                     events.put_u8(velocity);
                     let n_p = match key_down_duration {
                         None => 0,
-                        Some(x) if x > 0xFFFFFF => panic!("Too big of a value for key_down_duration in event."),
+                        Some(x) if x > 0xFFFFFF => {
+                            panic!("Too big of a value for key_down_duration in event.")
+                        }
                         Some(x) if x > 0xFFFF => 3,
                         Some(x) if x > 0xFF => 2,
                         Some(_) => 1,
                     };
-                    events.put_u8((note as u8 & 0xF) + (((octave_mod + 2) as u8 & 0x3) << 4) + ((n_p & 0x3) << 6));
+                    events.put_u8(
+                        (note as u8 & 0xF)
+                            + (((octave_mod + 2) as u8 & 0x3) << 4)
+                            + ((n_p & 0x3) << 6),
+                    );
                     if let Some(key_down_duration) = key_down_duration {
                         match n_p {
                             1 => events.put_u8(key_down_duration as u8),
@@ -264,7 +307,7 @@ impl From<SmdlTrack> for StBytesMut {
                             3 => {
                                 events.put_u16((key_down_duration >> 8) as u16);
                                 events.put_u8((key_down_duration & 0xF) as u8);
-                            },
+                            }
                             _ => {}
                         }
                     }
@@ -279,7 +322,10 @@ impl From<SmdlTrack> for StBytesMut {
             }
         }
         let preamble = StBytes::from(source.preamble).0;
-        let mut data: BytesMut = source.header.to_bytes((preamble.len() + events.len()) as u32).into_iter()
+        let mut data: BytesMut = source
+            .header
+            .to_bytes((preamble.len() + events.len()) as u32)
+            .into_iter()
             .chain(preamble.into_iter())
             .chain(events.into_iter())
             .collect();

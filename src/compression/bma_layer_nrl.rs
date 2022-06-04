@@ -16,11 +16,14 @@
  * You should have received a copy of the GNU General Public License
  * along with SkyTemple.  If not, see <https://www.gnu.org/licenses/>.
  */
-use std::io::Cursor;
-use bytes::{Buf, BufMut, Bytes, BytesMut};
 use crate::bytes::StBytesMut;
-use crate::compression::generic::nrl::{compression_step, decompression_step, NrlCompRead, NrlCompWrite, NrlDecompRead, NrlDecompWrite, NullablePrimitive};
+use crate::compression::generic::nrl::{
+    compression_step, decompression_step, NrlCompRead, NrlCompWrite, NrlDecompRead, NrlDecompWrite,
+    NullablePrimitive,
+};
 use crate::python::*;
+use bytes::{Buf, BufMut, Bytes, BytesMut};
+use std::io::Cursor;
 
 ///
 
@@ -87,10 +90,19 @@ impl From<Pair24> for TwoU16 {
     /// 11 20 01 -> 01 10 12 -> 011 012
     /// ```
     fn from(other_in: Pair24) -> Self {
-        let other: u32 = ((other_in.0[0] as u32) << 16) + ((other_in.0[1] as u32) << 8) + other_in.0[2] as u32;
+        let other: u32 =
+            ((other_in.0[0] as u32) << 16) + ((other_in.0[1] as u32) << 8) + other_in.0[2] as u32;
         let v1 = (((0xff0000 & other) >> 16) + (0x000f00 & other)) as u16;
         let v2 = (((0x0000ff & other) << 4) + ((0x00f000 & other) >> 12)) as u16;
-        Self(v1.to_le_bytes().iter().chain(v2.to_le_bytes().iter()).copied().collect::<Vec<u8>>().try_into().unwrap())
+        Self(
+            v1.to_le_bytes()
+                .iter()
+                .chain(v2.to_le_bytes().iter())
+                .copied()
+                .collect::<Vec<u8>>()
+                .try_into()
+                .unwrap(),
+        )
     }
 }
 
@@ -102,8 +114,13 @@ impl From<TwoU16> for Pair24 {
         let int2 = other.get_u16_le() as u32;
         debug_assert!(int1 < 0x1000);
         debug_assert!(int2 < 0x1000);
-        let pair24 = ((int1 & 0xff) << 16) + ((int2 & 0xf) << 12) + (int1 & 0xf00) + ((int2 & 0xff0) >> 4);
-        let out = Self([((pair24 >> 16) & 0xff) as u8, ((pair24 >> 8) & 0xff) as u8, (pair24 & 0xff) as u8]);
+        let pair24 =
+            ((int1 & 0xff) << 16) + ((int2 & 0xf) << 12) + (int1 & 0xf00) + ((int2 & 0xff0) >> 4);
+        let out = Self([
+            ((pair24 >> 16) & 0xff) as u8,
+            ((pair24 >> 8) & 0xff) as u8,
+            (pair24 & 0xff) as u8,
+        ]);
         debug_assert_eq!(other_in, TwoU16::from(out));
         out
     }
@@ -114,7 +131,9 @@ impl From<TwoU16> for Pair24 {
 struct CompWrite(BytesMut);
 #[derive(Clone)]
 struct CompRead(Cursor<Bytes>);
-struct DecompRead<'a, T>(&'a mut T) where T: Buf;
+struct DecompRead<'a, T>(&'a mut T)
+where
+    T: Buf;
 struct DecompWrite(BytesMut);
 
 impl NrlCompWrite<TwoU16> for CompWrite {
@@ -128,7 +147,8 @@ impl NrlCompWrite<TwoU16> for CompWrite {
 
     fn nrl_put_seq(&mut self, val: Bytes) {
         for seq in val.chunks_exact(4) {
-            self.0.put(&Pair24::from(TwoU16::new(seq.try_into().unwrap())).raw()[..])
+            self.0
+                .put(&Pair24::from(TwoU16::new(seq.try_into().unwrap())).raw()[..])
         }
     }
 
@@ -163,7 +183,10 @@ impl NrlDecompWrite<Pair24> for DecompWrite {
     }
 }
 
-impl<'a, T> NrlDecompRead<Pair24> for DecompRead<'a, T> where T: Buf {
+impl<'a, T> NrlDecompRead<Pair24> for DecompRead<'a, T>
+where
+    T: Buf,
+{
     fn nrl_get(&mut self) -> Pair24 {
         let mut out = [0, 0, 0];
         self.0.copy_to_slice(&mut out[..]);
@@ -194,7 +217,6 @@ impl BmaLayerNrlCompressor {
 
         Ok(compressed_data.0.freeze())
     }
-
 }
 
 /////////////////////////////////////////
@@ -203,7 +225,10 @@ impl BmaLayerNrlCompressor {
 pub struct BmaLayerNrlDecompressor;
 
 impl BmaLayerNrlDecompressor {
-    pub fn run<T>(compressed_data: &mut Cursor<T>, stop_when_size: usize) -> PyResult<Bytes> where T: AsRef<[u8]> {
+    pub fn run<T>(compressed_data: &mut Cursor<T>, stop_when_size: usize) -> PyResult<Bytes>
+    where
+        T: AsRef<[u8]>,
+    {
         let mut compressed_data = DecompRead(compressed_data);
         let mut decompressed_data = DecompWrite(BytesMut::with_capacity(stop_when_size));
         while decompressed_data.0.len() < stop_when_size {
@@ -211,8 +236,9 @@ impl BmaLayerNrlDecompressor {
                 return Err(exceptions::PyValueError::new_err(format!(
                     "BMA Layer NRL Decompressor: Phase1: End result length unexpected. \
                     Should be {}, is {}.",
-                    stop_when_size, decompressed_data.0.len()
-                )))
+                    stop_when_size,
+                    decompressed_data.0.len()
+                )));
             }
 
             decompression_step(&mut compressed_data, &mut decompressed_data);
@@ -227,14 +253,15 @@ impl BmaLayerNrlDecompressor {
 #[derive(Clone)]
 pub(crate) struct BmaLayerNrlCompressionContainer {
     compressed_data: Bytes,
-    length_decompressed: u16
+    length_decompressed: u16,
 }
 
 impl BmaLayerNrlCompressionContainer {
     pub fn compress(data: &[u8]) -> PyResult<Self> {
         let compressed_data = BmaLayerNrlCompressor::run(Bytes::copy_from_slice(data))?;
         Ok(Self {
-            length_decompressed: data.len() as u16, compressed_data
+            length_decompressed: data.len() as u16,
+            compressed_data,
         })
     }
     fn cont_size(data: Bytes, byte_offset: usize) -> u16 {
@@ -253,14 +280,14 @@ impl BmaLayerNrlCompressionContainer {
         data.advance(6);
         let length_decompressed = data.get_u16_le();
         Ok(Self {
-            compressed_data: data, length_decompressed
+            compressed_data: data,
+            length_decompressed,
         })
     }
     pub fn decompress(&self) -> PyResult<StBytesMut> {
         let mut cur = Cursor::new(self.compressed_data.clone());
-        let result = Ok(BmaLayerNrlDecompressor::run(
-            &mut cur, self.length_decompressed as usize
-        )?.into());
+        let result =
+            Ok(BmaLayerNrlDecompressor::run(&mut cur, self.length_decompressed as usize)?.into());
         debug_assert!(!cur.has_remaining());
         result
     }
@@ -287,7 +314,9 @@ impl BmaLayerNrlCompressionContainer {
 }
 
 #[cfg(feature = "python")]
-pub(crate) fn create_st_bma_layer_nrl_compression_module(py: Python) -> PyResult<(&str, &PyModule)> {
+pub(crate) fn create_st_bma_layer_nrl_compression_module(
+    py: Python,
+) -> PyResult<(&str, &PyModule)> {
     let name: &'static str = "skytemple_rust._st_bma_layer_nrl_compression";
     let m = PyModule::new(py, name)?;
     m.add_class::<BmaLayerNrlCompressionContainer>()?;

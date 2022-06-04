@@ -17,15 +17,15 @@
  * along with SkyTemple.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-use bytes::{BufMut, Bytes, BytesMut};
 use crate::bytes::StBytesMut;
 use crate::python::*;
 use crate::st_at_common::CompressionContainer;
+use bytes::{BufMut, Bytes, BytesMut};
 
 #[pyclass(module = "skytemple_rust.st_at4pn")]
 #[derive(Clone)]
 pub struct At4pn {
-    data: Bytes
+    data: Bytes,
 }
 impl CompressionContainer for At4pn {}
 
@@ -33,7 +33,7 @@ impl At4pn {
     pub fn compress(data: &[u8]) -> PyResult<Self> {
         Self::new(data, true)
     }
-    pub fn matches(data: &[u8], ) -> bool {
+    pub fn matches(data: &[u8]) -> bool {
         &data[0..5] == Self::MAGIC
     }
 }
@@ -46,13 +46,19 @@ impl At4pn {
     #[new]
     pub fn new(data: &[u8], new: bool) -> PyResult<Self> {
         if new {
-            Ok(Self { data: data.to_vec().into() })
+            Ok(Self {
+                data: data.to_vec().into(),
+            })
         } else {
-            if Self::cont_size(&mut Bytes::copy_from_slice(data), 0) != (data.len() - Self::DATA_START) as u16 {
+            if Self::cont_size(&mut Bytes::copy_from_slice(data), 0)
+                != (data.len() - Self::DATA_START) as u16
+            {
                 return Err(exceptions::PyValueError::new_err("Invalid data size."));
             }
             let (_, content) = data.split_at(Self::DATA_START);
-            Ok(Self { data: content.to_vec().into() })
+            Ok(Self {
+                data: content.to_vec().into(),
+            })
         }
     }
     pub fn decompress(&self) -> PyResult<StBytesMut> {

@@ -17,16 +17,16 @@
  * along with SkyTemple.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-use bytes::{Buf, BufMut, Bytes, BytesMut};
-use crate::gettext::gettext;
-use crate::python::PyResult;
 use crate::bytes::StBytes;
 use crate::dse::date::DseDate;
 use crate::dse::filename::DseFilename;
 use crate::dse::st_swdl::kgrp::SwdlKgrp;
 use crate::dse::st_swdl::pcmd::SwdlPcmd;
-use crate::dse::st_swdl::prgi::{PRGI_HEADER, SwdlPrgi};
+use crate::dse::st_swdl::prgi::{SwdlPrgi, PRGI_HEADER};
 use crate::dse::st_swdl::wavi::{SwdlPcmdReference, SwdlWavi};
+use crate::gettext::gettext;
+use crate::python::PyResult;
+use bytes::{Buf, BufMut, Bytes, BytesMut};
 
 const SWDL_HEADER: &[u8] = b"swdl";
 
@@ -38,13 +38,19 @@ pub struct SwdlPcmdLen {
 
 impl SwdlPcmdLen {
     pub fn new(reference: u32, external: bool) -> Self {
-        SwdlPcmdLen { reference, external }
+        SwdlPcmdLen {
+            reference,
+            external,
+        }
     }
 }
 
 impl From<&mut StBytes> for PyResult<SwdlPcmdLen> {
     fn from(source: &mut StBytes) -> Self {
-        pyr_assert!(source.len() >= 4, gettext("SWDL file too short (SwdlPcmdLen EOF)."));
+        pyr_assert!(
+            source.len() >= 4,
+            gettext("SWDL file too short (SwdlPcmdLen EOF).")
+        );
         let data_i = source.get_u32_le();
         let (reference, external) = if data_i >> 0x10 == 0xAAAA {
             (data_i & 0x10, true)
@@ -63,7 +69,10 @@ impl From<SwdlPcmdLen> for StBytes {
         } else {
             b.put_u32_le(source.reference)
         }
-        debug_assert_eq!(source, <PyResult<SwdlPcmdLen>>::from(&mut StBytes::from(b.clone())).unwrap());
+        debug_assert_eq!(
+            source,
+            <PyResult<SwdlPcmdLen>>::from(&mut StBytes::from(b.clone())).unwrap()
+        );
         b.into()
     }
 }
@@ -80,13 +89,34 @@ pub struct SwdlHeader {
     pub unk17: u16,
     number_wavi_slots: u16,
     number_prgi_slots: u16,
-    len_wavi: u32
+    len_wavi: u32,
 }
 
 impl SwdlHeader {
     #[allow(clippy::too_many_arguments)]
-    pub fn new(version: u16, unk1: u8, unk2: u8, modified_date: DseDate, file_name: DseFilename, unk13: u32, pcmdlen: SwdlPcmdLen, unk17: u16) -> Self {
-        SwdlHeader { version, unk1, unk2, modified_date, file_name, unk13, pcmdlen, unk17, number_wavi_slots: 0, number_prgi_slots: 0, len_wavi: 0 }
+    pub fn new(
+        version: u16,
+        unk1: u8,
+        unk2: u8,
+        modified_date: DseDate,
+        file_name: DseFilename,
+        unk13: u32,
+        pcmdlen: SwdlPcmdLen,
+        unk17: u16,
+    ) -> Self {
+        SwdlHeader {
+            version,
+            unk1,
+            unk2,
+            modified_date,
+            file_name,
+            unk13,
+            pcmdlen,
+            unk17,
+            number_wavi_slots: 0,
+            number_prgi_slots: 0,
+            len_wavi: 0,
+        }
     }
 
     fn get_initial_number_wavi_slots(&self) -> u16 {
@@ -104,9 +134,15 @@ impl SwdlHeader {
 
 impl From<&mut StBytes> for PyResult<SwdlHeader> {
     fn from(source: &mut StBytes) -> Self {
-        pyr_assert!(source.len() >= 80, gettext("SWDL file too short (Header EOF)."));
+        pyr_assert!(
+            source.len() >= 80,
+            gettext("SWDL file too short (Header EOF).")
+        );
         let header = source.copy_to_bytes(4);
-        pyr_assert!(SWDL_HEADER == header, gettext("Invalid SWDL/Header header."));
+        pyr_assert!(
+            SWDL_HEADER == header,
+            gettext("Invalid SWDL/Header header.")
+        );
         // 4 zero bytes;
         source.advance(4);
         // We don't validate the length (next 4 bytes):
@@ -134,14 +170,30 @@ impl From<&mut StBytes> for PyResult<SwdlHeader> {
         let unk17 = source.get_u16_le();
         let len_wavi = source.get_u32_le();
         Ok(SwdlHeader {
-            version, unk1, unk2, modified_date, file_name, unk13, pcmdlen, unk17,
-            number_wavi_slots, number_prgi_slots, len_wavi
+            version,
+            unk1,
+            unk2,
+            modified_date,
+            file_name,
+            unk13,
+            pcmdlen,
+            unk17,
+            number_wavi_slots,
+            number_prgi_slots,
+            len_wavi,
         })
     }
 }
 
 impl SwdlHeader {
-    fn to_bytes(&self, data_len: u32, pcmdlen: SwdlPcmdLen, wavisitlen: u16, prgi_slots: u16, wavi_len: u32) -> StBytes {
+    fn to_bytes(
+        &self,
+        data_len: u32,
+        pcmdlen: SwdlPcmdLen,
+        wavisitlen: u16,
+        prgi_slots: u16,
+        wavi_len: u32,
+    ) -> StBytes {
         let mut b = BytesMut::with_capacity(80);
         b.put_slice(SWDL_HEADER);
         b.put_u32_le(0);
@@ -188,12 +240,15 @@ impl Swdl {
 impl From<StBytes> for PyResult<Swdl> {
     fn from(mut source: StBytes) -> Self {
         let header = <PyResult<SwdlHeader>>::from(&mut source)?;
-        let len_wavi = header.get_initial_wavi_len() + 0x10;  // (0x10 = Header size) TODO: Is this correct???
+        let len_wavi = header.get_initial_wavi_len() + 0x10; // (0x10 = Header size) TODO: Is this correct???
         let number_wavi_slots = header.get_initial_number_wavi_slots();
         let number_prgi_slots = header.get_initial_number_prgi_slots();
 
         let wavi = SwdlWavi::from_bytes(&mut source, number_wavi_slots)?;
-        pyr_assert!(len_wavi as usize == wavi.get_initial_length(), gettext("Swdl read error (inconsistent Wavi length)"));
+        pyr_assert!(
+            len_wavi as usize == wavi.get_initial_length(),
+            gettext("Swdl read error (inconsistent Wavi length)")
+        );
 
         let prgi: Option<SwdlPrgi>;
         let kgrp: Option<SwdlKgrp>;
@@ -213,13 +268,26 @@ impl From<StBytes> for PyResult<Swdl> {
             None
         };
 
-        let mut slf = Swdl { header, wavi, pcmd, prgi, kgrp };
+        let mut slf = Swdl {
+            header,
+            wavi,
+            pcmd,
+            prgi,
+            kgrp,
+        };
 
         for sample in slf.wavi.sample_info_table.iter_mut().flatten() {
             if let Some(pcmd) = &slf.pcmd {
-                pyr_assert!(sample.get_initial_sample_pos() + sample.get_sample_length() <= pcmd.chunk_data.len() as u32, gettext("Swdl read: Invalid sample data"));
+                pyr_assert!(
+                    sample.get_initial_sample_pos() + sample.get_sample_length()
+                        <= pcmd.chunk_data.len() as u32,
+                    gettext("Swdl read: Invalid sample data")
+                );
             }
-            sample.sample = Some(SwdlPcmdReference::new(sample.get_initial_sample_pos(), sample.get_sample_length()));
+            sample.sample = Some(SwdlPcmdReference::new(
+                sample.get_initial_sample_pos(),
+                sample.get_sample_length(),
+            ));
         }
 
         Ok(slf)
@@ -228,11 +296,16 @@ impl From<StBytes> for PyResult<Swdl> {
 
 impl From<Swdl> for StBytes {
     fn from(source: Swdl) -> Self {
-        let (pcmdlen, pcmd) = if let Some(pcmd) = source.pcmd { (
-            SwdlPcmdLen::new(pcmd.chunk_data.len() as u32, false),
-            StBytes::from(pcmd).0
-        ) } else {
-            (SwdlPcmdLen::new(source.header.pcmdlen.reference, true), Bytes::new())
+        let (pcmdlen, pcmd) = if let Some(pcmd) = source.pcmd {
+            (
+                SwdlPcmdLen::new(pcmd.chunk_data.len() as u32, false),
+                StBytes::from(pcmd).0,
+            )
+        } else {
+            (
+                SwdlPcmdLen::new(source.header.pcmdlen.reference, true),
+                Bytes::new(),
+            )
         };
 
         // The file might have PRGI slots set, even if none are defined
@@ -245,23 +318,44 @@ impl From<Swdl> for StBytes {
         let wavi = StBytes::from(source.wavi).0;
         let wavi_len = wavi.len() - 0x10;
 
-        let data = wavi.into_iter()
-            .chain(if let Some(prgi) = source.prgi {
-                StBytes::from(prgi).0
-            } else {
-                Bytes::new()
-            }.into_iter())
-            .chain(if let Some(kgrp) = source.kgrp {
-                StBytes::from(kgrp).0
-            } else {
-                Bytes::new()
-            }.into_iter())
+        let data = wavi
+            .into_iter()
+            .chain(
+                if let Some(prgi) = source.prgi {
+                    StBytes::from(prgi).0
+                } else {
+                    Bytes::new()
+                }
+                .into_iter(),
+            )
+            .chain(
+                if let Some(kgrp) = source.kgrp {
+                    StBytes::from(kgrp).0
+                } else {
+                    Bytes::new()
+                }
+                .into_iter(),
+            )
             .chain(pcmd.into_iter())
-            .chain(b"eod \x00\x00\x15\x04\x10\x00\x00\x00\x00\x00\x00\x00".iter().copied())
+            .chain(
+                b"eod \x00\x00\x15\x04\x10\x00\x00\x00\x00\x00\x00\x00"
+                    .iter()
+                    .copied(),
+            )
             .collect::<Bytes>();
 
-        source.header.to_bytes(
-            80 + data.len() as u32, pcmdlen, wavisitlen as u16, prgi_slots, wavi_len as u32
-        ).0.into_iter().chain(data.into_iter()).collect()
+        source
+            .header
+            .to_bytes(
+                80 + data.len() as u32,
+                pcmdlen,
+                wavisitlen as u16,
+                prgi_slots,
+                wavi_len as u32,
+            )
+            .0
+            .into_iter()
+            .chain(data.into_iter())
+            .collect()
     }
 }

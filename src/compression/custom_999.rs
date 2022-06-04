@@ -16,26 +16,22 @@
  * You should have received a copy of the GNU General Public License
  * along with SkyTemple.  If not, see <https://www.gnu.org/licenses/>.
  */
+use crate::bytes::StBytesMut;
+use bytes::{Buf, BufMut, Bytes, BytesMut};
 /// Written by an anonymous contributor, ported by Capyara.
 /// Based on https://github.com/pleonex/tinke/blob/master/Plugins/999HRPERDOOR/999HRPERDOOR/AT6P.cs
 /// To work with the game, a patch is required!
-
 use std::io::Cursor;
 use std::iter::once;
 use std::mem::swap;
-use bytes::{Buf, BufMut, Bytes, BytesMut};
-use crate::bytes::StBytesMut;
 
 pub struct Custom999Compressor;
 impl Custom999Compressor {
     pub fn run<F>(buffer: F) -> BytesMut
-        where
-            F: Buf + IntoIterator<Item=u8>
+    where
+        F: Buf + IntoIterator<Item = u8>,
     {
-        let data: Vec<u8> = buffer
-            .into_iter()
-            .flat_map(|x| [x % 16, x / 16])
-            .collect();
+        let data: Vec<u8> = buffer.into_iter().flat_map(|x| [x % 16, x / 16]).collect();
 
         // For the original algorithm:
         // let data = buffer
@@ -62,15 +58,12 @@ impl Custom999Compressor {
                 } else {
                     sign = 1;
                 }
-                if diff >= 8 {  // For the original algorithm: diff >= 0x80
-                    diff = 0x10 - diff;  // For the original algorithm: diff = 0x100-diff
+                if diff >= 8 {
+                    // For the original algorithm: diff >= 0x80
+                    diff = 0x10 - diff; // For the original algorithm: diff = 0x100-diff
                     sign = -sign
                 }
-                let mut code: usize = if sign > 0 {
-                    0
-                } else {
-                    1
-                };
+                let mut code: usize = if sign > 0 { 0 } else { 1 };
                 code = (code as i16 + (diff << 1)) as usize;
                 let len_code = format!("{:b}", code + 1).len() - 1;
                 code = (code + 1) % 2_usize.pow(len_code as u32);
@@ -82,7 +75,8 @@ impl Custom999Compressor {
                         let val = code % 2;
                         code /= 2;
                         val > 0
-                    }).collect();
+                    })
+                    .collect();
                 bit_list.push(true);
                 bit_list.append(&mut tmp);
                 current = b;
@@ -99,18 +93,16 @@ impl Custom999Compressor {
             }
         }
         compressed*/
-        once(first).chain(
-            bit_list
-                .chunks(8)
-                .map(|currentl| {
-                    // Turn the bits into an u8
-                    currentl
-                        .iter()
-                        .enumerate()
-                        .map(|(i, &b)| if b {1} else {0} * (2_u8.pow(i as u32)))
-                        .sum()
-                })
-        ).collect()
+        once(first)
+            .chain(bit_list.chunks(8).map(|currentl| {
+                // Turn the bits into an u8
+                currentl
+                    .iter()
+                    .enumerate()
+                    .map(|(i, &b)| if b { 1 } else { 0 } * (2_u8.pow(i as u32)))
+                    .sum()
+            }))
+            .collect()
     }
 }
 
@@ -146,7 +138,7 @@ impl Custom999Decompressor {
                 }
             }
             let mut n: usize = (1 << outnbit) - 1;
-            n += (flags as usize >> (outnbit + 1 )) & n;
+            n += (flags as usize >> (outnbit + 1)) & n;
 
             // ??? unused
             //let mut current_flag = compressed_cur.position() - nbits / 8;
@@ -160,17 +152,17 @@ impl Custom999Decompressor {
                 if n != 0 {
                     prev = code;
                 }
-                code = ((code as i64 + (n >> 1) as i64 * (1 - 2 * (n & 1) as i64)) & 0xF) as u8;  // & 0xFF in the original algorithm
+                code = ((code as i64 + (n >> 1) as i64 * (1 - 2 * (n & 1) as i64)) & 0xF) as u8; // & 0xFF in the original algorithm
                 decompressed.put_u8(code);
             }
             flags >>= 2 * outnbit + 1;
-            nbits  -= 2 * outnbit + 1;
+            nbits -= 2 * outnbit + 1;
         }
 
         // In the original algorithm:
         // return decompressed.freeze();
 
-        let decompressed_done =  decompressed
+        let decompressed_done = decompressed
             .chunks(2)
             .map(|x| x[0] + x[1] * 16)
             .collect::<Bytes>();

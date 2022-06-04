@@ -17,10 +17,10 @@
  * along with SkyTemple.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-use bytes::{Buf, BufMut, BytesMut};
-use crate::python::PyResult;
 use crate::bytes::StBytes;
 use crate::gettext::gettext;
+use crate::python::PyResult;
+use bytes::{Buf, BufMut, BytesMut};
 
 const EOC_HEADER: &[u8] = b"eoc\x20";
 
@@ -32,7 +32,10 @@ pub struct SmdlEoc {
 
 impl From<&mut StBytes> for PyResult<SmdlEoc> {
     fn from(source: &mut StBytes) -> Self {
-        pyr_assert!(source.len() >= 16, gettext("SMDL file too short (EOC EOF)."));
+        pyr_assert!(
+            source.len() >= 16,
+            gettext("SMDL file too short (EOC EOF).")
+        );
         let header = source.copy_to_bytes(4);
         pyr_assert!(EOC_HEADER == header, gettext("Invalid SMDL/EOC header."));
         let param1 = source.get_u32_le();

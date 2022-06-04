@@ -16,23 +16,23 @@
  * You should have received a copy of the GNU General Public License
  * along with SkyTemple.  If not, see <https://www.gnu.org/licenses/>.
  */
-use std::io::Cursor;
-use bytes::{Buf, BufMut, Bytes, BytesMut};
 use crate::bytes::StBytesMut;
 use crate::python::*;
+use bytes::{Buf, BufMut, Bytes, BytesMut};
+use std::io::Cursor;
 
 const RLE_MAX_LOOKAHEAD_SIZE: u8 = 127;
 
 pub struct BmaCollisionRleCompressor {
     decompressed_data: Bytes,
-    compressed_data: BytesMut
+    compressed_data: BytesMut,
 }
 
 impl BmaCollisionRleCompressor {
     pub fn run(decompressed_data: Bytes) -> PyResult<Bytes> {
         let mut slf = Self {
             compressed_data: BytesMut::with_capacity(decompressed_data.len() * 2),
-            decompressed_data
+            decompressed_data,
         };
 
         while slf.decompressed_data.has_remaining() {
@@ -46,7 +46,8 @@ impl BmaCollisionRleCompressor {
         let next = Self::read(&mut self.decompressed_data);
         let mut repeats = 0;
         let mut nc = Cursor::new(self.decompressed_data.clone());
-        while nc.has_remaining() && Self::read(&mut nc) == next && repeats < RLE_MAX_LOOKAHEAD_SIZE {
+        while nc.has_remaining() && Self::read(&mut nc) == next && repeats < RLE_MAX_LOOKAHEAD_SIZE
+        {
             repeats += 1;
         }
         self.decompressed_data.advance(repeats as usize);
@@ -61,7 +62,10 @@ impl BmaCollisionRleCompressor {
     }
 
     #[inline]
-    fn read<T>(from: &mut T) -> u8 where T: Buf {
+    fn read<T>(from: &mut T) -> u8
+    where
+        T: Buf,
+    {
         let n = from.get_u8();
         debug_assert!(n < 2);
         n
@@ -71,18 +75,24 @@ impl BmaCollisionRleCompressor {
 /////////////////////////////////////////
 /////////////////////////////////////////
 
-pub struct BmaCollisionRleDecompressor<'a, T> where T: 'a + AsRef<[u8]> {
+pub struct BmaCollisionRleDecompressor<'a, T>
+where
+    T: 'a + AsRef<[u8]>,
+{
     compressed_data: &'a mut Cursor<T>,
     decompressed_data: BytesMut,
-    stop_when_size: usize
+    stop_when_size: usize,
 }
 
-impl<'a, T> BmaCollisionRleDecompressor<'a, T> where T: 'a + AsRef<[u8]> {
+impl<'a, T> BmaCollisionRleDecompressor<'a, T>
+where
+    T: 'a + AsRef<[u8]>,
+{
     pub fn run(compressed_data: &'a mut Cursor<T>, stop_when_size: usize) -> PyResult<Bytes> {
         let mut slf = Self {
             decompressed_data: BytesMut::with_capacity(stop_when_size),
             compressed_data,
-            stop_when_size
+            stop_when_size,
         };
 
         while slf.decompressed_data.len() < slf.stop_when_size {
@@ -90,8 +100,9 @@ impl<'a, T> BmaCollisionRleDecompressor<'a, T> where T: 'a + AsRef<[u8]> {
                 return Err(exceptions::PyValueError::new_err(format!(
                     "BMA Collision RLE Decompressor: End result length unexpected. \
                     Should be {}, is {}.",
-                    slf.stop_when_size, slf.decompressed_data.len()
-                )))
+                    slf.stop_when_size,
+                    slf.decompressed_data.len()
+                )));
             }
 
             slf.process()
@@ -104,7 +115,7 @@ impl<'a, T> BmaCollisionRleDecompressor<'a, T> where T: 'a + AsRef<[u8]> {
         let cmd = self.compressed_data.get_u8();
         let byte_to_write = cmd >> 7;
         let times_to_write = cmd & 0x7F;
-        for _ in 0..times_to_write+1 {
+        for _ in 0..times_to_write + 1 {
             self.decompressed_data.put_u8(byte_to_write);
         }
     }
@@ -115,14 +126,15 @@ impl<'a, T> BmaCollisionRleDecompressor<'a, T> where T: 'a + AsRef<[u8]> {
 #[derive(Clone)]
 pub(crate) struct BmaCollisionRleCompressionContainer {
     compressed_data: Bytes,
-    length_decompressed: u16
+    length_decompressed: u16,
 }
 
 impl BmaCollisionRleCompressionContainer {
     pub fn compress(data: &[u8]) -> PyResult<Self> {
         let compressed_data = BmaCollisionRleCompressor::run(Bytes::copy_from_slice(data))?;
         Ok(Self {
-            length_decompressed: data.len() as u16, compressed_data
+            length_decompressed: data.len() as u16,
+            compressed_data,
         })
     }
     fn cont_size(data: Bytes, byte_offset: usize) -> u16 {
@@ -141,14 +153,17 @@ impl BmaCollisionRleCompressionContainer {
         data.advance(6);
         let length_decompressed = data.get_u16_le();
         Ok(Self {
-            compressed_data: data, length_decompressed
+            compressed_data: data,
+            length_decompressed,
         })
     }
     pub fn decompress(&self) -> PyResult<StBytesMut> {
         let mut cur = Cursor::new(self.compressed_data.clone());
         let result = Ok(BmaCollisionRleDecompressor::run(
-            &mut cur, self.length_decompressed as usize
-        )?.into());
+            &mut cur,
+            self.length_decompressed as usize,
+        )?
+        .into());
         debug_assert!(!cur.has_remaining());
         result
     }
@@ -175,7 +190,9 @@ impl BmaCollisionRleCompressionContainer {
 }
 
 #[cfg(feature = "python")]
-pub(crate) fn create_st_bma_collision_rle_compression_module(py: Python) -> PyResult<(&str, &PyModule)> {
+pub(crate) fn create_st_bma_collision_rle_compression_module(
+    py: Python,
+) -> PyResult<(&str, &PyModule)> {
     let name: &'static str = "skytemple_rust._st_bma_collision_rle_compression";
     let m = PyModule::new(py, name)?;
     m.add_class::<BmaCollisionRleCompressionContainer>()?;

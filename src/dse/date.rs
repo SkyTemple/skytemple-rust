@@ -17,8 +17,8 @@
  * along with SkyTemple.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-use bytes::{Buf, BufMut, BytesMut};
 use crate::bytes::StBytes;
+use bytes::{Buf, BufMut, BytesMut};
 use time::OffsetDateTime;
 
 #[derive(Clone, Debug, PartialEq, Eq, Default)]
@@ -29,12 +29,28 @@ pub struct DseDate {
     pub hour: u8,
     pub minute: u8,
     pub second: u8,
-    pub centisecond: u8
+    pub centisecond: u8,
 }
 
 impl DseDate {
-    pub fn new(year: u16, month: u8, day: u8, hour: u8, minute: u8, second: u8, centisecond: u8) -> Self {
-        DseDate { year, month, day, hour, minute, second, centisecond }
+    pub fn new(
+        year: u16,
+        month: u8,
+        day: u8,
+        hour: u8,
+        minute: u8,
+        second: u8,
+        centisecond: u8,
+    ) -> Self {
+        DseDate {
+            year,
+            month,
+            day,
+            hour,
+            minute,
+            second,
+            centisecond,
+        }
     }
     pub fn now() -> Self {
         let now = OffsetDateTime::now_utc();
@@ -45,7 +61,7 @@ impl DseDate {
             hour: now.hour(),
             minute: now.minute(),
             second: now.second(),
-            centisecond: 0
+            centisecond: 0,
         }
     }
 }
@@ -59,7 +75,7 @@ impl From<&mut StBytes> for DseDate {
             source.get_u8(),
             source.get_u8(),
             source.get_u8(),
-            source.get_u8()
+            source.get_u8(),
         )
     }
 }

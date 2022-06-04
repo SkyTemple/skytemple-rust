@@ -26,14 +26,16 @@ use num_traits::FromPrimitive;
 pub enum DmaType {
     Wall = 0,
     Water = 1,
-    Floor = 2
+    Floor = 2,
 }
 
 #[cfg(feature = "python")]
 impl<'source> FromPyObject<'source> for DmaType {
     fn extract(ob: &'source PyAny) -> PyResult<Self> {
         let int: u8 = ob.extract()?;
-        DmaType::from_u8(int).ok_or_else(|| exceptions::PyValueError::new_err(format!("Invalid value {} for DmaType", int)))
+        DmaType::from_u8(int).ok_or_else(|| {
+            exceptions::PyValueError::new_err(format!("Invalid value {} for DmaType", int))
+        })
     }
 }
 
@@ -42,14 +44,16 @@ impl<'source> FromPyObject<'source> for DmaType {
 pub enum DmaExtraType {
     Floor1 = 0,
     WallOrVoid = 1,
-    Floor2 = 2
+    Floor2 = 2,
 }
 
 #[cfg(feature = "python")]
 impl<'source> FromPyObject<'source> for DmaExtraType {
     fn extract(ob: &'source PyAny) -> PyResult<Self> {
         let int: u8 = ob.extract()?;
-        DmaExtraType::from_u8(int).ok_or_else(|| exceptions::PyValueError::new_err(format!("Invalid value {} for DmaExtraType", int)))
+        DmaExtraType::from_u8(int).ok_or_else(|| {
+            exceptions::PyValueError::new_err(format!("Invalid value {} for DmaExtraType", int))
+        })
     }
 }
 
@@ -66,14 +70,16 @@ pub const DMA_NEIGHBOR_SOUTH_WEST: u8 = 0x80;
 #[derive(Clone)]
 pub struct Dma {
     #[pyo3(get, set)]
-    pub chunk_mappings: Vec<u8>
+    pub chunk_mappings: Vec<u8>,
 }
 
 #[pymethods]
 impl Dma {
     #[new]
     pub fn new(data: StBytes) -> PyResult<Self> {
-        Ok(Self { chunk_mappings: data.to_vec() })
+        Ok(Self {
+            chunk_mappings: data.to_vec(),
+        })
     }
 
     /// Returns all three variations (chunk ids) set for this dungeon tile configuration.
@@ -84,7 +90,7 @@ impl Dma {
         let high_two = match get_type {
             DmaType::Wall => 0,
             DmaType::Water => 0x100,
-            DmaType::Floor => 0x200
+            DmaType::Floor => 0x200,
         };
         let idx = high_two + neighbors_same;
         self.chunk_mappings[(idx * 3)..(idx * 3) + 3].to_vec()
@@ -104,11 +110,17 @@ impl Dma {
     }
 
     /// Sets the mapping for the given configuration and the given variation of it.
-    pub fn set(&mut self, get_type: DmaType, neighbors_same: usize, variation_index: usize, value: u8) {
+    pub fn set(
+        &mut self,
+        get_type: DmaType,
+        neighbors_same: usize,
+        variation_index: usize,
+        value: u8,
+    ) {
         let high_two = match get_type {
             DmaType::Wall => 0,
             DmaType::Water => 0x100,
-            DmaType::Floor => 0x200
+            DmaType::Floor => 0x200,
         };
         let idx = high_two + neighbors_same;
         self.chunk_mappings[(idx * 3) + variation_index] = value;

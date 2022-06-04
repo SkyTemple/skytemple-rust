@@ -20,30 +20,33 @@
 // We allow this, because it currently incorrectly flags code expanded by the gettextrs crate.
 #![allow(clippy::format_push_string)]
 
-#[macro_use] pub(crate) mod encoding_utils;
-#[macro_use] pub(crate) mod macros;
-#[macro_use] pub(crate) mod gettext;
+#[macro_use]
+pub(crate) mod encoding_utils;
+#[macro_use]
+pub(crate) mod macros;
+#[macro_use]
+pub(crate) mod gettext;
 
-pub(crate) mod util;
-pub(crate) mod err;
 pub mod bytes;
-pub mod python;
+pub mod encoding;
+pub(crate) mod err;
 #[cfg(feature = "image")]
 pub mod image;
-pub mod encoding;
-pub mod rom_source;
 #[cfg(not(feature = "python"))]
 pub mod no_python;
+pub mod python;
 #[cfg(feature = "python")]
 #[cfg(feature = "image")]
 mod python_image;
 #[cfg(feature = "python")]
 mod python_module;
+pub mod rom_source;
+pub(crate) mod util;
 
 #[cfg(feature = "compression")]
 pub mod compression;
-#[cfg(feature = "compression")]
-pub mod st_at_common;
+#[cfg(feature = "dse")]
+pub mod dse;
 #[cfg(feature = "compression")]
 pub mod st_at3px;
 #[cfg(feature = "compression")]
@@ -51,11 +54,9 @@ pub mod st_at4pn;
 #[cfg(feature = "compression")]
 pub mod st_at4px;
 #[cfg(feature = "compression")]
-pub mod st_atupx;
+pub mod st_at_common;
 #[cfg(feature = "compression")]
-pub mod st_pkdpx;
-#[cfg(feature = "kao")]
-pub mod st_kao;
+pub mod st_atupx;
 #[cfg(feature = "map_bg")]
 pub mod st_bg_list_dat;
 #[cfg(feature = "misc_graphics")]
@@ -80,10 +81,12 @@ pub mod st_dpci;
 pub mod st_dpl;
 #[cfg(feature = "dungeon_graphics")]
 pub mod st_dpla;
+#[cfg(feature = "kao")]
+pub mod st_kao;
+#[cfg(feature = "compression")]
+pub mod st_pkdpx;
 #[cfg(feature = "strings")]
 pub mod st_string;
-#[cfg(feature = "dse")]
-pub mod dse;
 
 #[cfg(feature = "with_pmd_wan")]
 pub mod pmd_wan;

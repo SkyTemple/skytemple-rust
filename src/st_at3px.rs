@@ -17,32 +17,33 @@
  * along with SkyTemple.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-use bytes::{Buf, BufMut, Bytes, BytesMut};
 use crate::bytes::StBytesMut;
 use crate::compression::px::{PxCompLevel, PxCompressor, PxDecompressor};
 use crate::python::*;
 use crate::st_at_common::CompressionContainer;
 use crate::util::slice_to_array;
+use bytes::{Buf, BufMut, Bytes, BytesMut};
 
 #[pyclass(module = "skytemple_rust.st_at3px")]
 #[derive(Clone)]
 pub struct At3px {
     data: Bytes,
     flags: [u8; 9],
-    len_comp: u16
+    len_comp: u16,
 }
 impl CompressionContainer for At3px {}
 
 impl At3px {
     pub fn compress(data: &[u8]) -> PyResult<Self> {
-        let (px, flags) = PxCompressor::run(
-            Bytes::copy_from_slice(data), PxCompLevel::Level3, true
-        )?;
+        let (px, flags) =
+            PxCompressor::run(Bytes::copy_from_slice(data), PxCompLevel::Level3, true)?;
         Ok(Self {
-            len_comp: px.len() as u16 + Self::DATA_START, data: px, flags
+            len_comp: px.len() as u16 + Self::DATA_START,
+            data: px,
+            flags,
         })
     }
-    pub fn matches(data: &[u8], ) -> bool {
+    pub fn matches(data: &[u8]) -> bool {
         &data[0..5] == Self::MAGIC
     }
 }
@@ -66,7 +67,12 @@ impl At3px {
         })
     }
     pub fn decompress(&self) -> PyResult<StBytesMut> {
-        Ok(PxDecompressor::run(&self.data[..(self.len_comp - Self::DATA_START) as usize], self.flags.as_ref(), self.len_comp)?.into())
+        Ok(PxDecompressor::run(
+            &self.data[..(self.len_comp - Self::DATA_START) as usize],
+            self.flags.as_ref(),
+            self.len_comp,
+        )?
+        .into())
     }
     pub fn to_bytes(&self) -> StBytesMut {
         let mut res = BytesMut::with_capacity(self.len_comp as usize);

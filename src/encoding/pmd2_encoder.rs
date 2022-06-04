@@ -17,9 +17,9 @@
  * along with SkyTemple.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+use crate::encoding_utils::StrCharIndex;
 use encoding::{ByteWriter, CodecError, Encoding, RawDecoder, RawEncoder, StringWriter};
 use encoding_index_singlebyte::windows_1252;
-use crate::encoding_utils::StrCharIndex;
 
 #[derive(Clone, Copy)]
 pub struct Pmd2Encoding;
@@ -54,14 +54,20 @@ impl RawEncoder for Pmd2Encoder {
         true
     }
 
-    fn raw_feed(&mut self, input: &str, output: &mut dyn ByteWriter) -> (usize, Option<CodecError>) {
+    fn raw_feed(
+        &mut self,
+        input: &str,
+        output: &mut dyn ByteWriter,
+    ) -> (usize, Option<CodecError>) {
         output.writer_hint(input.len());
 
-        for ((i,j), ch) in input.index_iter() {
+        for ((i, j), ch) in input.index_iter() {
             match ch {
-                '\u{0}'..='\u{80}' => { output.write_byte(ch as u8); }
-                '♂' => { output.write_byte(0xBD) }
-                '♀' => { output.write_byte(0xBD) }
+                '\u{0}'..='\u{80}' => {
+                    output.write_byte(ch as u8);
+                }
+                '♂' => output.write_byte(0xBD),
+                '♀' => output.write_byte(0xBD),
                 _ => {
                     // Is either ANSI
                     let index = windows_1252::backward(ch as u32);
@@ -71,9 +77,13 @@ impl RawEncoder for Pmd2Encoder {
                         // Or corresponds to a shift jis char
                         let sjindex = pmdshiftjis::backward(ch as u32);
                         if sjindex == 0 {
-                            return (i, Some(CodecError {
-                                upto: j as isize, cause: format!("unrepresentable character ({})", ch).into(),
-                            }));
+                            return (
+                                i,
+                                Some(CodecError {
+                                    upto: j as isize,
+                                    cause: format!("unrepresentable character ({})", ch).into(),
+                                }),
+                            );
                         } else {
                             output.write_byte(0x81);
                             output.write_byte(sjindex as u8);
@@ -97,7 +107,9 @@ pub struct Pmd2Decoder {
 
 impl Pmd2Decoder {
     pub fn new() -> Box<Self> {
-        Box::new(Pmd2Decoder { st: Default::default() })
+        Box::new(Pmd2Decoder {
+            st: Default::default(),
+        })
     }
 }
 
@@ -110,7 +122,11 @@ impl RawDecoder for Pmd2Decoder {
         true
     }
 
-    fn raw_feed(&mut self, input: &[u8], output: &mut dyn StringWriter) -> (usize, Option<CodecError>) {
+    fn raw_feed(
+        &mut self,
+        input: &[u8],
+        output: &mut dyn StringWriter,
+    ) -> (usize, Option<CodecError>) {
         let (st, processed, err) = pmd2dec::raw_feed(self.st, input, output, &());
         self.st = st;
         (processed, err)
@@ -149,15 +165,17 @@ transient:
 }
 
 mod pmdshiftjis {
-    static FORWARD_TABLE: &[u16] = &[0, 65309, 8800, 65308, 65310, 8806, 8807, 8734, 8756, 0, 0, 0,
-        8242, 8243, 8451, 65509, 65284, 0, 0, 65285, 65283, 65286, 65290, 65312, 0, 9734, 9733,
-        9675, 9679, 9678, 9671, 9670, 9633, 9632, 9651, 9650, 9661, 9660, 8251, 12306, 8594,
-        8592, 8593, 8595, 12307, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 8712, 8715, 8838, 8839, 8834,
-        8835, 8746, 8745, 12288, 12289, 12290, 65292, 65294, 12539, 65306, 65307, 8743, 8744,
-        12443, 8658, 8660, 8704, 8707, 65342, 65507, 65343, 12541, 12542, 12445, 12446, 12291,
-        20189, 12293, 12294, 8736, 8869, 8978, 8706, 8711, 8801, 8786, 8810, 8811, 8730, 8765,
-        8733, 8757, 8747, 8748, 65288, 65289, 12308, 12309, 65339, 65341, 65371, 8491, 12296,
-            9839, 9837, 9834, 12300, 12301, 12302, 12303, 12304, 12305, 65291, 9711, 0, 0, 0];
+    static FORWARD_TABLE: &[u16] = &[
+        0, 65309, 8800, 65308, 65310, 8806, 8807, 8734, 8756, 0, 0, 0, 8242, 8243, 8451, 65509,
+        65284, 0, 0, 65285, 65283, 65286, 65290, 65312, 0, 9734, 9733, 9675, 9679, 9678, 9671,
+        9670, 9633, 9632, 9651, 9650, 9661, 9660, 8251, 12306, 8594, 8592, 8593, 8595, 12307, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 8712, 8715, 8838, 8839, 8834, 8835, 8746, 8745, 12288, 12289,
+        12290, 65292, 65294, 12539, 65306, 65307, 8743, 8744, 12443, 8658, 8660, 8704, 8707, 65342,
+        65507, 65343, 12541, 12542, 12445, 12446, 12291, 20189, 12293, 12294, 8736, 8869, 8978,
+        8706, 8711, 8801, 8786, 8810, 8811, 8730, 8765, 8733, 8757, 8747, 8748, 65288, 65289,
+        12308, 12309, 65339, 65341, 65371, 8491, 12296, 9839, 9837, 9834, 12300, 12301, 12302,
+        12303, 12304, 12305, 65291, 9711, 0, 0, 0,
+    ];
 
     /// Returns the index code point for pointer `code` in this index.
     #[inline]
@@ -294,7 +312,7 @@ mod pmdshiftjis {
             65373 => 112,
             65507 => 80,
             65509 => 143,
-            _ => 0
+            _ => 0,
         }
     }
 }

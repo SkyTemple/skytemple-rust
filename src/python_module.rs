@@ -16,11 +16,26 @@
  * You should have received a copy of the GNU General Public License
  * along with SkyTemple.  If not, see <https://www.gnu.org/licenses/>.
  */
+use crate::python::*;
 use log::info;
 use pyo3::types::PyDict;
-use crate::python::*;
 
-
+#[cfg(feature = "compression")]
+use crate::compression::bma_collision_rle::create_st_bma_collision_rle_compression_module;
+#[cfg(feature = "compression")]
+use crate::compression::bma_layer_nrl::create_st_bma_layer_nrl_compression_module;
+#[cfg(feature = "compression")]
+use crate::compression::bpc_image::create_st_bpc_image_compression_module;
+#[cfg(feature = "compression")]
+use crate::compression::bpc_tilemap::create_st_bpc_tilemap_compression_module;
+#[cfg(feature = "compression")]
+use crate::compression::generic::nrl::create_st_generic_nrl_compression_module;
+#[cfg(feature = "dse")]
+use crate::dse::st_smdl::python::create_st_smdl_module;
+#[cfg(feature = "dse")]
+use crate::dse::st_swdl::python::create_st_swdl_module;
+#[cfg(feature = "image")]
+use crate::image::tilemap_entry::TilemapEntry;
 #[cfg(feature = "with_pmd_wan")]
 use crate::pmd_wan::create_pmd_wan_module;
 #[cfg(feature = "compression")]
@@ -63,22 +78,6 @@ use crate::st_kao::create_st_kao_module;
 use crate::st_pkdpx::create_st_pkdpx_module;
 #[cfg(feature = "strings")]
 use crate::st_string::create_st_string_module;
-#[cfg(feature = "compression")]
-use crate::compression::bpc_image::create_st_bpc_image_compression_module;
-#[cfg(feature = "compression")]
-use crate::compression::bpc_tilemap::create_st_bpc_tilemap_compression_module;
-#[cfg(feature = "compression")]
-use crate::compression::generic::nrl::create_st_generic_nrl_compression_module;
-#[cfg(feature = "compression")]
-use crate::compression::bma_collision_rle::create_st_bma_collision_rle_compression_module;
-#[cfg(feature = "compression")]
-use crate::compression::bma_layer_nrl::create_st_bma_layer_nrl_compression_module;
-#[cfg(feature = "image")]
-use crate::image::tilemap_entry::TilemapEntry;
-#[cfg(feature = "dse")]
-use crate::dse::st_smdl::python::create_st_smdl_module;
-#[cfg(feature = "dse")]
-use crate::dse::st_swdl::python::create_st_swdl_module;
 
 #[pymodule]
 fn skytemple_rust(py: Python, module: &PyModule) -> PyResult<()> {
@@ -134,15 +133,31 @@ fn skytemple_rust(py: Python, module: &PyModule) -> PyResult<()> {
     add_submodule(module, create_st_string_module(py)?, modules)?;
 
     #[cfg(feature = "compression")]
-    add_submodule(module, create_st_generic_nrl_compression_module(py)?, modules)?;
+    add_submodule(
+        module,
+        create_st_generic_nrl_compression_module(py)?,
+        modules,
+    )?;
     #[cfg(feature = "compression")]
     add_submodule(module, create_st_bpc_image_compression_module(py)?, modules)?;
     #[cfg(feature = "compression")]
-    add_submodule(module, create_st_bpc_tilemap_compression_module(py)?, modules)?;
+    add_submodule(
+        module,
+        create_st_bpc_tilemap_compression_module(py)?,
+        modules,
+    )?;
     #[cfg(feature = "compression")]
-    add_submodule(module, create_st_bma_layer_nrl_compression_module(py)?, modules)?;
+    add_submodule(
+        module,
+        create_st_bma_layer_nrl_compression_module(py)?,
+        modules,
+    )?;
     #[cfg(feature = "compression")]
-    add_submodule(module, create_st_bma_collision_rle_compression_module(py)?, modules)?;
+    add_submodule(
+        module,
+        create_st_bma_collision_rle_compression_module(py)?,
+        modules,
+    )?;
 
     #[cfg(feature = "image")]
     module.add_class::<TilemapEntry>()?;
@@ -151,8 +166,15 @@ fn skytemple_rust(py: Python, module: &PyModule) -> PyResult<()> {
 }
 
 #[inline]
-fn add_submodule(parent: &PyModule, (name, module): (&str, &PyModule), modules: &PyDict) -> PyResult<()> {
+fn add_submodule(
+    parent: &PyModule,
+    (name, module): (&str, &PyModule),
+    modules: &PyDict,
+) -> PyResult<()> {
     modules.set_item(name, module)?;
     parent.add_submodule(module)?;
-    parent.add(&name.split('.').into_iter().skip(1).collect::<String>(), module)
+    parent.add(
+        &name.split('.').into_iter().skip(1).collect::<String>(),
+        module,
+    )
 }

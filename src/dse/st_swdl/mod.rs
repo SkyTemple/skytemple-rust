@@ -17,10 +17,10 @@
  * along with SkyTemple.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-#[cfg(feature = "python")]
-pub(crate) mod python;
-pub mod swdl;
 pub mod kgrp;
 pub mod pcmd;
 pub mod prgi;
+#[cfg(feature = "python")]
+pub(crate) mod python;
+pub mod swdl;
 pub mod wavi;

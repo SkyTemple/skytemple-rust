@@ -17,14 +17,14 @@
  * along with SkyTemple.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-use std::iter::{repeat};
-use bytes::{Buf, BufMut, BytesMut};
-use crate::python::PyResult;
 use crate::bytes::StBytes;
+use crate::dse::st_swdl::pcmd::SwdlPcmd;
+use crate::gettext::gettext;
+use crate::python::PyResult;
+use bytes::{Buf, BufMut, BytesMut};
 use num_derive::FromPrimitive;
 use num_traits::FromPrimitive;
-use crate::gettext::gettext;
-use crate::dse::st_swdl::pcmd::SwdlPcmd;
+use std::iter::repeat;
 
 const WAVI_HEADER: &[u8] = b"wavi";
 
@@ -34,13 +34,13 @@ pub enum SampleFormatConsts {
     Pcm8bit = 0x0000,
     Pcm16bit = 0x0100,
     Adpcm4bit = 0x0200,
-    Psg = 0x0300,  // possibly
+    Psg = 0x0300, // possibly
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct SwdlPcmdReference {
     pub offset: u32,
-    pub length: u32
+    pub length: u32,
 }
 
 impl SwdlPcmdReference {
@@ -89,7 +89,7 @@ pub struct SwdlSampleInfoTblEntry {
     pub decay2: i8,
     pub release: i8,
     pub unk57: i8,
-    pub(crate) sample_pos: u32
+    pub(crate) sample_pos: u32,
 }
 
 impl SwdlSampleInfoTblEntry {
@@ -100,7 +100,10 @@ impl SwdlSampleInfoTblEntry {
 
 impl From<&mut StBytes> for PyResult<SwdlSampleInfoTblEntry> {
     fn from(source: &mut StBytes) -> Self {
-        pyr_assert!(source.len() >= 64, gettext("SWDL file too short (Sample Table EOF)."));
+        pyr_assert!(
+            source.len() >= 64,
+            gettext("SWDL file too short (Sample Table EOF).")
+        );
         // 2 padding/unknown bytes;
         source.advance(2);
         let id = source.get_u16_le();
@@ -143,11 +146,41 @@ impl From<&mut StBytes> for PyResult<SwdlSampleInfoTblEntry> {
         let release = source.get_i8();
         let unk57 = source.get_i8();
         Ok(SwdlSampleInfoTblEntry {
-            id, ftune, ctune, rootkey, ktps, volume, pan, unk5, unk58, sample_format,
-            unk9, loops, unk10, unk11, unk12, unk13, sample_rate, sample, sample_pos,
-            loop_begin_pos, loop_length, envelope, envelope_multiplier, unk19, unk20,
-            unk21, unk22, attack_volume, attack, decay, sustain, hold, decay2, release,
-            unk57
+            id,
+            ftune,
+            ctune,
+            rootkey,
+            ktps,
+            volume,
+            pan,
+            unk5,
+            unk58,
+            sample_format,
+            unk9,
+            loops,
+            unk10,
+            unk11,
+            unk12,
+            unk13,
+            sample_rate,
+            sample,
+            sample_pos,
+            loop_begin_pos,
+            loop_length,
+            envelope,
+            envelope_multiplier,
+            unk19,
+            unk20,
+            unk21,
+            unk22,
+            attack_volume,
+            attack,
+            decay,
+            sustain,
+            hold,
+            decay2,
+            release,
+            unk57,
         })
     }
 }
@@ -206,12 +239,15 @@ impl From<SwdlSampleInfoTblEntry> for StBytes {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct SwdlWavi {
     pub sample_info_table: Vec<Option<SwdlSampleInfoTblEntry>>,
-    initial_length: usize
+    initial_length: usize,
 }
 
 impl SwdlWavi {
     pub fn new(sample_info_table: Vec<Option<SwdlSampleInfoTblEntry>>) -> Self {
-        SwdlWavi { sample_info_table, initial_length: 0 }
+        SwdlWavi {
+            sample_info_table,
+            initial_length: 0,
+        }
     }
 }
 
@@ -221,7 +257,10 @@ impl SwdlWavi {
     }
 
     pub fn from_bytes(source: &mut StBytes, number_slots: u16) -> PyResult<Self> {
-        pyr_assert!(source.len() >= 16 + (number_slots as usize * 2), gettext("SWDL file too short (Wavi EOF)."));
+        pyr_assert!(
+            source.len() >= 16 + (number_slots as usize * 2),
+            gettext("SWDL file too short (Wavi EOF).")
+        );
         let header = source.copy_to_bytes(4);
         pyr_assert!(WAVI_HEADER == header, gettext("Invalid SWDL/Wavi header."));
         // 0x00, 0x00, 0x15, 0x04, 0x10, 0x00, 0x00, 0x00:
@@ -231,10 +270,16 @@ impl SwdlWavi {
         let sample_info_table = (0..(number_slots))
             .map(|_| {
                 let pnt = toc.get_u16_le();
-                pyr_assert!((pnt as u32) < len_chunk_data, gettext("SWDL Wavi length invalid; tried to read past EOF."));
+                pyr_assert!(
+                    (pnt as u32) < len_chunk_data,
+                    gettext("SWDL Wavi length invalid; tried to read past EOF.")
+                );
                 if pnt > 0 {
                     let mut dst = source.clone();
-                    pyr_assert!(dst.len() >= pnt as usize, gettext("SWDL file too short (Wavi EOF)."));
+                    pyr_assert!(
+                        dst.len() >= pnt as usize,
+                        gettext("SWDL file too short (Wavi EOF).")
+                    );
                     dst.advance(pnt as usize);
                     Ok(Some(<PyResult<SwdlSampleInfoTblEntry>>::from(&mut dst)?))
                 } else {
@@ -244,7 +289,8 @@ impl SwdlWavi {
             .collect::<PyResult<Vec<Option<SwdlSampleInfoTblEntry>>>>()?;
         source.advance(len_chunk_data as usize);
         Ok(Self {
-            sample_info_table, initial_length: (len_chunk_data + 0x10) as usize
+            sample_info_table,
+            initial_length: (len_chunk_data + 0x10) as usize,
         })
     }
 }
@@ -266,7 +312,7 @@ impl From<SwdlWavi> for StBytes {
                     toc.put_u16_le((toc_len + content.len()) as u16);
                     content.put(StBytes::from(wav).0)
                 }
-                None => toc.put_u16_le(0)
+                None => toc.put_u16_le(0),
             }
         }
         debug_assert_eq!(toc.len(), toc_len);

@@ -23,7 +23,7 @@ use crate::python::*;
 #[derive(Clone)]
 pub struct Dpl {
     #[pyo3(get, set)]
-    pub palettes: Vec<Vec<u8>>
+    pub palettes: Vec<Vec<u8>>,
 }
 
 #[pymethods]
@@ -69,17 +69,11 @@ pub mod input {
     use crate::python::*;
     use crate::st_dpl::Dpl;
 
-    pub trait DplProvider: ToPyObject {
+    pub trait DplProvider: ToPyObject {}
 
-    }
+    impl DplProvider for Py<Dpl> {}
 
-    impl DplProvider for Py<Dpl> {
-
-    }
-
-    impl DplProvider for PyObject {
-
-    }
+    impl DplProvider for PyObject {}
 
     pub struct InputDpl(pub Box<dyn DplProvider>);
 
@@ -106,18 +100,13 @@ pub mod input {
     }
 }
 
-
 #[cfg(not(feature = "python"))]
 pub mod input {
     use crate::st_dpl::Dpl;
 
-    pub trait DplProvider {
+    pub trait DplProvider {}
 
-    }
-
-    impl DplProvider for Dpl {
-
-    }
+    impl DplProvider for Dpl {}
 
     pub struct InputDpl(pub(crate) Dpl);
 

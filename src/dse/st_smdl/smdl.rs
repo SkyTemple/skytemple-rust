@@ -17,10 +17,6 @@
  * along with SkyTemple.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-use std::iter::repeat;
-use bytes::{Buf, BufMut, BytesMut};
-use crate::gettext::gettext;
-use crate::python::PyResult;
 use crate::bytes::{StBytes, StBytesMut};
 use crate::dse::date::DseDate;
 use crate::dse::filename::DseFilename;
@@ -28,13 +24,20 @@ use crate::dse::st_smdl::eoc::SmdlEoc;
 use crate::dse::st_smdl::event::{SmdlEvent, SmdlSpecialOpCode};
 use crate::dse::st_smdl::song::SmdlSong;
 use crate::dse::st_smdl::trk::SmdlTrack;
+use crate::gettext::gettext;
+use crate::python::PyResult;
+use bytes::{Buf, BufMut, BytesMut};
+use std::iter::repeat;
 
 const SMDL_HEADER: &[u8] = b"smdl";
 const FRAMES_PER_SECOND: u32 = 60;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Until {
-    End, Loop, Event(SmdlEvent), Special(SmdlSpecialOpCode)
+    End,
+    Loop,
+    Event(SmdlEvent),
+    Special(SmdlSpecialOpCode),
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Default)]
@@ -71,13 +74,12 @@ impl SmdlHeader {
     }
 }
 
-
 #[derive(Clone, Debug, PartialEq, Eq, Default)]
 pub struct Smdl {
     pub header: SmdlHeader,
     pub song: SmdlSong,
     pub tracks: Vec<SmdlTrack>,
-    pub eoc: SmdlEoc
+    pub eoc: SmdlEoc,
 }
 
 impl Smdl {
@@ -106,7 +108,8 @@ impl Smdl {
 
     /// Returns the length of the track (until `until`) in ticks.
     pub fn len_in_ticks(&self, until: Until) -> u64 {
-        (self.len_in_microseconds(until) as f64 / 1000000.0 * FRAMES_PER_SECOND as f64).ceil() as u64
+        (self.len_in_microseconds(until) as f64 / 1000000.0 * FRAMES_PER_SECOND as f64).ceil()
+            as u64
     }
 
     fn single_track_length_in_beats(trk: &SmdlTrack, until: Until) -> u32 {
@@ -115,9 +118,27 @@ impl Smdl {
             highest = beat;
             match &until {
                 Until::End => {}
-                Until::Loop => if let SmdlEvent::Special { op: SmdlSpecialOpCode::LoopPoint, .. } = e { return highest }
-                Until::Special(opc) => if let SmdlEvent::Special { op, .. } = e { if op == opc { return highest } }
-                Until::Event(em) => if e == em { return highest }
+                Until::Loop => {
+                    if let SmdlEvent::Special {
+                        op: SmdlSpecialOpCode::LoopPoint,
+                        ..
+                    } = e
+                    {
+                        return highest;
+                    }
+                }
+                Until::Special(opc) => {
+                    if let SmdlEvent::Special { op, .. } = e {
+                        if op == opc {
+                            return highest;
+                        }
+                    }
+                }
+                Until::Event(em) => {
+                    if e == em {
+                        return highest;
+                    }
+                }
             }
         }
         highest
@@ -129,22 +150,45 @@ impl Smdl {
         let mut sum = 0u64;
         for e in trk.events.iter() {
             match e {
-                SmdlEvent::Special { op: SmdlSpecialOpCode::SetTempo, params } => {
+                SmdlEvent::Special {
+                    op: SmdlSpecialOpCode::SetTempo,
+                    params,
+                } => {
                     current_tempo = 60000000 / (params[0] as u32 * tpqn as u32);
-                },
-                _ => if current_tempo > 0 {
-                    let previous_c = e.length(previous);
-                    if previous_c > 0 {
-                        previous = previous_c;
+                }
+                _ => {
+                    if current_tempo > 0 {
+                        let previous_c = e.length(previous);
+                        if previous_c > 0 {
+                            previous = previous_c;
+                        }
+                        sum += (previous_c as u64) * current_tempo as u64;
                     }
-                    sum += (previous_c as u64) * current_tempo as u64;
                 }
             }
             match &until {
                 Until::End => {}
-                Until::Loop => if let SmdlEvent::Special { op: SmdlSpecialOpCode::LoopPoint, .. } = e { return sum }
-                Until::Special(opc) => if let SmdlEvent::Special { op, .. } = e { if op == opc { return sum } }
-                Until::Event(em) => if e == em { return sum }
+                Until::Loop => {
+                    if let SmdlEvent::Special {
+                        op: SmdlSpecialOpCode::LoopPoint,
+                        ..
+                    } = e
+                    {
+                        return sum;
+                    }
+                }
+                Until::Special(opc) => {
+                    if let SmdlEvent::Special { op, .. } = e {
+                        if op == opc {
+                            return sum;
+                        }
+                    }
+                }
+                Until::Event(em) => {
+                    if e == em {
+                        return sum;
+                    }
+                }
             }
         }
         sum
@@ -153,9 +197,15 @@ impl Smdl {
 
 impl From<&mut StBytes> for PyResult<SmdlHeader> {
     fn from(source: &mut StBytes) -> Self {
-        pyr_assert!(source.len() >= 64, gettext("SMDL file too short (Header EOF)."));
+        pyr_assert!(
+            source.len() >= 64,
+            gettext("SMDL file too short (Header EOF).")
+        );
         let header = source.copy_to_bytes(4);
-        pyr_assert!(SMDL_HEADER == header, gettext("Invalid SMDL/Header header."));
+        pyr_assert!(
+            SMDL_HEADER == header,
+            gettext("Invalid SMDL/Header header.")
+        );
         // 4 zero bytes;
         source.advance(4);
         // We don't validate the length (next 4 bytes):
@@ -174,7 +224,7 @@ impl From<&mut StBytes> for PyResult<SmdlHeader> {
             unk5: source.get_u32_le(),
             unk6: source.get_u32_le(),
             unk8: source.get_u32_le(),
-            unk9: source.get_u32_le()
+            unk9: source.get_u32_le(),
         })
     }
 }
@@ -190,7 +240,7 @@ impl From<StBytes> for PyResult<Smdl> {
             header,
             song,
             tracks,
-            eoc: <PyResult<SmdlEoc>>::from(&mut source)?
+            eoc: <PyResult<SmdlEoc>>::from(&mut source)?,
         })
     }
 }
@@ -198,16 +248,23 @@ impl From<StBytes> for PyResult<Smdl> {
 impl From<Smdl> for StBytes {
     fn from(source: Smdl) -> Self {
         let track_len = source.tracks.len();
-        let track_data: StBytes = source.tracks.into_iter().flat_map(|track| {
-            let mut data = StBytesMut::from(track);
-            let data_len = data.len();
-            if data_len % 4 != 0 {
-                data.extend(repeat(0x98).take(4 - data_len % 4));
-            }
-            data.freeze()
-        }).collect();
+        let track_data: StBytes = source
+            .tracks
+            .into_iter()
+            .flat_map(|track| {
+                let mut data = StBytesMut::from(track);
+                let data_len = data.len();
+                if data_len % 4 != 0 {
+                    data.extend(repeat(0x98).take(4 - data_len % 4));
+                }
+                data.freeze()
+            })
+            .collect();
         let track_data_len = track_data.len();
-        let res: StBytes = source.header.to_bytes((track_data_len + 144) as u32).into_iter()
+        let res: StBytes = source
+            .header
+            .to_bytes((track_data_len + 144) as u32)
+            .into_iter()
             .chain(source.song.to_bytes(track_len as u8).into_iter())
             .chain(track_data.into_iter())
             .chain(StBytes::from(source.eoc).into_iter())

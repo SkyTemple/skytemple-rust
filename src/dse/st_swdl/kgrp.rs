@@ -17,10 +17,10 @@
  * along with SkyTemple.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-use bytes::{Buf, BufMut, BytesMut};
-use crate::python::PyResult;
 use crate::bytes::StBytes;
 use crate::gettext::gettext;
+use crate::python::PyResult;
+use bytes::{Buf, BufMut, BytesMut};
 
 const KGRP_HEADER: &[u8] = b"kgrp";
 const KEYGROUP_LEN: usize = 8;
@@ -38,7 +38,10 @@ pub struct SwdlKeygroup {
 
 impl From<&mut StBytes> for PyResult<SwdlKeygroup> {
     fn from(source: &mut StBytes) -> Self {
-        pyr_assert!(source.len() >= KEYGROUP_LEN, gettext("SWDL file too short (Keygroup EOF)."));
+        pyr_assert!(
+            source.len() >= KEYGROUP_LEN,
+            gettext("SWDL file too short (Keygroup EOF).")
+        );
         Ok(SwdlKeygroup {
             id: source.get_u16_le(),
             poly: source.get_i8(),
@@ -65,23 +68,28 @@ impl From<SwdlKeygroup> for StBytes {
     }
 }
 
-
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct SwdlKgrp {
-    pub keygroups: Vec<SwdlKeygroup>
+    pub keygroups: Vec<SwdlKeygroup>,
 }
 
 impl From<&mut StBytes> for PyResult<SwdlKgrp> {
     fn from(source: &mut StBytes) -> Self {
-        pyr_assert!(source.len() >= 16, gettext("SWDL file too short (Kgrp EOF)."));
+        pyr_assert!(
+            source.len() >= 16,
+            gettext("SWDL file too short (Kgrp EOF).")
+        );
         let header = source.copy_to_bytes(4);
         pyr_assert!(KGRP_HEADER == header, gettext("Invalid SWDL/Kgrp header."));
         // 0x00, 0x00, 0x15, 0x04, 0x10, 0x00, 0x00, 0x00:
         source.advance(8);
         let len_chunk_data = source.get_u32_le() as usize;
-        pyr_assert!(source.len() >= len_chunk_data, gettext("SWDL file too short (Kgrp EOF)."));
+        pyr_assert!(
+            source.len() >= len_chunk_data,
+            gettext("SWDL file too short (Kgrp EOF).")
+        );
 
-        let number_slots = len_chunk_data / KEYGROUP_LEN;  // TODO: Is this the way to do it?
+        let number_slots = len_chunk_data / KEYGROUP_LEN; // TODO: Is this the way to do it?
 
         let keygroups = (0..number_slots)
             .map(|_| source.into())
@@ -92,7 +100,8 @@ impl From<&mut StBytes> for PyResult<SwdlKgrp> {
 
 impl From<SwdlKgrp> for StBytes {
     fn from(source: SwdlKgrp) -> Self {
-        let mut content = source.keygroups
+        let mut content = source
+            .keygroups
             .into_iter()
             .flat_map(StBytes::from)
             .collect::<BytesMut>();

@@ -17,14 +17,14 @@
  * along with SkyTemple.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+use crate::python::*;
 use pmd_wan as lib;
 use pmd_wan::WanError;
-use crate::python::*;
 use std::convert::TryInto;
 use std::io::Cursor;
 
-use crate::image::{In16ColIndexedImage, InIndexedImage};
 use crate::bytes::StBytes;
+use crate::image::{In16ColIndexedImage, InIndexedImage};
 
 /// A PMD2 WAN sprite.
 #[pyclass(module = "skytemple_rust.pmd_wan")]
@@ -297,7 +297,7 @@ fn wrap_meta_frame(lib_ent: &lib::MetaFrame) -> MetaFrame {
 
 fn wrap_meta_frame_group(lib_ent: &lib::MetaFrameGroup) -> MetaFrameGroup {
     MetaFrameGroup {
-        meta_frames: wrap_vec(&lib_ent.meta_frames,  wrap_meta_frame),
+        meta_frames: wrap_vec(&lib_ent.meta_frames, wrap_meta_frame),
     }
 }
 
@@ -403,9 +403,7 @@ pub fn encode_image_to_static_wan_file(py: Python, image: PyObject) -> PyResult<
         image_store: lib::ImageStore { images: Vec::new() },
         meta_frame_store: lib::MetaFrameStore::default(),
         anim_store: lib::AnimStore::default(),
-        palette: lib::Palette {
-            palette
-        },
+        palette: lib::Palette { palette },
         raw_particule_table: Vec::new(),
         is_256_color: false,
         sprite_type: lib::SpriteType::PropsUI,
@@ -414,34 +412,45 @@ pub fn encode_image_to_static_wan_file(py: Python, image: PyObject) -> PyResult<
     };
 
     let meta_frame_group_id = lib::insert_meta_frame_in_wanimage(
-        indexed_image.0.0.0.to_vec(),
-        indexed_image.0.1.try_into().map_err(|_| create_value_user_error("The image is far too wide"))?,
-        indexed_image.0.2.try_into().map_err(|_| create_value_user_error("The image is far too high"))?,
+        indexed_image.0 .0 .0.to_vec(),
+        indexed_image
+            .0
+             .1
+            .try_into()
+            .map_err(|_| create_value_user_error("The image is far too wide"))?,
+        indexed_image
+            .0
+             .2
+            .try_into()
+            .map_err(|_| create_value_user_error("The image is far too high"))?,
         &mut wanimage,
         0,
-    ).map_err(convert_anyhow_error_to_user)?;
+    )
+    .map_err(convert_anyhow_error_to_user)?;
 
     if let Some(meta_frame_group_id) = meta_frame_group_id {
-        wanimage.anim_store.anim_groups.push(vec![
-            lib::Animation {
-                frames: vec![lib::AnimationFrame {
-                    duration: 1,
-                    flag: 0,
-                    frame_id: meta_frame_group_id as u16,
-                    offset_x: 0,
-                    offset_y: 0,
-                    shadow_offset_x: 0,
-                    shadow_offset_y: 0
-                }]
-            }
-        ]);
+        wanimage.anim_store.anim_groups.push(vec![lib::Animation {
+            frames: vec![lib::AnimationFrame {
+                duration: 1,
+                flag: 0,
+                frame_id: meta_frame_group_id as u16,
+                offset_x: 0,
+                offset_y: 0,
+                shadow_offset_x: 0,
+                shadow_offset_y: 0,
+            }],
+        }]);
 
         let mut buffer = Vec::new();
         let mut cursor = Cursor::new(&mut buffer);
-        wanimage.create_wan(&mut cursor).map_err(convert_anyhow_error)?;
+        wanimage
+            .create_wan(&mut cursor)
+            .map_err(convert_anyhow_error)?;
         Ok(StBytes::from(buffer))
     } else {
-        Err(create_value_user_error("The image doesn't contain any visible pixel"))
+        Err(create_value_user_error(
+            "The image doesn't contain any visible pixel",
+        ))
     }
 }
 

@@ -17,8 +17,8 @@
  * along with SkyTemple.  If not, see <https://www.gnu.org/licenses/>.
  */
 use crate::bytes::StBytes;
-use crate::image::{In256ColIndexedImage, IndexedImage};
 use crate::image::tilemap_entry::TilemapEntry;
+use crate::image::{In256ColIndexedImage, IndexedImage};
 use crate::python::*;
 use crate::st_dpci::input::InputDpci;
 
@@ -26,7 +26,7 @@ use crate::st_dpci::input::InputDpci;
 #[derive(Clone)]
 pub struct Dpc {
     #[pyo3(get, set)]
-    pub chunks: Vec<Vec<TilemapEntry>>
+    pub chunks: Vec<Vec<TilemapEntry>>,
 }
 
 #[pymethods]
@@ -45,13 +45,23 @@ impl Dpc {
     ///
     /// To be used with the DPCI file for this dungeon.
     /// To get the palettes, use the data from the DPL file for this dungeon.
-    pub fn chunks_to_pil(&self, dpci: InputDpci, palettes: Vec<Vec<u8>>, width_in_mtiles: usize) -> PyResult<IndexedImage> {
+    pub fn chunks_to_pil(
+        &self,
+        dpci: InputDpci,
+        palettes: Vec<Vec<u8>>,
+        width_in_mtiles: usize,
+    ) -> PyResult<IndexedImage> {
         todo!()
     }
 
     #[allow(unused_variables)]
     /// Convert a single chunk of the DPC into a image. For general notes, see chunks_to_pil.
-    pub fn single_chunk_to_pil(&self, chunk_idx: usize, dpci: InputDpci, palettes: Vec<Vec<u8>>) -> PyResult<IndexedImage> {
+    pub fn single_chunk_to_pil(
+        &self,
+        chunk_idx: usize,
+        dpci: InputDpci,
+        palettes: Vec<Vec<u8>>,
+    ) -> PyResult<IndexedImage> {
         todo!()
     }
 
@@ -65,7 +75,11 @@ impl Dpc {
     ///
     /// If a pixel in a tile uses a color outside of it's 16 color range the color is replaced with
     /// 0 of the palette (transparent). The "force_import" parameter is ignored.
-    pub fn pil_to_chunks(&mut self, img: In256ColIndexedImage, force_import: bool) -> PyResult<(StBytes, Vec<Vec<u8>>)> {
+    pub fn pil_to_chunks(
+        &mut self,
+        img: In256ColIndexedImage,
+        force_import: bool,
+    ) -> PyResult<(StBytes, Vec<Vec<u8>>)> {
         todo!()
     }
 
@@ -76,7 +90,12 @@ impl Dpc {
     //
     /// If correct_tile_ids is True, then the tile id of tile_mappings is also increased by one. Use this,  TODO
     /// if you previously used import_tiles with contains_null_tile=False  TODO
-    pub fn import_tile_mappings(&mut self, tile_mappings: Vec<Vec<TilemapEntry>>, contains_null_chunk: bool, correct_tile_ids: bool) {
+    pub fn import_tile_mappings(
+        &mut self,
+        tile_mappings: Vec<Vec<TilemapEntry>>,
+        contains_null_chunk: bool,
+        correct_tile_ids: bool,
+    ) {
         todo!()
     }
 }
@@ -115,17 +134,11 @@ pub mod input {
     use crate::python::*;
     use crate::st_dpc::Dpc;
 
-    pub trait DpcProvider: ToPyObject {
+    pub trait DpcProvider: ToPyObject {}
 
-    }
+    impl DpcProvider for Py<Dpc> {}
 
-    impl DpcProvider for Py<Dpc> {
-
-    }
-
-    impl DpcProvider for PyObject {
-
-    }
+    impl DpcProvider for PyObject {}
 
     pub struct InputDpc(pub Box<dyn DpcProvider>);
 
@@ -152,18 +165,13 @@ pub mod input {
     }
 }
 
-
 #[cfg(not(feature = "python"))]
 pub mod input {
     use crate::st_dpc::Dpc;
 
-    pub trait DpcProvider {
+    pub trait DpcProvider {}
 
-    }
-
-    impl DpcProvider for Dpc {
-
-    }
+    impl DpcProvider for Dpc {}
 
     pub struct InputDpc(pub(crate) Dpc);
 

@@ -21,9 +21,7 @@ use crate::python::*;
 
 #[pyclass(module = "skytemple_rust.st_dpci")]
 #[derive(Clone)]
-pub struct Dpci {
-
-}
+pub struct Dpci {}
 
 #[pymethods]
 impl Dpci {
@@ -68,17 +66,11 @@ pub mod input {
     use crate::python::*;
     use crate::st_dpci::Dpci;
 
-    pub trait DpciProvider: ToPyObject {
+    pub trait DpciProvider: ToPyObject {}
 
-    }
+    impl DpciProvider for Py<Dpci> {}
 
-    impl DpciProvider for Py<Dpci> {
-
-    }
-
-    impl DpciProvider for PyObject {
-
-    }
+    impl DpciProvider for PyObject {}
 
     pub struct InputDpci(pub Box<dyn DpciProvider>);
 
@@ -105,18 +97,13 @@ pub mod input {
     }
 }
 
-
 #[cfg(not(feature = "python"))]
 pub mod input {
     use crate::st_dpci::Dpci;
 
-    pub trait DpciProvider {
+    pub trait DpciProvider {}
 
-    }
-
-    impl DpciProvider for Dpci {
-
-    }
+    impl DpciProvider for Dpci {}
 
     pub struct InputDpci(pub(crate) Dpci);
 
@@ -126,4 +113,3 @@ pub mod input {
         }
     }
 }
-

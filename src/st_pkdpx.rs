@@ -17,12 +17,12 @@
  * along with SkyTemple.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-use bytes::{Buf, BufMut, Bytes, BytesMut};
 use crate::bytes::StBytesMut;
 use crate::compression::px::{PxCompLevel, PxCompressor, PxDecompressor};
 use crate::python::*;
 use crate::st_at_common::CompressionContainer;
 use crate::util::slice_to_array;
+use bytes::{Buf, BufMut, Bytes, BytesMut};
 
 #[pyclass(module = "skytemple_rust.st_pkdpx")]
 #[derive(Clone)]
@@ -30,20 +30,22 @@ pub struct Pkdpx {
     data: Bytes,
     flags: [u8; 9],
     len_comp: u16,
-    len_decomp: u32
+    len_decomp: u32,
 }
 impl CompressionContainer for Pkdpx {}
 
 impl Pkdpx {
     pub fn compress(data: &[u8]) -> PyResult<Self> {
-        let (px, flags) = PxCompressor::run(
-            Bytes::copy_from_slice(data), PxCompLevel::Level3, true
-        )?;
+        let (px, flags) =
+            PxCompressor::run(Bytes::copy_from_slice(data), PxCompLevel::Level3, true)?;
         Ok(Self {
-            len_comp: px.len() as u16 + Self::DATA_START, data: px, flags, len_decomp: data.len() as u32
+            len_comp: px.len() as u16 + Self::DATA_START,
+            data: px,
+            flags,
+            len_decomp: data.len() as u32,
         })
     }
-    pub fn matches(data: &[u8], ) -> bool {
+    pub fn matches(data: &[u8]) -> bool {
         &data[0..5] == Self::MAGIC
     }
 }
@@ -68,7 +70,11 @@ impl Pkdpx {
         })
     }
     pub fn decompress(&self) -> PyResult<StBytesMut> {
-        let res = PxDecompressor::run(&self.data[..(self.len_comp - Self::DATA_START) as usize], self.flags.as_ref(), self.len_comp)?;
+        let res = PxDecompressor::run(
+            &self.data[..(self.len_comp - Self::DATA_START) as usize],
+            self.flags.as_ref(),
+            self.len_comp,
+        )?;
         debug_assert_eq!(self.len_decomp as usize, res.len());
         Ok(res.into())
     }

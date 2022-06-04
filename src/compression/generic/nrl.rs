@@ -17,13 +17,13 @@
  * along with SkyTemple.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-use std::io::Cursor;
 use bytes::{Buf, BufMut, Bytes, BytesMut};
+use std::io::Cursor;
 
 // Operations are encoded in command bytes (CMD):
-const CMD_ZERO_OUT: u8      = 0x80;  // All values below
-const CMD_FILL_OUT: u8      = 0x80;  // All values equal/above until next
-const CMD_COPY_BYTES: u8    = 0xC0;  // All values equal/above
+const CMD_ZERO_OUT: u8 = 0x80; // All values below
+const CMD_FILL_OUT: u8 = 0x80; // All values equal/above until next
+const CMD_COPY_BYTES: u8 = 0xC0; // All values equal/above
 
 // How much bytes we look ahead for at most
 const NRL_LOOKAHEAD_ZERO_MAX_BYTES: u8 = 127;
@@ -58,7 +58,10 @@ pub(crate) trait NrlCompRead<S>: Clone {
     fn nrl_has_remaining(&self) -> bool;
 }
 
-impl<T> NrlCompRead<u8> for Cursor<T> where T: AsRef<[u8]> + Clone {
+impl<T> NrlCompRead<u8> for Cursor<T>
+where
+    T: AsRef<[u8]> + Clone,
+{
     fn nrl_get(&mut self) -> u8 {
         self.get_u8()
     }
@@ -110,7 +113,10 @@ pub(crate) trait NrlDecompRead<S> {
     fn nrl_get_u8(&mut self) -> u8;
 }
 
-impl<T> NrlDecompRead<u8> for Cursor<T> where T: AsRef<[u8]> {
+impl<T> NrlDecompRead<u8> for Cursor<T>
+where
+    T: AsRef<[u8]>,
+{
     fn nrl_get(&mut self) -> u8 {
         self.get_u8()
     }
@@ -126,7 +132,10 @@ pub(crate) trait NrlDecompWrite<S> {
     fn nrl_put(&mut self, b: S);
 }
 
-impl<T> NrlDecompWrite<u8> for T where T: BufMut {
+impl<T> NrlDecompWrite<u8> for T
+where
+    T: BufMut,
+{
     fn nrl_put(&mut self, b: u8) {
         self.put_u8(b)
     }
@@ -134,9 +143,8 @@ impl<T> NrlDecompWrite<u8> for T where T: BufMut {
 
 ///
 
-pub(crate) fn compression_step<T, U, S>(
-    decompressed_data: &mut T, compressed_data: &mut U
-) where
+pub(crate) fn compression_step<T, U, S>(decompressed_data: &mut T, compressed_data: &mut U)
+where
     T: NrlCompRead<S>,
     U: NrlCompWrite<S>,
     S: NullablePrimitive + Copy,
@@ -180,30 +188,27 @@ pub(crate) fn compression_step<T, U, S>(
 }
 
 /// Look how often the byte in the input data repeats, up to NRL_LOOKAHEAD_ZERO_MAX_BYTES.
-fn _look_ahead_repeats<T, S>(
-    decompressed_data: &T, needle: S
-) -> u8
+fn _look_ahead_repeats<T, S>(decompressed_data: &T, needle: S) -> u8
 where
     T: NrlCompRead<S>,
-    S: NullablePrimitive + Copy
+    S: NullablePrimitive + Copy,
 {
     // we really want to make sure the trait impl Clone of T is used and no auto deref happens.
     let mut nc = Clone::clone(decompressed_data);
     let mut repeats = 0;
-    while nc.nrl_has_remaining() && nc.nrl_get() == needle && repeats < NRL_LOOKAHEAD_ZERO_MAX_BYTES {
+    while nc.nrl_has_remaining() && nc.nrl_get() == needle && repeats < NRL_LOOKAHEAD_ZERO_MAX_BYTES
+    {
         repeats += 1;
     }
     repeats
 }
 
 /// Look ahead for the next byte sequence until the first repeating pattern starts.
-fn _look_ahead_byte_sequence<T, U, S>(
-    decompressed_data: &mut T
-) -> Bytes
+fn _look_ahead_byte_sequence<T, U, S>(decompressed_data: &mut T) -> Bytes
 where
     T: NrlCompRead<S>,
     U: NrlCompWrite<S>,
-    S: NullablePrimitive + Copy
+    S: NullablePrimitive + Copy,
 {
     let unit_size = U::nrl_unit_size();
     let mut seq = BytesMut::with_capacity(NRL_LOOKAHEAD_COPY_BYTES_MAX_BYTES as usize * unit_size);
@@ -228,38 +233,38 @@ where
             break;
         }
 
-        if seq.len() + unit_size >= NRL_LOOKAHEAD_COPY_BYTES_MAX_BYTES as usize * unit_size || !nc.nrl_has_remaining() {
+        if seq.len() + unit_size >= NRL_LOOKAHEAD_COPY_BYTES_MAX_BYTES as usize * unit_size
+            || !nc.nrl_has_remaining()
+        {
             break;
         }
-
     }
     seq.freeze()
 }
 
 //////
 
-pub(crate) fn decompression_step<T, U, S>(
-    compressed_data: &mut T, decompressed_data: &mut U
-) where
+pub(crate) fn decompression_step<T, U, S>(compressed_data: &mut T, decompressed_data: &mut U)
+where
     T: NrlDecompRead<S>,
     U: NrlDecompWrite<S>,
-    S: NullablePrimitive + Copy
+    S: NullablePrimitive + Copy,
 {
     let cmd = compressed_data.nrl_get_u8();
     if cmd < CMD_ZERO_OUT {
         // cmd encodes how many 0s to write
-        for _ in 0..cmd+1 {
+        for _ in 0..cmd + 1 {
             decompressed_data.nrl_put(S::null());
         }
     } else if (CMD_FILL_OUT..CMD_COPY_BYTES).contains(&cmd) {
         // cmd - CMD_FILL_OUT is the nb of bytes to write
         let param = compressed_data.nrl_get();
-        for _ in CMD_FILL_OUT-1..cmd {
+        for _ in CMD_FILL_OUT - 1..cmd {
             decompressed_data.nrl_put(param);
         }
     } else {
         // cmd - CMD_COPY_BYTES is the nb of bytes to write with the sequence of bytes
-        for _ in CMD_COPY_BYTES-1..cmd {
+        for _ in CMD_COPY_BYTES - 1..cmd {
             let param = compressed_data.nrl_get();
             decompressed_data.nrl_put(param);
         }
@@ -273,7 +278,7 @@ use crate::python::*;
 #[derive(Clone)]
 pub(crate) struct GenericNrlCompressionContainer {
     compressed_data: Bytes,
-    length_decompressed: u16
+    length_decompressed: u16,
 }
 
 impl GenericNrlCompressionContainer {
@@ -284,7 +289,8 @@ impl GenericNrlCompressionContainer {
             compression_step(&mut cursor, &mut compressed_data);
         }
         Ok(Self {
-            length_decompressed: data.len() as u16, compressed_data: compressed_data.freeze()
+            length_decompressed: data.len() as u16,
+            compressed_data: compressed_data.freeze(),
         })
     }
     fn cont_size(data: Bytes, byte_offset: usize) -> u16 {
@@ -303,7 +309,8 @@ impl GenericNrlCompressionContainer {
         data.advance(6);
         let length_decompressed = data.get_u16_le();
         Ok(Self {
-            compressed_data: data, length_decompressed
+            compressed_data: data,
+            length_decompressed,
         })
     }
     pub fn decompress(&self) -> PyResult<crate::bytes::StBytesMut> {
@@ -315,8 +322,9 @@ impl GenericNrlCompressionContainer {
                 return Err(exceptions::PyValueError::new_err(format!(
                     "Generic NRL Decompressor: End result length unexpected. \
                     Should be {}, is {}.",
-                    self.length_decompressed, decompressed_data.len()
-                )))
+                    self.length_decompressed,
+                    decompressed_data.len()
+                )));
             }
 
             decompression_step(&mut compressed_data, &mut decompressed_data);

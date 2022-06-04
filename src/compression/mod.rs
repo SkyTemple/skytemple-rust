@@ -16,10 +16,10 @@
  * You should have received a copy of the GNU General Public License
  * along with SkyTemple.  If not, see <https://www.gnu.org/licenses/>.
  */
-pub mod custom_999;
-pub mod px;
+pub mod bma_collision_rle;
+pub mod bma_layer_nrl;
 pub mod bpc_image;
 pub mod bpc_tilemap;
+pub mod custom_999;
 pub mod generic;
-pub mod bma_layer_nrl;
-pub mod bma_collision_rle;
+pub mod px;

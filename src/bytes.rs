@@ -17,13 +17,15 @@
  * along with SkyTemple.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-use bytes::{Bytes, BytesMut};
-use std::ops::{Deref, DerefMut};
+#[cfg(feature = "python")]
+use crate::python::{
+    FromPyObject, IntoPy, PyAny, PyByteArray, PyBytes, PyObject, PyResult, Python,
+};
 use bytes::buf::IntoIter;
+use bytes::{Bytes, BytesMut};
 #[cfg(feature = "python")]
 use pyo3::types::PyList;
-#[cfg(feature = "python")]
-use crate::python::{FromPyObject, IntoPy, PyAny, PyByteArray, PyBytes, PyObject, PyResult, Python};
+use std::ops::{Deref, DerefMut};
 
 #[derive(Clone, Default, PartialEq, Eq, Debug)]
 pub struct StBytesMut(pub(crate) BytesMut);
@@ -49,12 +51,16 @@ impl<'source> FromPyObject<'source> for StBytes {
         } else if let Ok(bytearray) = ob.downcast::<PyByteArray>() {
             // TODO: Maybe we could do without copying?
             let data: Vec<u8>;
-            unsafe { data = Vec::from(bytearray.as_bytes()); }
+            unsafe {
+                data = Vec::from(bytearray.as_bytes());
+            }
             Ok(Self(Bytes::from(data)))
         } else {
             let data: &PyList = ob.downcast()?;
             Ok(Self(Bytes::from(
-                data.into_iter().map(|x| x.extract::<u8>()).collect::<PyResult<Vec<u8>>>()?
+                data.into_iter()
+                    .map(|x| x.extract::<u8>())
+                    .collect::<PyResult<Vec<u8>>>()?,
             )))
         }
     }
@@ -75,7 +81,7 @@ impl DerefMut for StBytes {
 }
 
 impl FromIterator<u8> for StBytes {
-    fn from_iter<T: IntoIterator<Item=u8>>(iter: T) -> Self {
+    fn from_iter<T: IntoIterator<Item = u8>>(iter: T) -> Self {
         Self(Bytes::from_iter(iter))
     }
 }
@@ -144,7 +150,9 @@ impl<'source> FromPyObject<'source> for StBytesMut {
     fn extract(ob: &'source PyAny) -> PyResult<Self> {
         if let Ok(bytearray) = ob.downcast::<PyByteArray>() {
             let data: BytesMut;
-            unsafe { data = BytesMut::from(bytearray.as_bytes()); }
+            unsafe {
+                data = BytesMut::from(bytearray.as_bytes());
+            }
             Ok(Self(data))
         } else if let Ok(bytes) = ob.downcast::<PyBytes>() {
             let data = BytesMut::from(bytes.as_bytes());
@@ -152,7 +160,10 @@ impl<'source> FromPyObject<'source> for StBytesMut {
         } else {
             let data: &PyList = ob.downcast()?;
             Ok(Self(BytesMut::from(
-                &data.into_iter().map(|x| x.extract::<u8>()).collect::<PyResult<Vec<u8>>>()?[..]
+                &data
+                    .into_iter()
+                    .map(|x| x.extract::<u8>())
+                    .collect::<PyResult<Vec<u8>>>()?[..],
             )))
         }
     }
@@ -173,7 +184,7 @@ impl DerefMut for StBytesMut {
 }
 
 impl FromIterator<u8> for StBytesMut {
-    fn from_iter<T: IntoIterator<Item=u8>>(iter: T) -> Self {
+    fn from_iter<T: IntoIterator<Item = u8>>(iter: T) -> Self {
         Self(BytesMut::from_iter(iter))
     }
 }

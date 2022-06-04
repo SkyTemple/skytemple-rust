@@ -22,7 +22,7 @@ use pyo3::types::PyTuple;
 
 pub enum RomSource<T: RomFileProvider + Sized> {
     Folder(String),
-    Rom(T)
+    Rom(T),
 }
 
 #[cfg(feature = "python")]
@@ -30,7 +30,7 @@ impl<'source> FromPyObject<'source> for RomSource<&'source PyAny> {
     fn extract(ob: &'source PyAny) -> PyResult<Self> {
         Ok(match ob.extract::<String>().ok() {
             Some(x) => Self::Folder(x),
-            None => Self::Rom(ob)
+            None => Self::Rom(ob),
         })
     }
 }

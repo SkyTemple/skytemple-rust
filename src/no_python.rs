@@ -19,10 +19,10 @@
 /** Definitions of a Pyo3 types without Python or Pyo3 */
 extern crate skytemple_rust_macros;
 
+pub use skytemple_rust_macros::*;
 use std::error::Error;
 use std::fmt::{Display, Formatter};
 use std::io;
-pub use skytemple_rust_macros::*;
 
 pub(crate) type PyResult<T> = Result<T, PyErr>;
 
@@ -48,7 +48,7 @@ impl From<io::Error> for PyErr {
         let value = err.to_string();
         Self {
             type_name: "FromRust".to_string(),
-            value
+            value,
         }
     }
 }
@@ -76,12 +76,18 @@ pub type PyRefMut<'a, T> = &'a mut T;
 /// If not using Python, extract always clones, clone_ref returns a reference to Self,
 /// and borrow and borrow_mut return normal Rust references to T instead.
 #[derive(Clone)]
-pub struct Py<T>(T) where T: Clone;
-impl<T> Py<T> where T: Clone {
+pub struct Py<T>(T)
+where
+    T: Clone;
+impl<T> Py<T>
+where
+    T: Clone,
+{
     pub fn new(_: Python, obj: T) -> PyResult<Self> {
         Ok(Self(obj))
     }
-    pub fn extract<U>(&self, _: Python) -> PyResult<T> {  // where T: U (!!)
+    pub fn extract<U>(&self, _: Python) -> PyResult<T> {
+        // where T: U (!!)
         Ok(self.0.clone())
     }
     pub fn borrow(&self, _: Python) -> &T {
@@ -94,7 +100,10 @@ impl<T> Py<T> where T: Clone {
         self
     }
 }
-impl <T> Py<T> where T: PyWrapable + Clone {
+impl<T> Py<T>
+where
+    T: PyWrapable + Clone,
+{
     pub fn from(obj: T) -> Self {
         Self(obj)
     }

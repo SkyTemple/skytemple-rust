@@ -17,18 +17,18 @@
  * along with SkyTemple.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-use bytes::{Buf, BufMut, Bytes, BytesMut};
 use crate::bytes::StBytesMut;
 use crate::compression::custom_999::{Custom999Compressor, Custom999Decompressor};
 use crate::python::*;
 use crate::st_at_common::CompressionContainer;
+use bytes::{Buf, BufMut, Bytes, BytesMut};
 
 #[pyclass(module = "skytemple_rust.st_atupx")]
 #[derive(Clone)]
 pub struct Atupx {
     data: Bytes,
     len_comp: u16,
-    len_decomp: u32
+    len_decomp: u32,
 }
 impl CompressionContainer for Atupx {}
 
@@ -38,10 +38,10 @@ impl Atupx {
         Ok(Self {
             len_comp: nine.len() as u16 + Self::DATA_START,
             data: nine.into(),
-            len_decomp: data.len() as u32
+            len_decomp: data.len() as u32,
         })
     }
-    pub fn matches(data: &[u8], ) -> bool {
+    pub fn matches(data: &[u8]) -> bool {
         &data[0..5] == Self::MAGIC
     }
 }

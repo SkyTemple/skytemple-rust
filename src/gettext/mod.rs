@@ -23,9 +23,10 @@
 pub use gettextrs::gettext;
 
 #[cfg(target_env = "msvc")]
-#[macro_use] pub mod macro_stub;
+#[macro_use]
+pub mod macro_stub;
 
 #[cfg(target_env = "msvc")]
 pub fn gettext<T: Into<String>>(msgid: T) -> String {
-    return msgid.into()
+    return msgid.into();
 }

@@ -1,3 +1,6 @@
+use crate::bytes::StBytesMut;
+use crate::image::InIndexedImage;
+use crate::image::IndexedImage;
 /// This crate converts our image models from/into PIL images for Python.
 /*
  * Copyright 2021-2022 Capypara and the SkyTemple Contributors
@@ -18,14 +21,17 @@
  * along with SkyTemple.  If not, see <https://www.gnu.org/licenses/>.
  */
 use log::error;
-use pyo3::{exceptions, IntoPy, PyObject, Python};
 use pyo3::prelude::*;
 use pyo3::types::{PyBytes, PyIterator, PyTuple};
-use crate::bytes::StBytesMut;
-use crate::image::InIndexedImage;
-use crate::image::IndexedImage;
+use pyo3::{exceptions, IntoPy, PyObject, Python};
 
-pub fn in_from_py<'py, T>(img: T, py: Python<'py>) -> PyResult<(StBytesMut, StBytesMut, usize, usize)> where T: InIndexedImage<'py> {
+pub fn in_from_py<'py, T>(
+    img: T,
+    py: Python<'py>,
+) -> PyResult<(StBytesMut, StBytesMut, usize, usize)>
+where
+    T: InIndexedImage<'py>,
+{
     let mut iimg = img.unwrap_py();
     if iimg.getattr(py, "mode")?.extract::<&str>(py)? == "P" {
         if T::MAX_COLORS == 16 {
@@ -41,23 +47,38 @@ pub fn in_from_py<'py, T>(img: T, py: Python<'py>) -> PyResult<(StBytesMut, StBy
     } else {
         // Otherwise we don't support checking further..., input image must be indexed
         // TODO: Maybe support in the future via (automatic) Tilequant?
-        return Err(exceptions::PyValueError::new_err("Expected an indexed image."))
+        return Err(exceptions::PyValueError::new_err(
+            "Expected an indexed image.",
+        ));
     }
     let args = PyTuple::new(py, ["raw", "P"]);
     let bytes: Vec<u8> = iimg.getattr(py, "tobytes")?.call1(py, args)?.extract(py)?;
-    let pal: Vec<u8> = iimg.getattr(py, "palette")?.getattr(py, "palette")?.extract(py)?;
-    Ok(
-        (StBytesMut::from(bytes), StBytesMut::from(pal),
-         iimg.getattr(py, "width")?.extract(py)?, iimg.getattr(py, "height")?.extract(py)?)
-    )
+    let pal: Vec<u8> = iimg
+        .getattr(py, "palette")?
+        .getattr(py, "palette")?
+        .extract(py)?;
+    Ok((
+        StBytesMut::from(bytes),
+        StBytesMut::from(pal),
+        iimg.getattr(py, "width")?.extract(py)?,
+        iimg.getattr(py, "height")?.extract(py)?,
+    ))
 }
 
 pub fn out_to_py(img: IndexedImage, py: Python) -> PyResult<PyObject> {
-    let bytes: &PyBytes = PyBytes::new(py, &img.0.0);
-    let args = PyTuple::new(py, [
-        "P".into_py(py), PyTuple::new(py, [img.0.1, img.0.2]).into_py(py), bytes.into_py(py),
-        "raw".into_py(py), "P".into_py(py), 0.into_py(py), 1.into_py(py)
-    ]);
+    let bytes: &PyBytes = PyBytes::new(py, &img.0 .0);
+    let args = PyTuple::new(
+        py,
+        [
+            "P".into_py(py),
+            PyTuple::new(py, [img.0 .1, img.0 .2]).into_py(py),
+            bytes.into_py(py),
+            "raw".into_py(py),
+            "P".into_py(py),
+            0.into_py(py),
+            1.into_py(py),
+        ],
+    );
     let out_img = PyModule::import(py, "PIL.Image")?
         .getattr("frombuffer")?
         .call1(args)?;
@@ -87,25 +108,35 @@ fn pil_simple_quant(py: Python, mut pil_img: PyObject) -> PyResult<PyObject> {
         let args = PyTuple::new(py, ["RGBA"]);
         pil_img = pil_img.getattr(py, "convert")?.call1(py, args)?;
     }
-    let transparency_map: Vec<bool> = PyIterator::from_object(py, &pil_img.getattr(py, "getdata")?.call0(py)?)?
-        .map(|x| Ok(x?.extract::<&PyTuple>()?.get_item(3)?.extract::<usize>()? == 0))
-        .collect::<PyResult<Vec<bool>>>()?;
-    let args = PyTuple::new(py, [15.into_py(py), py.None(), 0.into_py(py), py.None(), 0.into_py(py)]);
+    let transparency_map: Vec<bool> =
+        PyIterator::from_object(py, &pil_img.getattr(py, "getdata")?.call0(py)?)?
+            .map(|x| Ok(x?.extract::<&PyTuple>()?.get_item(3)?.extract::<usize>()? == 0))
+            .collect::<PyResult<Vec<bool>>>()?;
+    let args = PyTuple::new(
+        py,
+        [
+            15.into_py(py),
+            py.None(),
+            0.into_py(py),
+            py.None(),
+            0.into_py(py),
+        ],
+    );
     pil_img = pil_img.getattr(py, "quantize")?.call1(py, args)?;
     // Get the original palette and add the transparent color
-    let args = PyTuple::new(py, [
-        [Ok(0), Ok(0), Ok(0)]
+    let args = PyTuple::new(
+        py,
+        [[Ok(0), Ok(0), Ok(0)]
             .into_iter()
             .chain(
                 PyIterator::from_object(py, &pil_img.getattr(py, "getpalette")?.call0(py)?)?
                     .take(762)
-                    .map(|x| x?.extract::<u8>()
-            )).collect::<PyResult<Vec<u8>>>()?
-            .into_py(py)
-    ]);
-    pil_img.getattr(py, "putpalette")?.call1(
-        py, args
-    )?;
+                    .map(|x| x?.extract::<u8>()),
+            )
+            .collect::<PyResult<Vec<u8>>>()?
+            .into_py(py)],
+    );
+    pil_img.getattr(py, "putpalette")?.call1(py, args)?;
     // Shift up all pixel values by 1 and add the transparent pixels
     let pixels = pil_img.getattr(py, "load")?.call0(py)?;
     let mut k = 0;
@@ -115,13 +146,19 @@ fn pil_simple_quant(py: Python, mut pil_img: PyObject) -> PyResult<PyObject> {
                 let args = PyTuple::new(py, [PyTuple::new(py, [i, j]).into_py(py), 0.into_py(py)]);
                 pixels.getattr(py, "__setitem__")?.call1(py, args)?;
             } else {
-                let inner_args = PyTuple::new(py, [
-                    PyTuple::new(py, [i, j])
-                ]);
-                let args = PyTuple::new(py, [
-                    PyTuple::new(py, [i, j]).into_py(py),
-                    (pixels.getattr(py, "__getitem__")?.call1(py, inner_args)?.extract::<usize>(py)? + 1).into_py(py)
-                ]);
+                let inner_args = PyTuple::new(py, [PyTuple::new(py, [i, j])]);
+                let args = PyTuple::new(
+                    py,
+                    [
+                        PyTuple::new(py, [i, j]).into_py(py),
+                        (pixels
+                            .getattr(py, "__getitem__")?
+                            .call1(py, inner_args)?
+                            .extract::<usize>(py)?
+                            + 1)
+                        .into_py(py),
+                    ],
+                );
                 pixels.getattr(py, "__setitem__")?.call1(py, args)?;
             }
             k += 1

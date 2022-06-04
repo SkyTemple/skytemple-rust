@@ -17,30 +17,38 @@
  * along with SkyTemple.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-use std::iter::repeat;
-use bytes::{Buf, BufMut, BytesMut};
-use crate::python::PyResult;
 use crate::bytes::StBytes;
 use crate::gettext::gettext;
+use crate::python::PyResult;
+use bytes::{Buf, BufMut, BytesMut};
+use std::iter::repeat;
 
 const PCMD_HEADER: &[u8] = b"pcmd";
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct SwdlPcmd {
-    pub chunk_data: StBytes
+    pub chunk_data: StBytes,
 }
 
 impl From<&mut StBytes> for PyResult<SwdlPcmd> {
     fn from(source: &mut StBytes) -> Self {
-        pyr_assert!(source.len() >= 16, gettext("SWDL file too short (Pcmd EOF)."));
+        pyr_assert!(
+            source.len() >= 16,
+            gettext("SWDL file too short (Pcmd EOF).")
+        );
         let header = source.copy_to_bytes(4);
         pyr_assert!(PCMD_HEADER == header, gettext("Invalid SWDL/Pcmd header."));
         // 0x00, 0x00, 0x15, 0x04, 0x10, 0x00, 0x00, 0x00:
         source.advance(8);
         let len_chunk_data = source.get_u32_le() as usize;
-        pyr_assert!(source.len() >= len_chunk_data, gettext("SWDL file too short (Pcmd EOF)."));
+        pyr_assert!(
+            source.len() >= len_chunk_data,
+            gettext("SWDL file too short (Pcmd EOF).")
+        );
         let chunk_data = source.copy_to_bytes(len_chunk_data);
-        Ok(SwdlPcmd { chunk_data: StBytes(chunk_data) })
+        Ok(SwdlPcmd {
+            chunk_data: StBytes(chunk_data),
+        })
     }
 }
 

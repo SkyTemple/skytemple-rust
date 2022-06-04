@@ -16,12 +16,12 @@
  * You should have received a copy of the GNU General Public License
  * along with SkyTemple.  If not, see <https://www.gnu.org/licenses/>.
  */
+use crate::bytes::StBytes;
+use crate::python::*;
+use bytes::{Buf, BufMut};
 use std::cmp::Ordering;
 use std::iter::repeat;
 use std::mem::take;
-use bytes::{Buf, BufMut};
-use crate::bytes::StBytes;
-use crate::python::*;
 
 // Length of a palette in colors. Color 0 is auto-generated (transparent)
 pub const BPL_PAL_LEN: usize = 15;
@@ -46,7 +46,7 @@ pub struct BplAnimationSpec {
     #[pyo3(get, set)]
     pub duration_per_frame: u16,
     #[pyo3(get, set)]
-    pub number_of_frames: u16
+    pub number_of_frames: u16,
 }
 
 #[pymethods]
@@ -54,7 +54,8 @@ impl BplAnimationSpec {
     #[new]
     pub fn new(duration_per_frame: u16, number_of_frames: u16) -> Self {
         Self {
-            duration_per_frame, number_of_frames
+            duration_per_frame,
+            number_of_frames,
         }
     }
 }
@@ -71,7 +72,7 @@ pub struct Bpl {
     #[pyo3(get, set)]
     pub animation_specs: Vec<Py<BplAnimationSpec>>,
     #[pyo3(get, set)]
-    pub animation_palette: Vec<Vec<u8>>
+    pub animation_palette: Vec<Vec<u8>>,
 }
 
 impl Bpl {
@@ -82,7 +83,11 @@ impl Bpl {
 
     fn add_dummy_palettes(palettes: &mut Vec<Vec<u8>>) {
         while palettes.len() < BPL_MAX_PAL as usize {
-            palettes.push((0..(BPL_MAX_PAL * 3)).map(|i| (i / 3) * BPL_MAX_PAL).collect())
+            palettes.push(
+                (0..(BPL_MAX_PAL * 3))
+                    .map(|i| (i / 3) * BPL_MAX_PAL)
+                    .collect(),
+            )
         }
     }
 }
@@ -119,9 +124,10 @@ impl Bpl {
 
             // Read color index table
             for _i in 0..number_palettes {
-                animation_specs.push(Py::new(py, BplAnimationSpec::new(
-                    data.get_u16_le(), data.get_u16_le()
-                ))?);
+                animation_specs.push(Py::new(
+                    py,
+                    BplAnimationSpec::new(data.get_u16_le(), data.get_u16_le()),
+                )?);
             }
 
             // Read animation color table
@@ -148,7 +154,7 @@ impl Bpl {
             has_palette_animation,
             palettes,
             animation_specs,
-            animation_palette
+            animation_palette,
         })
     }
     /// Replace all palettes with the ones passed in.
@@ -156,8 +162,10 @@ impl Bpl {
     pub fn import_palettes(&mut self, palettes: Vec<Vec<u8>>, py: Python) -> PyResult<()> {
         if palettes.len() > BPL_MAX_PAL as usize {
             return Err(exceptions::PyAssertionError::new_err(format!(
-                "Number of palettes must be <= {}, is {}.", BPL_MAX_PAL, palettes.len()
-            )))
+                "Number of palettes must be <= {}, is {}.",
+                BPL_MAX_PAL,
+                palettes.len()
+            )));
         }
         let nb_pal_old = self.number_palettes;
         self.number_palettes = palettes.len() as u16;
@@ -167,14 +175,16 @@ impl Bpl {
                 Ordering::Less => {
                     // Remove the extra spec entries
                     let specs = take(&mut self.animation_specs);
-                    self.animation_specs = specs.into_iter().take(self.number_palettes as usize).collect();
+                    self.animation_specs = specs
+                        .into_iter()
+                        .take(self.number_palettes as usize)
+                        .collect();
                 }
                 Ordering::Greater => {
                     // Add missing spec entries
                     for _ in nb_pal_old..self.number_palettes {
-                        self.animation_specs.push(Py::new(py, BplAnimationSpec::new(
-                            0, 0
-                        ))?);
+                        self.animation_specs
+                            .push(Py::new(py, BplAnimationSpec::new(0, 0))?);
                     }
                 }
                 _ => {}
@@ -200,8 +210,10 @@ impl Bpl {
                 let actual_frame_for_pal = frame % spec.number_of_frames;
                 let pal_for_frame = &self.animation_palette[actual_frame_for_pal as usize];
                 f_palettes.push(
-                    repeat(0).take(3)
-                        .chain(pal_for_frame.iter().copied()).collect()
+                    repeat(0)
+                        .take(3)
+                        .chain(pal_for_frame.iter().copied())
+                        .collect(),
                 )
             } else {
                 f_palettes.push(self.palettes[i].clone())
@@ -242,13 +254,14 @@ impl BplWriter {
     pub fn write(&self, model: Py<Bpl>, py: Python) -> PyResult<StBytes> {
         let model = model.borrow(py);
         let animation_size = if model.has_palette_animation {
-            model.number_palettes as usize * BPL_COL_INDEX_ENTRY_LEN + model.animation_palette.len() * BPL_PAL_ENTRY_LEN
+            model.number_palettes as usize * BPL_COL_INDEX_ENTRY_LEN
+                + model.animation_palette.len() * BPL_PAL_ENTRY_LEN
         } else {
             0
         } as usize;
 
         let mut data = Vec::with_capacity(
-            BPL_HEADER_LEN * model.number_palettes as usize * BPL_PAL_SIZE + animation_size
+            BPL_HEADER_LEN * model.number_palettes as usize * BPL_PAL_SIZE + animation_size,
         );
 
         // Header
@@ -306,10 +319,10 @@ pub(crate) fn create_st_bpl_module(py: Python) -> PyResult<(&str, &PyModule)> {
 // BPLs as inputs (for compatibility of including other BPL implementations from Python)
 #[cfg(feature = "python")]
 pub mod input {
-    use pyo3::types::PyTuple;
     use crate::bytes::StBytes;
     use crate::python::*;
     use crate::st_bpl::Bpl;
+    use pyo3::types::PyTuple;
 
     pub trait BplProvider: ToPyObject {
         fn get_palettes(&self, py: Python) -> PyResult<Vec<StBytes>>;
@@ -321,7 +334,13 @@ pub mod input {
 
     impl BplProvider for Py<Bpl> {
         fn get_palettes(&self, py: Python) -> PyResult<Vec<StBytes>> {
-            Ok(self.borrow(py).palettes.iter().cloned().map(|x| x.into()).collect())
+            Ok(self
+                .borrow(py)
+                .palettes
+                .iter()
+                .cloned()
+                .map(|x| x.into())
+                .collect())
         }
 
         fn get_has_palette_animation(&self, py: Python) -> PyResult<bool> {
@@ -329,11 +348,23 @@ pub mod input {
         }
 
         fn get_animation_palette(&self, py: Python) -> PyResult<Vec<StBytes>> {
-            Ok(self.borrow(py).animation_palette.iter().cloned().map(|x| x.into()).collect())
+            Ok(self
+                .borrow(py)
+                .animation_palette
+                .iter()
+                .cloned()
+                .map(|x| x.into())
+                .collect())
         }
 
         fn do_apply_palette_animations(&self, frame: u16, py: Python) -> PyResult<Vec<StBytes>> {
-            Ok(self.borrow(py).apply_palette_animations(frame, py).iter().cloned().map(|x| x.into()).collect())
+            Ok(self
+                .borrow(py)
+                .apply_palette_animations(frame, py)
+                .iter()
+                .cloned()
+                .map(|x| x.into())
+                .collect())
         }
 
         fn do_import_palettes(&mut self, palettes: Vec<Vec<u8>>, py: Python) -> PyResult<()> {
@@ -351,12 +382,14 @@ pub mod input {
         }
 
         fn get_animation_palette(&self, py: Python) -> PyResult<Vec<StBytes>> {
-            self.getattr(py, "animation_palette")?.extract::<Vec<StBytes>>(py)
+            self.getattr(py, "animation_palette")?
+                .extract::<Vec<StBytes>>(py)
         }
 
         fn do_apply_palette_animations(&self, frame: u16, py: Python) -> PyResult<Vec<StBytes>> {
             let args = PyTuple::new(py, [frame]);
-            self.call_method1(py, "apply_palette_animations", args)?.extract(py)
+            self.call_method1(py, "apply_palette_animations", args)?
+                .extract(py)
         }
 
         fn do_import_palettes(&mut self, palettes: Vec<Vec<u8>>, py: Python) -> PyResult<()> {
@@ -390,7 +423,6 @@ pub mod input {
     }
 }
 
-
 #[cfg(not(feature = "python"))]
 pub mod input {
     use crate::bytes::StBytes;
@@ -415,11 +447,21 @@ pub mod input {
         }
 
         fn get_animation_palette(&self, _py: Python) -> PyResult<Vec<StBytes>> {
-            Ok(self.animation_palette.iter().cloned().map(|x| x.into()).collect())
+            Ok(self
+                .animation_palette
+                .iter()
+                .cloned()
+                .map(|x| x.into())
+                .collect())
         }
 
         fn do_apply_palette_animations(&self, frame: u16, py: Python) -> PyResult<Vec<StBytes>> {
-            Ok(self.apply_palette_animations(frame, py).iter().cloned().map(|x| x.into()).collect())
+            Ok(self
+                .apply_palette_animations(frame, py)
+                .iter()
+                .cloned()
+                .map(|x| x.into())
+                .collect())
         }
 
         fn do_import_palettes(&mut self, palettes: Vec<Vec<u8>>, py: Python) -> PyResult<()> {

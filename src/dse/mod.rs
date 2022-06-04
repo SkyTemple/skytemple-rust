@@ -17,7 +17,7 @@
  * along with SkyTemple.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-pub mod st_smdl;
-pub mod st_swdl;
 pub mod date;
 pub mod filename;
+pub mod st_smdl;
+pub mod st_swdl;

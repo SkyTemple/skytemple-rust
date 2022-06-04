@@ -16,15 +16,15 @@
  * You should have received a copy of the GNU General Public License
  * along with SkyTemple.  If not, see <https://www.gnu.org/licenses/>.
  */
-use std::cmp::{max, min};
-use std::iter::{once, repeat, repeat_with};
-use bytes::{Buf, BufMut, Bytes, BytesMut};
-use itertools::Itertools;
 use crate::bytes::StBytes;
-use crate::image::{In256ColIndexedImage, IndexedImage, PixelGenerator, InIndexedImage};
 use crate::image::tiled::TiledImage;
 use crate::image::tilemap_entry::TilemapEntry;
+use crate::image::{In256ColIndexedImage, InIndexedImage, IndexedImage, PixelGenerator};
 use crate::python::*;
+use bytes::{Buf, BufMut, Bytes, BytesMut};
+use itertools::Itertools;
+use std::cmp::{max, min};
+use std::iter::{once, repeat, repeat_with};
 
 pub const BGP_RES_WIDTH: usize = 256;
 pub const BGP_RES_HEIGHT: usize = 192;
@@ -44,7 +44,6 @@ pub const BGP_TOTAL_NUMBER_TILES: usize = BGP_RES_WIDTH_IN_TILES * BGP_RES_HEIGH
 // All BPGs have this many tiles and tilemapping entries for some reason
 pub const BGP_TOTAL_NUMBER_TILES_ACTUALLY: usize = 1024;
 // NOTE: Tile 0 is always 0x0.
-
 
 #[pyclass(module = "skytemple_rust.st_bgp")]
 #[derive(Clone)]
@@ -75,9 +74,15 @@ impl Bgp {
 
         Ok(Self {
             palettes: Self::extract_palette(&data[palette_begin..(palette_begin + palette_length)]),
-            tilemap: Self::extract_tilemap(&data[tilemap_data_begin..(tilemap_data_begin + tilemap_data_length)], py)?,
-            tiles: Self::extract_tiles(&data[tiles_begin..min(tiles_begin + tiles_length, data.len())]),
-            unknown1, unknown2
+            tilemap: Self::extract_tilemap(
+                &data[tilemap_data_begin..(tilemap_data_begin + tilemap_data_length)],
+                py,
+            )?,
+            tiles: Self::extract_tiles(
+                &data[tiles_begin..min(tiles_begin + tiles_length, data.len())],
+            ),
+            unknown1,
+            unknown2,
         })
     }
 
@@ -90,10 +95,16 @@ impl Bgp {
     /// The image returned will have the size 256x192.
     pub fn to_pil(&self, ignore_flip_bits: bool, py: Python) -> PyResult<IndexedImage> {
         Ok(TiledImage::tiled_to_native(
-            self.tilemap.iter().map(|x| x.borrow(py)).take(BGP_TOTAL_NUMBER_TILES),
+            self.tilemap
+                .iter()
+                .map(|x| x.borrow(py))
+                .take(BGP_TOTAL_NUMBER_TILES),
             PixelGenerator::tiled4bpp(&self.tiles[..]),
-             self.palettes.iter().flatten().copied(),
-            BGP_TILE_DIM, BGP_RES_WIDTH, BGP_RES_HEIGHT, 1
+            self.palettes.iter().flatten().copied(),
+            BGP_TILE_DIM,
+            BGP_RES_WIDTH,
+            BGP_RES_HEIGHT,
+            1,
         ))
     }
 
@@ -108,29 +119,61 @@ impl Bgp {
     /// 0 of the palette (transparent). The "force_import" parameter is ignored.
     ///
     /// The image must have the size 256x192.
-    pub fn from_pil(&mut self, pil: In256ColIndexedImage, force_import: bool, py: Python) -> PyResult<()> {
+    pub fn from_pil(
+        &mut self,
+        pil: In256ColIndexedImage,
+        force_import: bool,
+        py: Python,
+    ) -> PyResult<()> {
         let (tiles, palettes, tilemap) = TiledImage::native_to_tiled(
-            pil.extract(py)?, BGP_PAL_NUMBER_COLORS as u8, BGP_TILE_DIM,
-            BGP_RES_WIDTH, BGP_RES_HEIGHT, 1, 0, true
+            pil.extract(py)?,
+            BGP_PAL_NUMBER_COLORS as u8,
+            BGP_TILE_DIM,
+            BGP_RES_WIDTH,
+            BGP_RES_HEIGHT,
+            1,
+            0,
+            true,
         )?;
         let tiles_len = tiles.len();
         if tiles_len >= 0x3FF {
-            return Err(exceptions::PyValueError::new_err("Error when importing: max tile count reached."))
+            return Err(exceptions::PyValueError::new_err(
+                "Error when importing: max tile count reached.",
+            ));
         }
         // + Fill up the tiles and tilemaps to 1024, which seems to be the required default
         // Add the 0 tile (used to clear bgs)
         self.tiles = once(StBytes::from(vec![0; BGP_TILE_DIM * BGP_TILE_DIM / 2]))
             .chain(tiles.into_iter().map(|x| x.0.into()))
-            .chain(repeat(StBytes::from(vec![0; BGP_TILE_DIM * BGP_TILE_DIM / 2]))
-                .take(max(0isize, BGP_TOTAL_NUMBER_TILES_ACTUALLY as isize - tiles_len as isize) as usize))
+            .chain(
+                repeat(StBytes::from(vec![0; BGP_TILE_DIM * BGP_TILE_DIM / 2])).take(max(
+                    0isize,
+                    BGP_TOTAL_NUMBER_TILES_ACTUALLY as isize - tiles_len as isize,
+                )
+                    as usize),
+            )
             .collect();
         // Shift tile indices by 1
-        self.tilemap = tilemap.into_iter().map(|mut x| {x.0 += 1; Py::new(py, x)})
-            .chain(repeat_with(|| Py::new(py, TilemapEntry::default()))
-                .take(max(0isize, BGP_TOTAL_NUMBER_TILES_ACTUALLY as isize - tiles_len as isize) as usize))
+        self.tilemap = tilemap
+            .into_iter()
+            .map(|mut x| {
+                x.0 += 1;
+                Py::new(py, x)
+            })
+            .chain(
+                repeat_with(|| Py::new(py, TilemapEntry::default())).take(max(
+                    0isize,
+                    BGP_TOTAL_NUMBER_TILES_ACTUALLY as isize - tiles_len as isize,
+                )
+                    as usize),
+            )
             .collect::<PyResult<Vec<Py<TilemapEntry>>>>()?;
 
-        self.palettes = palettes.0.chunks(BGP_PAL_NUMBER_COLORS * 3).map(|x| x.to_vec()).collect::<Vec<Vec<u8>>>();
+        self.palettes = palettes
+            .0
+            .chunks(BGP_PAL_NUMBER_COLORS * 3)
+            .map(|x| x.to_vec())
+            .collect::<Vec<Vec<u8>>>();
         Ok(())
     }
 }
@@ -171,7 +214,8 @@ impl BgpWriter {
     }
     pub fn write(&self, model: Py<Bgp>, py: Python) -> PyResult<StBytes> {
         let model = model.borrow(py);
-        let palettes_length = model.palettes.len() as u32 * BGP_PAL_NUMBER_COLORS as u32 * BGP_PAL_ENTRY_LEN as u32;
+        let palettes_length =
+            model.palettes.len() as u32 * BGP_PAL_NUMBER_COLORS as u32 * BGP_PAL_ENTRY_LEN as u32;
         let tiles_length = (model.tiles.len() * (BGP_TILE_DIM * BGP_TILE_DIM / 2)) as u32;
         let tilemapping_length = (model.tilemap.len() * BGP_TILEMAP_ENTRY_BYTELEN) as u32;
         let palettes_begin = BGP_HEADER_LENGTH;
@@ -189,20 +233,29 @@ impl BgpWriter {
         header.put_u32_le(model.unknown2);
 
         Ok(StBytes(
-            header.into_iter()
-                .chain(model.palettes
-                    .iter()
-                    .flatten()
-                    .chunks(3)
-                    .into_iter()
-                    .flat_map(|c| c.into_iter().copied().chain(once(BGP_PAL_UNKNOWN4_COLOR_VAL)))
-                ).chain(model.tilemap
-                    .iter()
-                    .flat_map(|tm| (tm.borrow(py)._to_int() as u16).to_le_bytes())
-                ).chain(model.tiles
-                    .iter()
-                    .flat_map(|v| v.0.iter().copied())
-                ).collect::<Bytes>()
+            header
+                .into_iter()
+                .chain(
+                    model
+                        .palettes
+                        .iter()
+                        .flatten()
+                        .chunks(3)
+                        .into_iter()
+                        .flat_map(|c| {
+                            c.into_iter()
+                                .copied()
+                                .chain(once(BGP_PAL_UNKNOWN4_COLOR_VAL))
+                        }),
+                )
+                .chain(
+                    model
+                        .tilemap
+                        .iter()
+                        .flat_map(|tm| (tm.borrow(py)._to_int() as u16).to_le_bytes()),
+                )
+                .chain(model.tiles.iter().flat_map(|v| v.0.iter().copied()))
+                .collect::<Bytes>(),
         ))
     }
 }

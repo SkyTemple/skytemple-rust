@@ -17,12 +17,12 @@
  * along with SkyTemple.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-use std::iter::zip;
-use std::slice::{ChunksExact, Iter};
-use std::iter::Copied;
-use bytes::{Buf, Bytes, BytesMut};
 use crate::bytes::{StBytes, StBytesMut};
 use crate::image::tilemap_entry::TilemapEntry;
+use bytes::{Buf, Bytes, BytesMut};
+use std::iter::zip;
+use std::iter::Copied;
+use std::slice::{ChunksExact, Iter};
 
 use crate::python::*;
 
@@ -49,11 +49,11 @@ impl Raster {
     pub fn paste(&mut self, source: Self, x: usize, y: usize) {
         for (self_row, source_row) in zip(
             self.0.chunks_mut(self.1).skip(y).take(source.2),
-            source.0.chunks(source.1)
+            source.0.chunks(source.1),
         ) {
             for (self_px, source_px) in zip(
                 self_row.iter_mut().skip(x).take(source.1),
-                source_row.iter()
+                source_row.iter(),
             ) {
                 *self_px = *source_px
             }
@@ -64,11 +64,11 @@ impl Raster {
     pub fn paste_masked(&mut self, source: Self, x: usize, y: usize, uses_sub_palettes: bool) {
         for (self_row, source_row) in zip(
             self.0.chunks_mut(self.1).skip(y).take(source.2),
-            source.0.chunks(source.1)
+            source.0.chunks(source.1),
         ) {
             for (self_px, source_px) in zip(
                 self_row.iter_mut().skip(x).take(source.1),
-                source_row.iter()
+                source_row.iter(),
             ) {
                 if (!uses_sub_palettes && *source_px != 0) || *source_px % 16 != 0 {
                     *self_px = *source_px
@@ -86,7 +86,7 @@ pub struct IndexedImage(pub Raster, pub Palette);
 pub type TilesGenerator<G> = Vec<PixelGenerator<G>>;
 pub type Tile = StBytesMut;
 pub type Tiles = Vec<Tile>;
-pub type TiledImageDataSeq<T/*: AsRef<[Tile]>*/> = (T, StBytesMut);
+pub type TiledImageDataSeq<T /*: AsRef<[Tile]>*/> = (T, StBytesMut);
 pub type TiledImageData = (Tiles, StBytesMut, Vec<TilemapEntry>);
 
 // ---
@@ -98,13 +98,11 @@ pub trait InIndexedImage<'py>: Sized {
     #[cfg(feature = "python")]
     fn extract(self, py: Python<'py>) -> PyResult<IndexedImage> {
         match in_from_py(self, py) {
-            Ok((raster, pal, width, height)) => {
-                Ok(IndexedImage(Raster(
-                    raster, width, height),
-                                Bytes::from(pal)
-                ))
-            },
-            Err(e) => Err(e)
+            Ok((raster, pal, width, height)) => Ok(IndexedImage(
+                Raster(raster, width, height),
+                Bytes::from(pal),
+            )),
+            Err(e) => Err(e),
         }
     }
     #[cfg(not(feature = "python"))]
@@ -126,7 +124,9 @@ pub struct In256ColIndexedImage(pub IndexedImage);
 impl InIndexedImage<'_> for In16ColIndexedImage {
     const MAX_COLORS: usize = 16;
     #[cfg(feature = "python")]
-    fn unwrap_py(self) -> PyObject { self.0 }
+    fn unwrap_py(self) -> PyObject {
+        self.0
+    }
     #[cfg(not(feature = "python"))]
     fn extract(self, _py: Python) -> PyResult<IndexedImage> {
         Ok(self.0)
@@ -135,7 +135,9 @@ impl InIndexedImage<'_> for In16ColIndexedImage {
 impl InIndexedImage<'_> for In256ColIndexedImage {
     const MAX_COLORS: usize = 256;
     #[cfg(feature = "python")]
-    fn unwrap_py(self) -> PyObject { self.0 }
+    fn unwrap_py(self) -> PyObject {
+        self.0
+    }
     #[cfg(not(feature = "python"))]
     fn extract(self, _py: Python) -> PyResult<IndexedImage> {
         Ok(self.0)
@@ -148,16 +150,23 @@ pub mod tilemap_entry;
 
 // ---
 
-pub struct PixelGenerator<T>(pub T) where T: Iterator<Item = u8>;
+pub struct PixelGenerator<T>(pub T)
+where
+    T: Iterator<Item = u8>;
 
 impl PixelGenerator<FourBppIterator> {
     pub fn pack4bpp(tiledata: &[u8], tile_dim: usize) -> Vec<Self> {
         let chunks: ChunksExact<u8> = tiledata.chunks_exact(tile_dim * tile_dim / 2);
         debug_assert_eq!(chunks.remainder().len(), 0);
-        chunks.map(|x| PixelGenerator(FourBppIterator::new(x.to_vec()))).collect()
+        chunks
+            .map(|x| PixelGenerator(FourBppIterator::new(x.to_vec())))
+            .collect()
     }
     pub fn tiled4bpp(tiledata: &[StBytes]) -> Vec<Self> {
-        tiledata.iter().map(|x| PixelGenerator(FourBppIterator::new(x.0.clone()))).collect()
+        tiledata
+            .iter()
+            .map(|x| PixelGenerator(FourBppIterator::new(x.0.clone())))
+            .collect()
     }
 }
 
@@ -173,7 +182,7 @@ impl<'a> PixelGenerator<Copied<Iter<'a, u8>>> {
 
 /// Iterates a byte buffer one nibble at a time (low nibble first)
 #[derive(Clone)]
-pub struct FourBppIterator(Bytes, u8, bool);  // data, next high nibble, on high nibble
+pub struct FourBppIterator(Bytes, u8, bool); // data, next high nibble, on high nibble
 
 impl FourBppIterator {
     pub fn new(data: impl Into<Bytes>) -> Self {

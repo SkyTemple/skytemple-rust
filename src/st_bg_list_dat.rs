@@ -16,11 +16,6 @@
  * You should have received a copy of the GNU General Public License
  * along with SkyTemple.  If not, see <https://www.gnu.org/licenses/>.
  */
-use std::fs;
-use std::path::Path;
-use bytes::BytesMut;
-use encoding::codec::ascii::ASCIIEncoding;
-use encoding::{DecoderTrap, EncoderTrap};
 use crate::bytes::StBytes;
 use crate::encoding::{BufEncoding, BufMutEncoding};
 use crate::err::convert_io_err;
@@ -30,6 +25,11 @@ use crate::st_bma::Bma;
 use crate::st_bpa::Bpa;
 use crate::st_bpc::Bpc;
 use crate::st_bpl::Bpl;
+use bytes::BytesMut;
+use encoding::codec::ascii::ASCIIEncoding;
+use encoding::{DecoderTrap, EncoderTrap};
+use std::fs;
+use std::path::Path;
 
 const DIR: &str = "MAP_BG/";
 const BPC_EXT: &str = ".bpc";
@@ -47,36 +47,79 @@ pub struct BgListEntry {
     #[pyo3(get, set)]
     bma_name: String,
     #[pyo3(get, set)]
-    bpa_names: [Option<String>; 8]
+    bpa_names: [Option<String>; 8],
 }
 
 impl BgListEntry {
-    pub fn get_bpl<T: RomFileProvider + Sized>(&self, rom_or_directory_root: RomSource<T>, py: Python) -> PyResult<Bpl> {
-        Bpl::new(self.get_file(&rom_or_directory_root, &format!("{}{}{}", DIR, self.bpl_name.to_lowercase(), BPL_EXT))?, py)
+    pub fn get_bpl<T: RomFileProvider + Sized>(
+        &self,
+        rom_or_directory_root: RomSource<T>,
+        py: Python,
+    ) -> PyResult<Bpl> {
+        Bpl::new(
+            self.get_file(
+                &rom_or_directory_root,
+                &format!("{}{}{}", DIR, self.bpl_name.to_lowercase(), BPL_EXT),
+            )?,
+            py,
+        )
     }
-    pub fn get_bpc<T: RomFileProvider + Sized>(&self, rom_or_directory_root: RomSource<T>, bpc_tiling_width: u16, bpc_tiling_height: u16, py: Python) -> PyResult<Bpc> {
-        Bpc::new(self.get_file(&rom_or_directory_root, &format!("{}{}{}", DIR, self.bpc_name.to_lowercase(), BPC_EXT))?, bpc_tiling_width, bpc_tiling_height, py)
+    pub fn get_bpc<T: RomFileProvider + Sized>(
+        &self,
+        rom_or_directory_root: RomSource<T>,
+        bpc_tiling_width: u16,
+        bpc_tiling_height: u16,
+        py: Python,
+    ) -> PyResult<Bpc> {
+        Bpc::new(
+            self.get_file(
+                &rom_or_directory_root,
+                &format!("{}{}{}", DIR, self.bpc_name.to_lowercase(), BPC_EXT),
+            )?,
+            bpc_tiling_width,
+            bpc_tiling_height,
+            py,
+        )
     }
-    pub fn get_bma<T: RomFileProvider + Sized>(&self, rom_or_directory_root: RomSource<T>) -> PyResult<Bma> {
-        Bma::new(self.get_file(&rom_or_directory_root, &format!("{}{}{}", DIR, self.bma_name.to_lowercase(), BMA_EXT))?)
+    pub fn get_bma<T: RomFileProvider + Sized>(
+        &self,
+        rom_or_directory_root: RomSource<T>,
+    ) -> PyResult<Bma> {
+        Bma::new(self.get_file(
+            &rom_or_directory_root,
+            &format!("{}{}{}", DIR, self.bma_name.to_lowercase(), BMA_EXT),
+        )?)
     }
-    pub fn get_bpas<T: RomFileProvider + Sized>(&self, rom_or_directory_root: RomSource<T>, py: Python) -> PyResult<Vec<Option<Bpa>>> {
+    pub fn get_bpas<T: RomFileProvider + Sized>(
+        &self,
+        rom_or_directory_root: RomSource<T>,
+        py: Python,
+    ) -> PyResult<Vec<Option<Bpa>>> {
         let mut v = Vec::with_capacity(self.bpa_names.len());
         for name in &self.bpa_names {
             v.push(match name {
                 None => None,
-                Some(name) => Some(Bpa::new(self.get_file(&rom_or_directory_root, &format!("{}{}{}", DIR, name.to_lowercase(), BPA_EXT))?, py)?)
+                Some(name) => Some(Bpa::new(
+                    self.get_file(
+                        &rom_or_directory_root,
+                        &format!("{}{}{}", DIR, name.to_lowercase(), BPA_EXT),
+                    )?,
+                    py,
+                )?),
             });
         }
         Ok(v)
-
     }
-    fn get_file<T: RomFileProvider + Sized>(&self, rom_or_directory_root: &RomSource<T>, path: &str) -> PyResult<StBytes> {
+    fn get_file<T: RomFileProvider + Sized>(
+        &self,
+        rom_or_directory_root: &RomSource<T>,
+        path: &str,
+    ) -> PyResult<StBytes> {
         match rom_or_directory_root {
-            RomSource::Folder(f) => fs::read(
-                Path::new(f).join(path)
-            ).map(StBytes::from).map_err(convert_io_err),
-            RomSource::Rom(r) => r.get_file_by_name(path).map(StBytes::from)
+            RomSource::Folder(f) => fs::read(Path::new(f).join(path))
+                .map(StBytes::from)
+                .map_err(convert_io_err),
+            RomSource::Rom(r) => r.get_file_by_name(path).map(StBytes::from),
         }
     }
 }
@@ -84,8 +127,18 @@ impl BgListEntry {
 #[pymethods]
 impl BgListEntry {
     #[new]
-    pub fn new(bpl_name: String, bpc_name: String, bma_name: String, bpa_names: [Option<String>; 8]) -> Self {
-        Self {bpl_name, bpc_name, bma_name, bpa_names}
+    pub fn new(
+        bpl_name: String,
+        bpc_name: String,
+        bma_name: String,
+        bpa_names: [Option<String>; 8],
+    ) -> Self {
+        Self {
+            bpl_name,
+            bpc_name,
+            bma_name,
+            bpa_names,
+        }
     }
     #[cfg(feature = "python")]
     #[pyo3(name = "get_bpl")]
@@ -95,8 +148,19 @@ impl BgListEntry {
     #[cfg(feature = "python")]
     #[pyo3(name = "get_bpc")]
     #[args(bpc_tiling_width = "3", bpc_tiling_height = "3")]
-    pub fn _get_bpc(&self, rom_or_directory_root: RomSource<&PyAny>, bpc_tiling_width: u16, bpc_tiling_height: u16, py: Python) -> PyResult<Bpc> {
-        self.get_bpc(rom_or_directory_root, bpc_tiling_width, bpc_tiling_height, py)
+    pub fn _get_bpc(
+        &self,
+        rom_or_directory_root: RomSource<&PyAny>,
+        bpc_tiling_width: u16,
+        bpc_tiling_height: u16,
+        py: Python,
+    ) -> PyResult<Bpc> {
+        self.get_bpc(
+            rom_or_directory_root,
+            bpc_tiling_width,
+            bpc_tiling_height,
+            py,
+        )
     }
     #[cfg(feature = "python")]
     #[pyo3(name = "get_bma")]
@@ -105,7 +169,11 @@ impl BgListEntry {
     }
     #[cfg(feature = "python")]
     #[pyo3(name = "get_bpas")]
-    pub fn _get_bpas(&self, rom_or_directory_root: RomSource<&PyAny>, py: Python) -> PyResult<Vec<Option<Bpa>>> {
+    pub fn _get_bpas(
+        &self,
+        rom_or_directory_root: RomSource<&PyAny>,
+        py: Python,
+    ) -> PyResult<Vec<Option<Bpa>>> {
         self.get_bpas(rom_or_directory_root, py)
     }
 }
@@ -114,7 +182,7 @@ impl BgListEntry {
 #[derive(Clone)]
 pub struct BgList {
     #[pyo3(get, set)]
-    level: Vec<Py<BgListEntry>>
+    level: Vec<Py<BgListEntry>>,
 }
 
 #[pymethods]
@@ -122,51 +190,95 @@ impl BgList {
     #[new]
     pub fn new(data: Vec<u8>, py: Python) -> PyResult<Self> {
         Ok(Self {
-            level: data.chunks(11 * 8).map(|mut chunk| {
-                Py::new(py, BgListEntry::new(
-                    chunk.get_fixed_string(ASCIIEncoding, 8, DecoderTrap::Strict)?,
-                    chunk.get_fixed_string(ASCIIEncoding, 8, DecoderTrap::Strict)?,
-                    chunk.get_fixed_string(ASCIIEncoding, 8, DecoderTrap::Strict)?,
-                    [
-                        chunk.get_fixed_string_or_null(ASCIIEncoding, 8, DecoderTrap::Strict)?,
-                        chunk.get_fixed_string_or_null(ASCIIEncoding, 8, DecoderTrap::Strict)?,
-                        chunk.get_fixed_string_or_null(ASCIIEncoding, 8, DecoderTrap::Strict)?,
-                        chunk.get_fixed_string_or_null(ASCIIEncoding, 8, DecoderTrap::Strict)?,
-                        chunk.get_fixed_string_or_null(ASCIIEncoding, 8, DecoderTrap::Strict)?,
-                        chunk.get_fixed_string_or_null(ASCIIEncoding, 8, DecoderTrap::Strict)?,
-                        chunk.get_fixed_string_or_null(ASCIIEncoding, 8, DecoderTrap::Strict)?,
-                        chunk.get_fixed_string_or_null(ASCIIEncoding, 8, DecoderTrap::Strict)?
-                    ],
-                ))
-            }).collect::<PyResult<Vec<Py<BgListEntry>>>>()?
+            level: data
+                .chunks(11 * 8)
+                .map(|mut chunk| {
+                    Py::new(
+                        py,
+                        BgListEntry::new(
+                            chunk.get_fixed_string(ASCIIEncoding, 8, DecoderTrap::Strict)?,
+                            chunk.get_fixed_string(ASCIIEncoding, 8, DecoderTrap::Strict)?,
+                            chunk.get_fixed_string(ASCIIEncoding, 8, DecoderTrap::Strict)?,
+                            [
+                                chunk.get_fixed_string_or_null(
+                                    ASCIIEncoding,
+                                    8,
+                                    DecoderTrap::Strict,
+                                )?,
+                                chunk.get_fixed_string_or_null(
+                                    ASCIIEncoding,
+                                    8,
+                                    DecoderTrap::Strict,
+                                )?,
+                                chunk.get_fixed_string_or_null(
+                                    ASCIIEncoding,
+                                    8,
+                                    DecoderTrap::Strict,
+                                )?,
+                                chunk.get_fixed_string_or_null(
+                                    ASCIIEncoding,
+                                    8,
+                                    DecoderTrap::Strict,
+                                )?,
+                                chunk.get_fixed_string_or_null(
+                                    ASCIIEncoding,
+                                    8,
+                                    DecoderTrap::Strict,
+                                )?,
+                                chunk.get_fixed_string_or_null(
+                                    ASCIIEncoding,
+                                    8,
+                                    DecoderTrap::Strict,
+                                )?,
+                                chunk.get_fixed_string_or_null(
+                                    ASCIIEncoding,
+                                    8,
+                                    DecoderTrap::Strict,
+                                )?,
+                                chunk.get_fixed_string_or_null(
+                                    ASCIIEncoding,
+                                    8,
+                                    DecoderTrap::Strict,
+                                )?,
+                            ],
+                        ),
+                    )
+                })
+                .collect::<PyResult<Vec<Py<BgListEntry>>>>()?,
         })
     }
 
     /// Count all occurrences of this BMA in the list.
     pub fn find_bma(&self, name: &str, py: Python) -> usize {
-        self.level.iter().fold(0, |acc, pl| acc + (pl.borrow(py).bma_name == name) as usize)
+        self.level
+            .iter()
+            .fold(0, |acc, pl| acc + (pl.borrow(py).bma_name == name) as usize)
     }
 
     /// Count all occurrences of this BPL in the list.
     pub fn find_bpl(&self, name: &str, py: Python) -> usize {
-        self.level.iter().fold(0, |acc, pl| acc + (pl.borrow(py).bpl_name == name) as usize)
+        self.level
+            .iter()
+            .fold(0, |acc, pl| acc + (pl.borrow(py).bpl_name == name) as usize)
     }
 
     /// Count all occurrences of this BPC in the list.
     pub fn find_bpc(&self, name: &str, py: Python) -> usize {
-        self.level.iter().fold(0, |acc, pl| acc + (pl.borrow(py).bpc_name == name) as usize)
+        self.level
+            .iter()
+            .fold(0, |acc, pl| acc + (pl.borrow(py).bpc_name == name) as usize)
     }
 
     /// Count all occurrences of this BPA in the list.
     pub fn find_bpa(&self, name: &str, py: Python) -> usize {
-        self.level.iter().fold(
-            0, |acc, pl| acc + pl.borrow(py).bpa_names.iter().fold(
-                0, |iacc, opt_in_name| iacc + match opt_in_name {
+        self.level.iter().fold(0, |acc, pl| {
+            acc + pl.borrow(py).bpa_names.iter().fold(0, |iacc, opt_in_name| {
+                iacc + match opt_in_name {
                     None => 0,
-                    Some(n) => (n == name) as usize
+                    Some(n) => (n == name) as usize,
                 }
-            )
-        )
+            })
+        })
     }
 
     /// Adds a level to the level list.
@@ -197,7 +309,9 @@ impl BgListWriter {
             for name in &l.bpa_names {
                 match name {
                     None => data.put_fixed_string("", ASCIIEncoding, 8, EncoderTrap::Strict)?,
-                    Some(name) => data.put_fixed_string(name, ASCIIEncoding, 8, EncoderTrap::Strict)?,
+                    Some(name) => {
+                        data.put_fixed_string(name, ASCIIEncoding, 8, EncoderTrap::Strict)?
+                    }
                 }
             }
         }

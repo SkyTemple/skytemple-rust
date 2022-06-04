@@ -16,23 +16,23 @@
  * You should have received a copy of the GNU General Public License
  * along with SkyTemple.  If not, see <https://www.gnu.org/licenses/>.
  */
-use std::io::Cursor;
-use std::mem::swap;
-use bytes::{Buf, BufMut, Bytes, BytesMut};
 use crate::bytes::StBytesMut;
 use crate::python::*;
+use bytes::{Buf, BufMut, Bytes, BytesMut};
+use std::io::Cursor;
+use std::mem::swap;
 
 // COMPRESSION CONSTANTS
 // How much space is in the CMD byte to store the number of repetitions
-const BPC_IMGC_REPEAT_MAX_CMD: u8 = 31 - 1;  // -1 because of the __NEXT reserved special case
-// Same for the CMD_LOAD_BYTE_AS_PATTERN_AND_CP case (C0-80)=64(dec.)
+const BPC_IMGC_REPEAT_MAX_CMD: u8 = 31 - 1; // -1 because of the __NEXT reserved special case
+                                            // Same for the CMD_LOAD_BYTE_AS_PATTERN_AND_CP case (C0-80)=64(dec.)
 const BPC_IMGC_REPEAT_MAX_CMD_LOAD_AS_PATTERN: u8 = 63 - 1;
 // How much space for the __NEXT case there is (storing it in one separate byte)
 const BPC_IMGC_REPEAT_MAX_NEXT: u8 = 254;
 //
 // Copy pattern limits
-const BPC_IMGC_COPY_MAX_CMD: u8 = 127 - 2;  // -2 because of the __NEXT reserved special cases
-// How much space for the __NEXT case there is (storing it in one separate byte)
+const BPC_IMGC_COPY_MAX_CMD: u8 = 127 - 2; // -2 because of the __NEXT reserved special cases
+                                           // How much space for the __NEXT case there is (storing it in one separate byte)
 const BPC_IMGC_COPY_MAX_NEXT: u8 = 255;
 // How much space for the CMD_COPY__NEXT__LE_16 case there is (storing as 16 bit after cmd byte)
 const BPC_IMGC_COPY_MAX_NEXT_16B: u16 = 0xffff;
@@ -40,37 +40,44 @@ const BPC_IMGC_COPY_MAX_NEXT_16B: u16 = 0xffff;
 // Minimum repeat count for using the pattern ops.
 const BPC_MIN_REPEAT_COUNT: usize = 3;
 
-
 // DECOMPRESSION CONSTANTS
 //  Operations are encoded in command bytes (CMD):
 //  BASE OPERATIONS
 //const CMD_CP_FROM_POS: u8                         = 0x80;  //  All values below: Copy from pos
 //  We build and copy a pattern:
-const CMD_CYCLE_PATTERN_AND_CP: u8                = 0xE0;  //  All values equal/above
-const CMD_USE_LAST_PATTERN_AND_CP: u8             = 0xC0;  //  All values equal/above until next
-const CMD_LOAD_BYTE_AS_PATTERN_AND_CP: u8         = 0x80;  //  All values equal/above until next
+const CMD_CYCLE_PATTERN_AND_CP: u8 = 0xE0; //  All values equal/above
+const CMD_USE_LAST_PATTERN_AND_CP: u8 = 0xC0; //  All values equal/above until next
+const CMD_LOAD_BYTE_AS_PATTERN_AND_CP: u8 = 0x80; //  All values equal/above until next
 
 //  SPECIAL OPERATIONS (ALl values equal)
 //  Base operations, but the number of bytes to copy is stored in the next byte, not the CMD
-const CMD_CYCLE_PATTERN_AND_CP__NEXT: u8          = 0xFF;
-const CMD_USE_LAST_PATTERN_AND_CP__NEXT: u8       = 0xDF;
-const CMD_LOAD_BYTE_AS_PATTERN_AND_CP__NEXT: u8   = 0xBF;
-const CMD_CP_FROM_POS__NEXT: u8                   = 0x7E;
+const CMD_CYCLE_PATTERN_AND_CP__NEXT: u8 = 0xFF;
+const CMD_USE_LAST_PATTERN_AND_CP__NEXT: u8 = 0xDF;
+const CMD_LOAD_BYTE_AS_PATTERN_AND_CP__NEXT: u8 = 0xBF;
+const CMD_CP_FROM_POS__NEXT: u8 = 0x7E;
 //  In list for if:
-const CMD__NEXT: [u8; 4] = [CMD_CP_FROM_POS__NEXT, CMD_CYCLE_PATTERN_AND_CP__NEXT, CMD_LOAD_BYTE_AS_PATTERN_AND_CP__NEXT, CMD_USE_LAST_PATTERN_AND_CP__NEXT];
+const CMD__NEXT: [u8; 4] = [
+    CMD_CP_FROM_POS__NEXT,
+    CMD_CYCLE_PATTERN_AND_CP__NEXT,
+    CMD_LOAD_BYTE_AS_PATTERN_AND_CP__NEXT,
+    CMD_USE_LAST_PATTERN_AND_CP__NEXT,
+];
 //  Like above, but with the next 16-bit LE int:
-const CMD_COPY__NEXT__LE_16: u8                   = 0x7F;
+const CMD_COPY__NEXT__LE_16: u8 = 0x7F;
 
 /////////////////////////////////////////
 /////////////////////////////////////////
 
 #[derive(PartialEq, Eq)]
 enum WherePattern {
-    WriteAsByte, IsCurrentPattern, IsPreviousPatternCycle
+    WriteAsByte,
+    IsCurrentPattern,
+    IsPreviousPatternCycle,
 }
 
 enum ByteOrPattern {
-    Byte(u8), Pattern(Bytes)
+    Byte(u8),
+    Pattern(Bytes),
 }
 
 impl Default for ByteOrPattern {
@@ -84,7 +91,7 @@ struct BpcImageCompressorOperation {
     // Byte for repeat case with WherePattern.WRITE_AS_BYTE and sequence for COPY. None otherwise
     byte_or_sequence: ByteOrPattern,
     where_pattern: Option<WherePattern>, // only relevant for pattern_op = True
-    repeats: u16
+    repeats: u16,
 }
 
 pub struct BpcImageCompressor {
@@ -93,18 +100,21 @@ pub struct BpcImageCompressor {
     // The currently stored pattern. This has to be in-sync with the decompression!
     pattern: u8,
     // The previously stored pattern. Also has to be in-sync!
-    pattern_buffer: u8
+    pattern_buffer: u8,
 }
 
 impl BpcImageCompressor {
     pub fn run(decompressed_data: Bytes) -> PyResult<Bytes> {
         if decompressed_data.len() % 2 != 0 {
-            return Err(exceptions::PyValueError::new_err("BPC Image compressor can only compress data with an even length."))
+            return Err(exceptions::PyValueError::new_err(
+                "BPC Image compressor can only compress data with an even length.",
+            ));
         }
         let mut slf = Self {
             compressed_data: BytesMut::with_capacity(decompressed_data.len() * 2),
             decompressed_data,
-            pattern: 0, pattern_buffer: 0
+            pattern: 0,
+            pattern_buffer: 0,
         };
 
         while slf.decompressed_data.has_remaining() {
@@ -160,7 +170,7 @@ impl BpcImageCompressor {
                     cmd = CMD_USE_LAST_PATTERN_AND_CP;
                     // Nothing to change for pattern buffers
                 } else if op.where_pattern == Some(WherePattern::IsPreviousPatternCycle) {
-                    cmd = CMD_CYCLE_PATTERN_AND_CP ;
+                    cmd = CMD_CYCLE_PATTERN_AND_CP;
                     // The decompressor will now swap the pattern buffers
                     swap(&mut self.pattern, &mut self.pattern_buffer);
                 } else {
@@ -172,9 +182,10 @@ impl BpcImageCompressor {
                 }
 
                 // Determine the length
-                if op.repeats <= BPC_IMGC_REPEAT_MAX_CMD as u16 || (
-                    op.repeats <= BPC_IMGC_REPEAT_MAX_CMD_LOAD_AS_PATTERN as u16 && op.where_pattern == Some(WherePattern::WriteAsByte)
-                ) {
+                if op.repeats <= BPC_IMGC_REPEAT_MAX_CMD as u16
+                    || (op.repeats <= BPC_IMGC_REPEAT_MAX_CMD_LOAD_AS_PATTERN as u16
+                        && op.where_pattern == Some(WherePattern::WriteAsByte))
+                {
                     // Fits in CMD
                     cmd += op.repeats as u8;
                     self.compressed_data.put_u8(cmd);
@@ -195,7 +206,7 @@ impl BpcImageCompressor {
                     self.compressed_data.put_u8(out_byte)
                 }
             }
-            _ => panic!("Invalid state in compressor.")
+            _ => panic!("Invalid state in compressor."),
         }
     }
 
@@ -222,7 +233,7 @@ impl BpcImageCompressor {
                 debug_assert_eq!((op.repeats + 1) as usize, sequence.len());
                 self.compressed_data.put(sequence);
             }
-            _ => panic!("Invalid state in compressor.")
+            _ => panic!("Invalid state in compressor."),
         }
     }
 
@@ -231,7 +242,8 @@ impl BpcImageCompressor {
         let mut nc = self.decompressed_data.clone();
         let byte_at_pos = nc.get_u8();
         let mut repeats = 0;
-        while nc.has_remaining() && nc.get_u8() == byte_at_pos && repeats < BPC_IMGC_REPEAT_MAX_NEXT {
+        while nc.has_remaining() && nc.get_u8() == byte_at_pos && repeats < BPC_IMGC_REPEAT_MAX_NEXT
+        {
             repeats += 1;
         }
         (byte_at_pos, repeats)
@@ -272,20 +284,28 @@ impl BpcImageCompressor {
 /////////////////////////////////////////
 /////////////////////////////////////////
 
-pub struct BpcImageDecompressor<'a, T> where T: 'a + AsRef<[u8]> {
+pub struct BpcImageDecompressor<'a, T>
+where
+    T: 'a + AsRef<[u8]>,
+{
     compressed_data: &'a mut Cursor<T>,
     decompressed_data: BytesMut,
     stop_when_size: usize,
     has_leftover: bool,
     leftover: u16,
     pattern: u16,
-    pattern_buffer: u16
+    pattern_buffer: u16,
 }
 
-impl<'a, T> BpcImageDecompressor<'a, T> where T: 'a + AsRef<[u8]> {
+impl<'a, T> BpcImageDecompressor<'a, T>
+where
+    T: 'a + AsRef<[u8]>,
+{
     pub fn run(compressed_data: &'a mut Cursor<T>, stop_when_size: usize) -> PyResult<Bytes> {
         if stop_when_size % 2 != 0 {
-            return Err(exceptions::PyValueError::new_err("BPC Image compressor can only decompress data with an even output length."))
+            return Err(exceptions::PyValueError::new_err(
+                "BPC Image compressor can only decompress data with an even output length.",
+            ));
         }
         let mut slf = Self {
             decompressed_data: BytesMut::with_capacity(stop_when_size),
@@ -294,7 +314,7 @@ impl<'a, T> BpcImageDecompressor<'a, T> where T: 'a + AsRef<[u8]> {
             has_leftover: false,
             leftover: 0,
             pattern: 0,
-            pattern_buffer: 0
+            pattern_buffer: 0,
         };
 
         while slf.decompressed_data.len() < slf.stop_when_size {
@@ -312,8 +332,9 @@ impl<'a, T> BpcImageDecompressor<'a, T> where T: 'a + AsRef<[u8]> {
                 return Err(exceptions::PyValueError::new_err(format!(
                     "BPC Image Decompressor: End result length unexpected. \
                     Should be {}, is {}.",
-                    slf.stop_when_size, slf.decompressed_data.len()
-                )))
+                    slf.stop_when_size,
+                    slf.decompressed_data.len()
+                )));
             }
 
             slf.process()?
@@ -385,7 +406,8 @@ impl<'a, T> BpcImageDecompressor<'a, T> where T: 'a + AsRef<[u8]> {
         } else {
             // We are copying whatever comes next!
             for _ in (0..number_of_bytes_to_output).step_by(2) {
-                self.decompressed_data.put_u16_le(self.compressed_data.get_u16_le())
+                self.decompressed_data
+                    .put_u16_le(self.compressed_data.get_u16_le())
             }
         }
 
@@ -432,9 +454,8 @@ impl<'a, T> BpcImageDecompressor<'a, T> where T: 'a + AsRef<[u8]> {
 
     #[inline]
     fn should_cycle_pattern(cmd: u8) -> bool {
-        Self::is_loading_pattern_from_next_byte(cmd)
-        ||
-        (CMD_CYCLE_PATTERN_AND_CP <= cmd) // always true then: && cmd <= CMD_CYCLE_PATTERN_AND_CP__NEXT
+        Self::is_loading_pattern_from_next_byte(cmd) || (CMD_CYCLE_PATTERN_AND_CP <= cmd)
+        // always true then: && cmd <= CMD_CYCLE_PATTERN_AND_CP__NEXT
     }
 
     #[inline]
@@ -453,14 +474,15 @@ impl<'a, T> BpcImageDecompressor<'a, T> where T: 'a + AsRef<[u8]> {
 #[derive(Clone)]
 pub(crate) struct BpcImageCompressionContainer {
     compressed_data: Bytes,
-    length_decompressed: u16
+    length_decompressed: u16,
 }
 
 impl BpcImageCompressionContainer {
     pub fn compress(data: &[u8]) -> PyResult<Self> {
         let compressed_data = BpcImageCompressor::run(Bytes::copy_from_slice(data))?;
         Ok(Self {
-            length_decompressed: data.len() as u16, compressed_data
+            length_decompressed: data.len() as u16,
+            compressed_data,
         })
     }
     fn cont_size(data: Bytes, byte_offset: usize) -> u16 {
@@ -479,14 +501,13 @@ impl BpcImageCompressionContainer {
         data.advance(6);
         let length_decompressed = data.get_u16_le();
         Ok(Self {
-            compressed_data: data, length_decompressed
+            compressed_data: data,
+            length_decompressed,
         })
     }
     pub fn decompress(&self) -> PyResult<StBytesMut> {
         let mut cur = Cursor::new(self.compressed_data.clone());
-        Ok(BpcImageDecompressor::run(
-            &mut cur, self.length_decompressed as usize
-        )?.into())
+        Ok(BpcImageDecompressor::run(&mut cur, self.length_decompressed as usize)?.into())
     }
     pub fn to_bytes(&self) -> StBytesMut {
         let mut res = BytesMut::with_capacity(self.compressed_data.len() + Self::DATA_START);

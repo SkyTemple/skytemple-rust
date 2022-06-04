@@ -16,17 +16,19 @@
  * You should have received a copy of the GNU General Public License
  * along with SkyTemple.  If not, see <https://www.gnu.org/licenses/>.
  */
-use std::io::Cursor;
-use bytes::{Buf, BufMut, Bytes, BytesMut};
 use crate::bytes::StBytesMut;
-use crate::compression::generic::nrl::{compression_step, decompression_step, NrlCompRead, NrlDecompWrite};
+use crate::compression::generic::nrl::{
+    compression_step, decompression_step, NrlCompRead, NrlDecompWrite,
+};
 use crate::python::*;
+use bytes::{Buf, BufMut, Bytes, BytesMut};
+use std::io::Cursor;
 
 // Operations are encoded in command bytes (CMD):
 // PHASE 2
-const CMD_2_SEEK_OFFSET: u8   = 0x80;  // All values below
-const CMD_2_FILL_LOW: u8      = 0x80;  // All values equal/above until next
-const CMD_2_COPY_LOW: u8      = 0xC0;  // All values equal/above
+const CMD_2_SEEK_OFFSET: u8 = 0x80; // All values below
+const CMD_2_FILL_LOW: u8 = 0x80; // All values equal/above until next
+const CMD_2_COPY_LOW: u8 = 0xC0; // All values equal/above
 
 /////////////////////////////////////////
 /////////////////////////////////////////
@@ -93,20 +95,26 @@ impl NrlDecompWrite<u8> for DecompWrite {
     }
 }
 
-pub struct BpcTilemapDecompressor<'a, T> where T: AsRef<[u8]> {
+pub struct BpcTilemapDecompressor<'a, T>
+where
+    T: AsRef<[u8]>,
+{
     compressed_data: &'a mut Cursor<T>,
     decompressed_data: DecompWrite,
     stop_when_size: usize,
-    phase2_out_pos: usize
+    phase2_out_pos: usize,
 }
 
-impl<'a, T> BpcTilemapDecompressor<'a, T> where T: AsRef<[u8]> {
+impl<'a, T> BpcTilemapDecompressor<'a, T>
+where
+    T: AsRef<[u8]>,
+{
     pub fn run(compressed_data: &'a mut Cursor<T>, stop_when_size: usize) -> PyResult<Bytes> {
         let mut slf = Self {
             compressed_data,
             decompressed_data: DecompWrite(BytesMut::with_capacity(stop_when_size)),
             stop_when_size,
-            phase2_out_pos: 0
+            phase2_out_pos: 0,
         };
 
         // Handle high bytes
@@ -115,8 +123,9 @@ impl<'a, T> BpcTilemapDecompressor<'a, T> where T: AsRef<[u8]> {
                 return Err(exceptions::PyValueError::new_err(format!(
                     "BPC Tilemap Decompressor: Phase1: End result length unexpected. \
                     Should be {}, is {}.",
-                    slf.stop_when_size, slf.decompressed_data.0.len()
-                )))
+                    slf.stop_when_size,
+                    slf.decompressed_data.0.len()
+                )));
             }
 
             decompression_step(slf.compressed_data, &mut slf.decompressed_data);
@@ -132,7 +141,7 @@ impl<'a, T> BpcTilemapDecompressor<'a, T> where T: AsRef<[u8]> {
                     "BPC Tilemap Decompressor: Phase2: End result length unexpected. \
                     Should be {}, is {}.",
                     slf.stop_when_size, slf.phase2_out_pos
-                )))
+                )));
             }
 
             slf.process_phase2();
@@ -150,21 +159,26 @@ impl<'a, T> BpcTilemapDecompressor<'a, T> where T: AsRef<[u8]> {
         } else if (CMD_2_FILL_LOW..CMD_2_COPY_LOW).contains(&cmd) {
             // cmd - CMD_2_SEEK_OFFSET is the nb of words to write with the next byte as low byte
             let cmd_value = self.compressed_data.get_u8() as u16;
-            for _ in CMD_2_SEEK_OFFSET-1..cmd {
+            for _ in CMD_2_SEEK_OFFSET - 1..cmd {
                 let bytes: [u8; 2] = (u16::from_le_bytes(
-                    self.decompressed_data.0[self.phase2_out_pos..=self.phase2_out_pos + 1].try_into().unwrap()
-                ) | cmd_value).to_le_bytes();
+                    self.decompressed_data.0[self.phase2_out_pos..=self.phase2_out_pos + 1]
+                        .try_into()
+                        .unwrap(),
+                ) | cmd_value)
+                    .to_le_bytes();
                 self.decompressed_data.0[self.phase2_out_pos] = bytes[0];
                 self.decompressed_data.0[self.phase2_out_pos + 1] = bytes[1];
                 self.phase2_out_pos += 2;
             }
-
         } else {
             //  cmd - CMD_2_COPY_LOW is the nb of words to write with the sequence of bytes as low byte
-            for _ in CMD_2_COPY_LOW-1..cmd {
+            for _ in CMD_2_COPY_LOW - 1..cmd {
                 let bytes: [u8; 2] = (u16::from_le_bytes(
-                    self.decompressed_data.0[self.phase2_out_pos..=self.phase2_out_pos + 1].try_into().unwrap()
-                ) | self.compressed_data.get_u8() as u16).to_le_bytes();
+                    self.decompressed_data.0[self.phase2_out_pos..=self.phase2_out_pos + 1]
+                        .try_into()
+                        .unwrap(),
+                ) | self.compressed_data.get_u8() as u16)
+                    .to_le_bytes();
                 self.decompressed_data.0[self.phase2_out_pos] = bytes[0];
                 self.decompressed_data.0[self.phase2_out_pos + 1] = bytes[1];
                 self.phase2_out_pos += 2;
@@ -181,14 +195,15 @@ impl<'a, T> BpcTilemapDecompressor<'a, T> where T: AsRef<[u8]> {
 #[derive(Clone)]
 pub(crate) struct BpcTilemapCompressionContainer {
     compressed_data: Bytes,
-    length_decompressed: u16
+    length_decompressed: u16,
 }
 
 impl BpcTilemapCompressionContainer {
     pub fn compress(data: &[u8]) -> PyResult<Self> {
         let compressed_data = BpcTilemapCompressor::run(Bytes::copy_from_slice(data))?;
         Ok(Self {
-            length_decompressed: data.len() as u16, compressed_data
+            length_decompressed: data.len() as u16,
+            compressed_data,
         })
     }
     fn cont_size(data: Bytes, byte_offset: usize) -> u16 {
@@ -207,14 +222,13 @@ impl BpcTilemapCompressionContainer {
         data.advance(6);
         let length_decompressed = data.get_u16_le();
         Ok(Self {
-            compressed_data: data, length_decompressed
+            compressed_data: data,
+            length_decompressed,
         })
     }
     pub fn decompress(&self) -> PyResult<StBytesMut> {
         let mut cur = Cursor::new(self.compressed_data.clone());
-        Ok(BpcTilemapDecompressor::run(
-            &mut cur, self.length_decompressed as usize
-        )?.into())
+        Ok(BpcTilemapDecompressor::run(&mut cur, self.length_decompressed as usize)?.into())
     }
     pub fn to_bytes(&self) -> StBytesMut {
         let mut res = BytesMut::with_capacity(self.compressed_data.len() + Self::DATA_START);

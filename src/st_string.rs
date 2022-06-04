@@ -16,23 +16,25 @@
  * You should have received a copy of the GNU General Public License
  * along with SkyTemple.  If not, see <https://www.gnu.org/licenses/>.
  */
-use encoding::{DecoderTrap, EncoderTrap, Encoding};
 use crate::bytes::StBytes;
 use crate::encoding::pmd2_encoder::Pmd2Encoding;
 use crate::err::convert_encoding_err;
 use crate::python::*;
+use encoding::{DecoderTrap, EncoderTrap, Encoding};
 
 #[pyclass(module = "skytemple_rust.st_string")]
 #[derive(Clone)]
 pub struct StPmd2String(String);
 
-
 #[pymethods]
 impl StPmd2String {
     #[new]
     pub fn new(data: StBytes) -> PyResult<Self> {
-        Ok(Self(Pmd2Encoding.decode(&data[..], DecoderTrap::Strict)
-            .map_err(convert_encoding_err)?))
+        Ok(Self(
+            Pmd2Encoding
+                .decode(&data[..], DecoderTrap::Strict)
+                .map_err(convert_encoding_err)?,
+        ))
     }
     fn __str__(&self) -> String {
         self.0.clone()
@@ -51,8 +53,10 @@ impl StPmd2StringEncoder {
     }
     pub fn write(&self, model: Py<StPmd2String>, py: Python) -> PyResult<StBytes> {
         let model = model.borrow(py);
-        Ok(Pmd2Encoding.encode(&model.0, EncoderTrap::Strict)
-            .map_err(convert_encoding_err)?.into())
+        Ok(Pmd2Encoding
+            .encode(&model.0, EncoderTrap::Strict)
+            .map_err(convert_encoding_err)?
+            .into())
     }
 }
 

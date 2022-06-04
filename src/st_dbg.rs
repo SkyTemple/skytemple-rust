@@ -27,7 +27,7 @@ use crate::st_dpl::input::InputDpl;
 #[derive(Clone)]
 pub struct Dbg {
     #[pyo3(get, set)]
-    pub mappings: Vec<u16>
+    pub mappings: Vec<u16>,
 }
 
 #[pymethods]
@@ -39,7 +39,12 @@ impl Dbg {
     }
 
     #[allow(unused_variables)]
-    pub fn to_pil(&self, dpc: InputDpc, dpci: InputDpci, palettes: Vec<Vec<u8>>) -> PyResult<IndexedImage> {
+    pub fn to_pil(
+        &self,
+        dpc: InputDpc,
+        dpci: InputDpci,
+        palettes: Vec<Vec<u8>>,
+    ) -> PyResult<IndexedImage> {
         todo!()
     }
 
@@ -57,7 +62,14 @@ impl Dbg {
     /// 0 of the palette (transparent). The "force_import" parameter is ignored.
     ///
     /// The input images must have the same dimensions as the DBG (same dimensions as to_pil_single_layer would export).
-    pub fn from_pil(&mut self, dpc: InputDpc, dpci: InputDpci, dpl: InputDpl, img: In256ColIndexedImage, force_import: bool) {
+    pub fn from_pil(
+        &mut self,
+        dpc: InputDpc,
+        dpci: InputDpci,
+        dpl: InputDpl,
+        img: In256ColIndexedImage,
+        force_import: bool,
+    ) {
         todo!()
     }
 }

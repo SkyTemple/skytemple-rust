@@ -21,7 +21,7 @@ use crate::python::*;
 
 #[derive(PartialEq, Eq, Debug, Clone, Default)]
 #[pyclass(module = "skytemple_rust")]
-pub struct TilemapEntry(pub usize, pub bool, pub bool, pub u8);  // idx, flip_x, flip_y, pal_idx
+pub struct TilemapEntry(pub usize, pub bool, pub bool, pub u8); // idx, flip_x, flip_y, pal_idx
 
 #[cfg(feature = "python")]
 #[pymethods]
@@ -29,7 +29,13 @@ impl TilemapEntry {
     #[new]
     #[args(ignore_too_large = "false")]
     #[allow(unused_variables)]
-    pub fn new(idx: usize, flip_x: bool, flip_y: bool, pal_idx: u8, ignore_too_large: bool) -> Self {
+    pub fn new(
+        idx: usize,
+        flip_x: bool,
+        flip_y: bool,
+        pal_idx: u8,
+        ignore_too_large: bool,
+    ) -> Self {
         Self(idx, flip_x, flip_y, pal_idx)
     }
     #[classmethod]
@@ -87,7 +93,7 @@ impl From<usize> for TilemapEntry {
             // 0000 1000 0000 0000, vflip
             (entry & 0x800) > 0,
             // 1111 0000 0000 0000, pal index
-            ((entry & 0xF000) >> 12) as u8
+            ((entry & 0xF000) >> 12) as u8,
         )
     }
 }
@@ -100,10 +106,10 @@ impl From<TilemapEntry> for usize {
 
 impl TilemapEntry {
     pub(crate) fn _to_int(&self) -> usize {
-        (self.0 & 0x3FF) +
-            (if self.1 { 1 } else { 0 } << 10) +
-            (if self.2 { 1 } else { 0 } << 11) +
-            ((self.3 as usize & 0x3F) << 12) as usize
+        (self.0 & 0x3FF)
+            + (if self.1 { 1 } else { 0 } << 10)
+            + (if self.2 { 1 } else { 0 } << 11)
+            + ((self.3 as usize & 0x3F) << 12) as usize
     }
 }
 
@@ -126,7 +132,9 @@ impl<'source> FromPyObject<'source> for InputTilemapEntry {
             let tm: TilemapEntry = val.into();
             Ok(Self(Py::new(ob.py(), tm)?))
         } else {
-            Err(exceptions::PyTypeError::new_err("Could not convert into TilemapEntry."))
+            Err(exceptions::PyTypeError::new_err(
+                "Could not convert into TilemapEntry.",
+            ))
         }
     }
 }

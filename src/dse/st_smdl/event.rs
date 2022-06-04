@@ -46,7 +46,10 @@ pub enum SmdlNote {
 
 impl SmdlNote {
     pub fn valid(&self) -> bool {
-        self != &Self::InvalidC && self != &Self::InvalidD && self != &Self::InvalidE && self != &Self::Unknown
+        self != &Self::InvalidC
+            && self != &Self::InvalidD
+            && self != &Self::InvalidE
+            && self != &Self::Unknown
     }
 }
 
@@ -74,7 +77,7 @@ pub enum SmdlPause {
     ThirtysecondNote = 0x8C,
     DottedSixtyforthNote = 0x8D,
     TwoThirdsOfThirtysecondNote = 0x8E,
-    SixtyforthNote = 0x8F
+    SixtyforthNote = 0x8F,
 }
 
 impl SmdlPause {
@@ -95,7 +98,7 @@ impl SmdlPause {
             SmdlPause::ThirtysecondNote => 6,
             SmdlPause::DottedSixtyforthNote => 4,
             SmdlPause::TwoThirdsOfThirtysecondNote => 3,
-            SmdlPause::SixtyforthNote => 2
+            SmdlPause::SixtyforthNote => 2,
         }
     }
 }
@@ -148,8 +151,8 @@ impl SmdlSpecialOpCode {
             SmdlSpecialOpCode::WaitAgain => 0,
             SmdlSpecialOpCode::WaitAdd => 1,
             SmdlSpecialOpCode::Wait1Byte => 1,
-            SmdlSpecialOpCode::Wait2Byte => 2,  // LE
-            SmdlSpecialOpCode::Wait3Byte => 2,  // LE
+            SmdlSpecialOpCode::Wait2Byte => 2, // LE
+            SmdlSpecialOpCode::Wait3Byte => 2, // LE
             SmdlSpecialOpCode::TrackEnd => 0,
             SmdlSpecialOpCode::LoopPoint => 0,
             SmdlSpecialOpCode::SetOctave => 1,
@@ -186,25 +189,37 @@ impl SmdlSpecialOpCode {
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum SmdlEvent {
-    Special { op: SmdlSpecialOpCode, params: Vec<u8> },
-    Pause { value: SmdlPause },
-    Note { velocity: u8, octave_mod: i8 /* MIN: -2 */, note: SmdlNote, key_down_duration: Option<u32> },
+    Special {
+        op: SmdlSpecialOpCode,
+        params: Vec<u8>,
+    },
+    Pause {
+        value: SmdlPause,
+    },
+    Note {
+        velocity: u8,
+        octave_mod: i8, /* MIN: -2 */
+        note: SmdlNote,
+        key_down_duration: Option<u32>,
+    },
 }
 
 impl SmdlEvent {
     /// Length of the event in ticks
     pub fn length(&self, previous_wait_time: usize) -> usize {
         match self {
-            SmdlEvent::Special { op, params } => {
-                match op {
-                    SmdlSpecialOpCode::WaitAgain => previous_wait_time,
-                    SmdlSpecialOpCode::WaitAdd => previous_wait_time + params[0] as usize,
-                    SmdlSpecialOpCode::Wait1Byte => params[0] as usize,
-                    SmdlSpecialOpCode::Wait2Byte => ((params[1] as usize) << 8) + (params[0] as usize),
-                    SmdlSpecialOpCode::Wait3Byte => ((params[2] as usize) << 16) + ((params[1] as usize) << 8) + (params[0] as usize),
-                    _ => 0
+            SmdlEvent::Special { op, params } => match op {
+                SmdlSpecialOpCode::WaitAgain => previous_wait_time,
+                SmdlSpecialOpCode::WaitAdd => previous_wait_time + params[0] as usize,
+                SmdlSpecialOpCode::Wait1Byte => params[0] as usize,
+                SmdlSpecialOpCode::Wait2Byte => ((params[1] as usize) << 8) + (params[0] as usize),
+                SmdlSpecialOpCode::Wait3Byte => {
+                    ((params[2] as usize) << 16)
+                        + ((params[1] as usize) << 8)
+                        + (params[0] as usize)
                 }
-            }
+                _ => 0,
+            },
             SmdlEvent::Pause { value } => value.length(),
             SmdlEvent::Note { .. } => {
                 // Playing notes doesn't add to the tick count.

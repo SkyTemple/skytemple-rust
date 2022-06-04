@@ -18,20 +18,20 @@
  */
 
 #[cfg(feature = "python")]
+#[cfg(feature = "image")]
+pub use crate::python_image::*;
+#[cfg(feature = "python")]
 pub use pyo3::exceptions;
 #[cfg(feature = "python")]
 pub use pyo3::prelude::*;
 #[cfg(feature = "python")]
-pub use pyo3::PyErr;
+pub use pyo3::types::PyByteArray;
 #[cfg(feature = "python")]
 pub use pyo3::types::PyBytes;
 #[cfg(feature = "python")]
-pub use pyo3::types::PyByteArray;
-#[cfg(feature = "python")]
 pub use pyo3::types::PyType;
 #[cfg(feature = "python")]
-#[cfg(feature = "image")]
-pub use crate::python_image::*;
+pub use pyo3::PyErr;
 
 #[cfg(feature = "python")]
 const USER_ERROR_MARK: &str = "_skytemple__user_error";
@@ -43,24 +43,32 @@ const USER_ERROR_MARK: &str = "_skytemple__user_error";
 pub type PyClonedByRef<T> = Py<T>;
 
 #[cfg(not(feature = "python"))]
-pub(crate) use crate::no_python::*;
+pub use crate::no_python::exceptions;
 #[cfg(not(feature = "python"))]
 pub use crate::no_python::PyErr;
 #[cfg(not(feature = "python"))]
-pub use crate::no_python::exceptions;
+pub(crate) use crate::no_python::*;
 
 #[inline]
 #[allow(unused)]
 // Clonability is required for non-Python use cases.
-pub(crate) fn return_option<T>(py: Python, opt: &Option<Py<T>>) -> PyResult<Option<PyClonedByRef<T>>> where T: Clone {
+pub(crate) fn return_option<T>(
+    py: Python,
+    opt: &Option<Py<T>>,
+) -> PyResult<Option<PyClonedByRef<T>>>
+where
+    T: Clone,
+{
     Ok(opt.as_ref().map(|x| x.clone_ref(py)))
 }
 
 /// Creates a PyValueError that is marked as an user error for Python contexts (for error reporting purposes).
 #[cfg(feature = "python")]
-pub fn create_value_user_error<S: Into<String> + IntoPy<PyObject> + Send + Sync + 'static>(msg: S) -> PyErr {
+pub fn create_value_user_error<S: Into<String> + IntoPy<PyObject> + Send + Sync + 'static>(
+    msg: S,
+) -> PyErr {
     let exc = exceptions::PyValueError::new_err(msg);
-    Python::with_gil(|py | exc.instance(py).setattr(USER_ERROR_MARK, true).ok());
+    Python::with_gil(|py| exc.instance(py).setattr(USER_ERROR_MARK, true).ok());
     exc
 }
 

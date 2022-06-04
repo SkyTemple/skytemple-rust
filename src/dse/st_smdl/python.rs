@@ -17,17 +17,17 @@
  * along with SkyTemple.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-use pyo3::types::PyList;
 use crate::bytes::StBytes;
-use crate::python::*;
-use num_traits::FromPrimitive;
 use crate::dse::date::DseDate;
 use crate::dse::filename::DseFilename;
+use crate::python::*;
+use num_traits::FromPrimitive;
+use pyo3::types::PyList;
 
 mod implem {
-    pub use crate::dse::st_smdl::smdl;
     pub use crate::dse::st_smdl::eoc;
     pub use crate::dse::st_smdl::event;
+    pub use crate::dse::st_smdl::smdl;
     pub use crate::dse::st_smdl::song;
     pub use crate::dse::st_smdl::trk;
 }
@@ -262,8 +262,18 @@ pub(crate) struct SmdlEventPlayNote {
 }
 
 impl SmdlEventPlayNote {
-    pub fn new(note: implem::event::SmdlNote, octave_mod: i8, velocity: u8, key_down_duration: Option<u32>) -> Self {
-        SmdlEventPlayNote { velocity, octave_mod, note: note as u8, key_down_duration }
+    pub fn new(
+        note: implem::event::SmdlNote,
+        octave_mod: i8,
+        velocity: u8,
+        key_down_duration: Option<u32>,
+    ) -> Self {
+        SmdlEventPlayNote {
+            velocity,
+            octave_mod,
+            note: note as u8,
+            key_down_duration,
+        }
     }
 }
 
@@ -291,7 +301,10 @@ pub(crate) struct SmdlEventSpecial {
 
 impl SmdlEventSpecial {
     pub fn new(op: implem::event::SmdlSpecialOpCode, params: Vec<u8>) -> Self {
-        SmdlEventSpecial { op: op as u8, params }
+        SmdlEventSpecial {
+            op: op as u8,
+            params,
+        }
     }
 }
 
@@ -303,19 +316,30 @@ pub(crate) struct SmdlTrack {
     #[pyo3(get, set)]
     preamble: Py<SmdlTrackPreamble>,
     #[pyo3(get, set)]
-    events: Py<PyList>,  // Sequence[Union[SmdlEventSpecial, SmdlEventPause, SmdlEventPlayNote]]
+    events: Py<PyList>, // Sequence[Union[SmdlEventSpecial, SmdlEventPause, SmdlEventPlayNote]]
 }
 
 impl From<implem::trk::SmdlTrack> for SmdlTrack {
     fn from(source: implem::trk::SmdlTrack) -> Self {
         Python::with_gil(|py| {
-            let events = Py::from(PyList::new(py, source.events.into_iter().map(|e| match e {
-                implem::event::SmdlEvent::Special { op, params } => SmdlEventSpecial::new(op, params).into_py(py),
-                implem::event::SmdlEvent::Pause { value } => SmdlEventPause::new(value).into_py(py),
-                implem::event::SmdlEvent::Note { note, octave_mod, velocity, key_down_duration } => {
-                    SmdlEventPlayNote::new(note, octave_mod, velocity, key_down_duration).into_py(py)
-                }
-            })));
+            let events = Py::from(PyList::new(
+                py,
+                source.events.into_iter().map(|e| match e {
+                    implem::event::SmdlEvent::Special { op, params } => {
+                        SmdlEventSpecial::new(op, params).into_py(py)
+                    }
+                    implem::event::SmdlEvent::Pause { value } => {
+                        SmdlEventPause::new(value).into_py(py)
+                    }
+                    implem::event::SmdlEvent::Note {
+                        note,
+                        octave_mod,
+                        velocity,
+                        key_down_duration,
+                    } => SmdlEventPlayNote::new(note, octave_mod, velocity, key_down_duration)
+                        .into_py(py),
+                }),
+            ));
             SmdlTrack {
                 header: Py::new(py, SmdlTrackHeader::from(source.header)).unwrap(),
                 preamble: Py::new(py, SmdlTrackPreamble::from(source.preamble)).unwrap(),
@@ -328,28 +352,43 @@ impl From<implem::trk::SmdlTrack> for SmdlTrack {
 impl From<SmdlTrack> for implem::trk::SmdlTrack {
     fn from(source: SmdlTrack) -> Self {
         Python::with_gil(|py| {
-            let events = source.events.extract::<&PyList>(py).unwrap().into_iter().map(|e| {
-                if let Ok(v) = e.extract::<SmdlEventSpecial>() {
-                    implem::event::SmdlEvent::Special {
-                        op: implem::event::SmdlSpecialOpCode::from_u8(v.op).expect("Invalid special opcode."),
-                        params: v.params
+            let events = source
+                .events
+                .extract::<&PyList>(py)
+                .unwrap()
+                .into_iter()
+                .map(|e| {
+                    if let Ok(v) = e.extract::<SmdlEventSpecial>() {
+                        implem::event::SmdlEvent::Special {
+                            op: implem::event::SmdlSpecialOpCode::from_u8(v.op)
+                                .expect("Invalid special opcode."),
+                            params: v.params,
+                        }
+                    } else if let Ok(v) = e.extract::<SmdlEventPause>() {
+                        implem::event::SmdlEvent::Pause {
+                            value: implem::event::SmdlPause::from_u8(v.value)
+                                .expect("Invalid pause opcode."),
+                        }
+                    } else if let Ok(v) = e.extract::<SmdlEventPlayNote>() {
+                        implem::event::SmdlEvent::Note {
+                            note: implem::event::SmdlNote::from_u8(v.note)
+                                .expect("Invalid note opcode."),
+                            octave_mod: v.octave_mod,
+                            velocity: v.velocity,
+                            key_down_duration: v.key_down_duration,
+                        }
+                    } else {
+                        panic!("Invalid event: {:?}", e)
                     }
-                } else if let Ok(v) = e.extract::<SmdlEventPause>() {
-                    implem::event::SmdlEvent::Pause { value: implem::event::SmdlPause::from_u8(v.value).expect("Invalid pause opcode.") }
-                } else if let Ok(v) = e.extract::<SmdlEventPlayNote>() {
-                    implem::event::SmdlEvent::Note {
-                        note: implem::event::SmdlNote::from_u8(v.note).expect("Invalid note opcode."),
-                        octave_mod: v.octave_mod,
-                        velocity: v.velocity,
-                        key_down_duration: v.key_down_duration
-                    }
-                } else {
-                    panic!("Invalid event: {:?}", e)
-                }
-            }).collect();
+                })
+                .collect();
             implem::trk::SmdlTrack {
                 header: source.header.extract::<SmdlTrackHeader>(py).unwrap().into(),
-                preamble: source.preamble.extract::<SmdlTrackPreamble>(py).unwrap().into(),
+                preamble: source
+                    .preamble
+                    .extract::<SmdlTrackPreamble>(py)
+                    .unwrap()
+                    .into(),
                 events,
             }
         })
@@ -366,7 +405,7 @@ pub(crate) struct Smdl {
     #[pyo3(get, set)]
     tracks: Vec<Py<SmdlTrack>>,
     #[pyo3(get, set)]
-    eoc: Py<SmdlEoc>
+    eoc: Py<SmdlEoc>,
 }
 
 #[pymethods]
@@ -394,26 +433,30 @@ impl SmdlWriter {
 
 impl From<implem::smdl::Smdl> for Smdl {
     fn from(source: implem::smdl::Smdl) -> Self {
-        Python::with_gil(|py| {
-            Smdl {
-                header: Py::new(py, SmdlHeader::from(source.header)).unwrap(),
-                song: Py::new(py, SmdlSong::from(source.song)).unwrap(),
-                tracks: source.tracks.into_iter().map(|track| Py::new(py, SmdlTrack::from(track)).unwrap()).collect(),
-                eoc: Py::new(py, SmdlEoc::from(source.eoc)).unwrap(),
-            }
+        Python::with_gil(|py| Smdl {
+            header: Py::new(py, SmdlHeader::from(source.header)).unwrap(),
+            song: Py::new(py, SmdlSong::from(source.song)).unwrap(),
+            tracks: source
+                .tracks
+                .into_iter()
+                .map(|track| Py::new(py, SmdlTrack::from(track)).unwrap())
+                .collect(),
+            eoc: Py::new(py, SmdlEoc::from(source.eoc)).unwrap(),
         })
     }
 }
 
 impl From<Smdl> for implem::smdl::Smdl {
     fn from(source: Smdl) -> Self {
-        Python::with_gil(|py| {
-            implem::smdl::Smdl {
-                header: source.header.extract::<SmdlHeader>(py).unwrap().into(),
-                song: source.song.extract::<SmdlSong>(py).unwrap().into(),
-                tracks: source.tracks.into_iter().map(|track| track.extract::<SmdlTrack>(py).unwrap().into()).collect(),
-                eoc: source.eoc.extract::<SmdlEoc>(py).unwrap().into(),
-            }
+        Python::with_gil(|py| implem::smdl::Smdl {
+            header: source.header.extract::<SmdlHeader>(py).unwrap().into(),
+            song: source.song.extract::<SmdlSong>(py).unwrap().into(),
+            tracks: source
+                .tracks
+                .into_iter()
+                .map(|track| track.extract::<SmdlTrack>(py).unwrap().into())
+                .collect(),
+            eoc: source.eoc.extract::<SmdlEoc>(py).unwrap().into(),
         })
     }
 }

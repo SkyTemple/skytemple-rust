@@ -17,10 +17,10 @@
  * along with SkyTemple.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+pub mod eoc;
+pub mod event;
 #[cfg(feature = "python")]
 pub(crate) mod python;
 pub mod smdl;
-pub mod trk;
 pub mod song;
-pub mod eoc;
-pub mod event;
+pub mod trk;

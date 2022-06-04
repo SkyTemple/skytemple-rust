@@ -17,12 +17,12 @@
  * along with SkyTemple.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-use std::collections::VecDeque;
-use std::io::{Cursor, Read, Seek, SeekFrom};
+use crate::python::*;
 use bytes::{Buf, BufMut, Bytes, BytesMut};
 use num_derive::FromPrimitive;
 use num_traits::FromPrimitive;
-use crate::python::*;
+use std::collections::VecDeque;
+use std::io::{Cursor, Read, Seek, SeekFrom};
 
 // Length of the default lookback buffer. The "sliding window" so to speak!
 // Used to determine how far back the compressor looks for matching sequences!
@@ -52,7 +52,7 @@ enum Operation {
     CopyNybble4timesExIncrnybble1 = 6,
     CopyNybble4timesExIncrnybble2 = 7,
     CopyNybble4timesExIncrnybble3 = 8,
-    CopySequence = 9
+    CopySequence = 9,
 }
 
 #[repr(u8)]
@@ -65,23 +65,23 @@ pub enum PxCompLevel {
     // Medium compression - We handle 4 byte patterns, using all control flags
     Level2 = 2,
     // Full compression   - We handle everything above, along with repeating sequences of bytes already decompressed.
-    Level3 = 3
+    Level3 = 3,
 }
 
 struct CompOp {
     // The operation to do
-    typ: Operation,     // = Operation.CopyAsis
+    typ: Operation, // = Operation.CopyAsis
     // The value of the compressed high nybble if applicable
-    highnybble: u8,     // = 0
+    highnybble: u8, // = 0
     // The value of the compressed low nybble
-    lownybble: u8,      // = 0
+    lownybble: u8, // = 0
     // Value of the compressed next byte if applicable
-    nextbytevalue: u8,  // = 0
+    nextbytevalue: u8, // = 0
 }
 
 struct MatchingSeq {
     pos: usize,
-    length: usize
+    length: usize,
 }
 
 /////////////////////////////////////////
@@ -95,15 +95,20 @@ pub struct PxCompressor<F: Buf> {
     compression_level: PxCompLevel,
     should_search_first: bool,
     pending_operations: VecDeque<CompOp>,
-    high_nibble_lengths_possible: Vec<usize>
+    high_nibble_lengths_possible: Vec<usize>,
 }
 
 impl PxCompressor<Bytes> {
-    pub fn run(buffer: Bytes, compression_level: PxCompLevel, should_search_first: bool) -> PyResult<(Bytes, [u8; 9])> {
+    pub fn run(
+        buffer: Bytes,
+        compression_level: PxCompLevel,
+        should_search_first: bool,
+    ) -> PyResult<(Bytes, [u8; 9])> {
         let input_size = buffer.len();
         if input_size > u32::MAX as usize {
             return Err(exceptions::PyValueError::new_err(format!(
-                "PX Compression: The input data is too long {}.", input_size
+                "PX Compression: The input data is too long {}.",
+                input_size
             )));
         }
         let pad: usize = if input_size % 8 != 0 { 1 } else { 0 };
@@ -116,12 +121,13 @@ impl PxCompressor<Bytes> {
             // And if we're not divisible by 8, add an extra
             // byte for the last command byte!
             output: BytesMut::with_capacity(input_size + input_size + pad),
-            compression_level, should_search_first,
+            compression_level,
+            should_search_first,
             pending_operations: VecDeque::with_capacity(1000),
             // Set by default those two possible matching sequence length, given we want 99% of the time to
             // have those 2 to cover the gap between the 2 bytes to 1 algorithm and the string search,
             // and also get to use the string search's capability to its maximum!
-            high_nibble_lengths_possible: vec![0, 0xF]
+            high_nibble_lengths_possible: vec![0, 0xF],
         };
 
         // Do compression
@@ -138,7 +144,8 @@ impl PxCompressor<Bytes> {
         // Validate compressed size
         if slf.output.len() > u16::MAX as usize {
             return Err(exceptions::PyValueError::new_err(format!(
-                "PX Compression: Compressed size {} overflows 16 bits unsigned integer!", slf.output.len()
+                "PX Compression: Compressed size {} overflows 16 bits unsigned integer!",
+                slf.output.len()
             )));
         }
 
@@ -161,18 +168,29 @@ impl PxCompressor<Bytes> {
             typ: Operation::CopyAsis,
             highnybble: 0,
             lownybble: 0,
-            nextbytevalue: 0
+            nextbytevalue: 0,
         };
-        if self.should_search_first && self.compression_level >= PxCompLevel::Level3 && self.can_use_a_matching_sequence(self.in_cur_buffer.clone(), &mut myop)? {
-            self.in_cur_buffer.advance(myop.highnybble as usize + PX_MIN_MATCH_SEQLEN);
-        } else if (
-            self.compression_level >= PxCompLevel::Level1 && Self::can_compress_to_2_in_1_byte(self.in_cur_buffer.clone(), &mut myop)
-        ) || (
-            self.compression_level>= PxCompLevel::Level2 && Self::can_compress_to_2_in_1_byte_with_manipulation(self.in_cur_buffer.clone(), &mut myop)
-        ) {
+        if self.should_search_first
+            && self.compression_level >= PxCompLevel::Level3
+            && self.can_use_a_matching_sequence(self.in_cur_buffer.clone(), &mut myop)?
+        {
+            self.in_cur_buffer
+                .advance(myop.highnybble as usize + PX_MIN_MATCH_SEQLEN);
+        } else if (self.compression_level >= PxCompLevel::Level1
+            && Self::can_compress_to_2_in_1_byte(self.in_cur_buffer.clone(), &mut myop))
+            || (self.compression_level >= PxCompLevel::Level2
+                && Self::can_compress_to_2_in_1_byte_with_manipulation(
+                    self.in_cur_buffer.clone(),
+                    &mut myop,
+                ))
+        {
             self.in_cur_buffer.advance(2);
-        } else if !self.should_search_first && self.compression_level >= PxCompLevel::Level3 && self.can_use_a_matching_sequence(self.in_cur_buffer.clone(), &mut myop)? {
-            self.in_cur_buffer.advance(myop.highnybble  as usize + PX_MIN_MATCH_SEQLEN);
+        } else if !self.should_search_first
+            && self.compression_level >= PxCompLevel::Level3
+            && self.can_use_a_matching_sequence(self.in_cur_buffer.clone(), &mut myop)?
+        {
+            self.in_cur_buffer
+                .advance(myop.highnybble as usize + PX_MIN_MATCH_SEQLEN);
         } else {
             // Level 0
             // If all else fails, add the byte as-is
@@ -209,14 +227,17 @@ impl PxCompressor<Bytes> {
     /// Check whether the 2 bytes at l_cursor can be stored as a single byte,
     ///  only if we use special operations based on the ctrl flag index contained
     ///  in the high nibble!
-    fn can_compress_to_2_in_1_byte_with_manipulation(mut buf: impl Buf, result: &mut CompOp) -> bool {
+    fn can_compress_to_2_in_1_byte_with_manipulation(
+        mut buf: impl Buf,
+        result: &mut CompOp,
+    ) -> bool {
         let mut nibbles: [u8; 4] = [0, 0, 0, 0];
         // Read 4 nibbles from the input
         for i in [0, 2] {
             if buf.has_remaining() {
                 let b = buf.get_u8();
                 nibbles[i] = (b >> 4) & 0x0F;
-                nibbles[i+1] = b & 0x0F;
+                nibbles[i + 1] = b & 0x0F;
             } else {
                 return false;
             }
@@ -240,7 +261,10 @@ impl PxCompressor<Bytes> {
                     // A) The decompressor decrements a nybble not at index 0 once.
                     // B) The decompressor increments all of them once, and then decrements the one at index 0 !
                     // indexsmallest : is the index of the nybble that gets decremented.
-                    result.typ = FromPrimitive::from_i8(indexsmallest as i8 + Operation::CopyNybble4timesExIncrallDecrnybble0 as i8).unwrap();
+                    result.typ = FromPrimitive::from_i8(
+                        indexsmallest as i8 + Operation::CopyNybble4timesExIncrallDecrnybble0 as i8,
+                    )
+                    .unwrap();
                     if indexsmallest == 0 {
                         // Copy as-is, given the decompressor increment it then decrement this value
                         result.lownybble = nibbles[indexsmallest];
@@ -253,7 +277,10 @@ impl PxCompressor<Bytes> {
                     // A) The decompressor increments a nybble not at index 0 once.
                     // B) The decompressor decrements all of them once, and then increments the one at index 0 again!
                     // indexlargest : is the index of the nybble that gets incremented.
-                    result.typ = FromPrimitive::from_i8(indexlargest as i8 + Operation::CopyNybble4timesExDecrallIncrnybble0 as i8).unwrap();
+                    result.typ = FromPrimitive::from_i8(
+                        indexlargest as i8 + Operation::CopyNybble4timesExDecrallIncrnybble0 as i8,
+                    )
+                    .unwrap();
                     if indexlargest == 0 {
                         // Since we decrement and then increment this one during decomp, use it as-isalue
                         result.lownybble = nibbles[indexlargest];
@@ -274,9 +301,14 @@ impl PxCompressor<Bytes> {
     fn can_use_a_matching_sequence(&mut self, buf: Bytes, result: &mut CompOp) -> PyResult<bool> {
         // Get offset of LookBack Buffer beginning
         let current_offset = buf.len() - buf.remaining();
-        let lb_buffer_begin = if current_offset > PX_LOOKBACK_BUFFER_SIZE { current_offset - PX_LOOKBACK_BUFFER_SIZE } else { 0 };
+        let lb_buffer_begin = if current_offset > PX_LOOKBACK_BUFFER_SIZE {
+            current_offset - PX_LOOKBACK_BUFFER_SIZE
+        } else {
+            0
+        };
 
-        let it_seq_end = Self::adv_as_much_as_possible(current_offset, buf.len(), PX_MAX_MATCH_SEQLEN);
+        let it_seq_end =
+            Self::adv_as_much_as_possible(current_offset, buf.len(), PX_MAX_MATCH_SEQLEN);
 
         let cur_seq_len = it_seq_end - current_offset;
 
@@ -285,8 +317,10 @@ impl PxCompressor<Bytes> {
             return Ok(false);
         }
         let seqres = self.find_longest_matching_sequence(
-            lb_buffer_begin, current_offset,
-            current_offset, it_seq_end
+            lb_buffer_begin,
+            current_offset,
+            current_offset,
+            it_seq_end,
         )?;
 
         if seqres.length >= PX_MIN_MATCH_SEQLEN {
@@ -321,10 +355,18 @@ impl PxCompressor<Bytes> {
     /// - tofindbeg      : Beginning of the sequence to find.
     /// - tofindend      : End of the sequence to find.
     fn find_longest_matching_sequence(
-        &self, searchbeg: usize, searchend: usize, tofindbeg: usize, tofindend: usize
+        &self,
+        searchbeg: usize,
+        searchend: usize,
+        tofindbeg: usize,
+        tofindend: usize,
     ) -> PyResult<MatchingSeq> {
-        let mut longestmatch = MatchingSeq{ pos: searchend, length: 0 };
-        let seq_to_find_short_end = Self::adv_as_much_as_possible(tofindbeg, tofindend, PX_MIN_MATCH_SEQLEN);
+        let mut longestmatch = MatchingSeq {
+            pos: searchend,
+            length: 0,
+        };
+        let seq_to_find_short_end =
+            Self::adv_as_much_as_possible(tofindbeg, tofindend, PX_MIN_MATCH_SEQLEN);
 
         let mut cur_search_pos = searchbeg;
 
@@ -332,15 +374,20 @@ impl PxCompressor<Bytes> {
         searchbeg_buffer.advance(tofindbeg);
         searchbeg_buffer.truncate(seq_to_find_short_end - tofindbeg);
         while cur_search_pos < searchend {
-            let fnd_tpl = Self::find_subsequence(&self.in_raw_buffer[cur_search_pos..searchend], &searchbeg_buffer);
+            let fnd_tpl = Self::find_subsequence(
+                &self.in_raw_buffer[cur_search_pos..searchend],
+                &searchbeg_buffer,
+            );
             if let Some(x) = fnd_tpl {
                 cur_search_pos = x;
             }
             if cur_search_pos != searchend {
                 let nbmatches = Self::count_equal_consecutive_elem(
-                    &self.in_raw_buffer, cur_search_pos,
+                    &self.in_raw_buffer,
+                    cur_search_pos,
                     Self::adv_as_much_as_possible(cur_search_pos, searchend, PX_MAX_MATCH_SEQLEN),
-                    tofindbeg, tofindend
+                    tofindbeg,
+                    tofindend,
                 );
                 if longestmatch.length < nbmatches {
                     longestmatch.length = nbmatches;
@@ -388,9 +435,11 @@ impl PxCompressor<Bytes> {
     /// form of the operation passed in parameter!
     fn output_an_operation(&mut self, operation: CompOp) {
         if operation.typ == Operation::CopyAsis {
-            self.output.put_u8((operation.highnybble << 4 & 0xF0) | operation.lownybble);
+            self.output
+                .put_u8((operation.highnybble << 4 & 0xF0) | operation.lownybble);
         } else if operation.typ == Operation::CopySequence {
-            self.output.put_u8((operation.highnybble << 4 & 0xF0) | operation.lownybble);
+            self.output
+                .put_u8((operation.highnybble << 4 & 0xF0) | operation.lownybble);
             self.output.put_u8(operation.nextbytevalue);
         } else {
             let flag = self.flags[operation.typ as usize];
@@ -466,7 +515,7 @@ impl PxCompressor<Bytes> {
     #[inline]
     fn adv_as_much_as_possible(iter: usize, itend: usize, displacement: usize) -> usize {
         if iter + displacement > itend {
-            return itend
+            return itend;
         }
         iter + displacement
     }
@@ -474,7 +523,13 @@ impl PxCompressor<Bytes> {
     /// Count the amount of similar consecutive values between two sequences.
     /// It stops counting once it stumbles on a differing value.
     #[inline]
-    fn count_equal_consecutive_elem(data: &[u8], mut first_1: usize, mut first_2: usize, last_1: usize, last_2: usize) -> usize {
+    fn count_equal_consecutive_elem(
+        data: &[u8],
+        mut first_1: usize,
+        mut first_2: usize,
+        last_1: usize,
+        last_2: usize,
+    ) -> usize {
         let mut count = 0;
         while first_1 != last_1 && first_2 != last_2 && data[first_1] == data[first_2] {
             count += 1;
@@ -486,9 +541,12 @@ impl PxCompressor<Bytes> {
 
     #[inline]
     fn find_subsequence<T>(haystack: &[T], needle: &[T]) -> Option<usize>
-        where for<'b> &'b [T]: PartialEq
+    where
+        for<'b> &'b [T]: PartialEq,
     {
-        haystack.windows(needle.len()).position(|window| window == needle)
+        haystack
+            .windows(needle.len())
+            .position(|window| window == needle)
     }
 }
 
@@ -498,15 +556,18 @@ impl PxCompressor<Bytes> {
 pub struct PxDecompressor<'a, F: Buf> {
     buffer: F,
     output: BytesMut,
-    flags: &'a [u8]
+    flags: &'a [u8],
 }
 
-impl<'a, F> PxDecompressor<'a, F> where F: Buf + Clone {
+impl<'a, F> PxDecompressor<'a, F>
+where
+    F: Buf + Clone,
+{
     pub fn run(buffer: F, flags: &'a [u8], max_size: u16) -> PyResult<Bytes> {
         let mut slf = Self {
             buffer,
             output: BytesMut::with_capacity(max_size as usize),
-            flags
+            flags,
         };
 
         while slf.buffer.remaining() > 0 {
@@ -537,7 +598,7 @@ impl<'a, F> PxDecompressor<'a, F> where F: Buf + Clone {
         let lonibble = next & 0xF;
         match self.matches_flags(hinibble) {
             Some(x) => self.insert_byte_pattern(x, lonibble),
-            None => self.copy_sequence(lonibble, hinibble)?
+            None => self.copy_sequence(lonibble, hinibble)?,
         }
         Ok(())
     }
@@ -553,7 +614,8 @@ impl<'a, F> PxDecompressor<'a, F> where F: Buf + Clone {
 
     #[inline]
     fn insert_byte_pattern(&mut self, idx_ctrl_flags: usize, lonibble: u8) {
-        self.output.put(&Self::compute_four_nibbles_pattern(idx_ctrl_flags, lonibble)[..]);
+        self.output
+            .put(&Self::compute_four_nibbles_pattern(idx_ctrl_flags, lonibble)[..]);
     }
 
     fn copy_sequence(&mut self, lonibble: u8, hinibble: u8) -> PyResult<()> {
