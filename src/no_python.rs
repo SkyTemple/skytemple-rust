@@ -30,6 +30,10 @@ pub(crate) type PyResult<T> = Result<T, PyErr>;
 #[derive(Copy, Clone)]
 pub struct Python;
 
+/// Dummy. Just pass this when you don't use Python.
+#[derive(Copy, Clone)]
+pub struct PyType;
+
 #[derive(Debug)]
 #[allow(dead_code)]
 pub struct PyErr {

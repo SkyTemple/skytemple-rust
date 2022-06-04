@@ -48,6 +48,11 @@ pub fn pymethods(_: TokenStream, item: TokenStream) -> TokenStream {
 }
 
 #[proc_macro_attribute]
+pub fn classmethod(_: TokenStream, item: TokenStream) -> TokenStream {
+    item
+}
+
+#[proc_macro_attribute]
 pub fn new(_: TokenStream, item: TokenStream) -> TokenStream {
     item
 }
