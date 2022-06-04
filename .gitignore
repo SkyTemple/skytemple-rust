@@ -20,6 +20,7 @@ MANIFEST
 pip-log.txt
 pip-delete-this-directory.txt
 __pycache__/
+.mypy_cache/
 *.py[cod]
 *$py.class
 *.so

@@ -64,7 +64,7 @@ const CMD_COPY__NEXT__LE_16: u8                   = 0x7F;
 /////////////////////////////////////////
 /////////////////////////////////////////
 
-#[derive(PartialEq)]
+#[derive(PartialEq, Eq)]
 enum WherePattern {
     WriteAsByte, IsCurrentPattern, IsPreviousPatternCycle
 }

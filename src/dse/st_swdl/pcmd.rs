@@ -25,7 +25,7 @@ use crate::gettext::gettext;
 
 const PCMD_HEADER: &[u8] = b"pcmd";
 
-#[derive(Debug, Clone, Default, PartialEq)]
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct SwdlPcmd {
     pub chunk_data: StBytes
 }

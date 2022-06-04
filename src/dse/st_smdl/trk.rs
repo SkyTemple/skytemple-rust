@@ -29,7 +29,7 @@ use crate::gettext::gettext;
 
 const TRK_HEADER: &[u8] = b"trk\x20";
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct SmdlTrackHeader {
     pub param1: u32,
     pub param2: u32,
@@ -79,7 +79,7 @@ impl SmdlTrackHeader {
     }
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct SmdlTrackPreamble {
     pub track_id: u8,
     pub channel_id: u8,
@@ -152,7 +152,7 @@ impl<'a> Iterator for SmdlTrackIter<'a> {
     }
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct SmdlTrack {
     pub header: SmdlTrackHeader,
     pub preamble: SmdlTrackPreamble,

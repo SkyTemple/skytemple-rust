@@ -32,12 +32,12 @@ use crate::dse::st_smdl::trk::SmdlTrack;
 const SMDL_HEADER: &[u8] = b"smdl";
 const FRAMES_PER_SECOND: u32 = 60;
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Until {
     End, Loop, Event(SmdlEvent), Special(SmdlSpecialOpCode)
 }
 
-#[derive(Clone, Debug, PartialEq, Default)]
+#[derive(Clone, Debug, PartialEq, Eq, Default)]
 pub struct SmdlHeader {
     pub version: u16,
     pub unk1: u8,
@@ -72,7 +72,7 @@ impl SmdlHeader {
 }
 
 
-#[derive(Clone, Debug, PartialEq, Default)]
+#[derive(Clone, Debug, PartialEq, Eq, Default)]
 pub struct Smdl {
     pub header: SmdlHeader,
     pub song: SmdlSong,

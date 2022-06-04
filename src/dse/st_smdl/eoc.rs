@@ -24,7 +24,7 @@ use crate::gettext::gettext;
 
 const EOC_HEADER: &[u8] = b"eoc\x20";
 
-#[derive(Clone, Debug, PartialEq, Default)]
+#[derive(Clone, Debug, PartialEq, Eq, Default)]
 pub struct SmdlEoc {
     pub param1: u32,
     pub param2: u32,

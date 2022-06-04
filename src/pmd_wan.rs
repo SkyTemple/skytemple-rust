@@ -170,14 +170,14 @@ pub struct AnimStore {
 }
 
 #[pyclass(module = "skytemple_rust.pmd_wan")]
-#[derive(PartialEq, Clone)]
+#[derive(PartialEq, Eq, Clone)]
 pub struct Animation {
     #[pyo3(get)]
     pub frames: Vec<AnimationFrame>,
 }
 
 #[pyclass(module = "skytemple_rust.pmd_wan")]
-#[derive(PartialEq, Clone)]
+#[derive(PartialEq, Eq, Clone)]
 pub struct AnimationFrame {
     #[pyo3(get)]
     pub duration: u8,

@@ -24,7 +24,7 @@ pub const PLAY_NOTE_MAX: u8 = 0x7F;
 pub const PAUSE_NOTE_MAX: u8 = 0x8F;
 
 #[repr(u8)]
-#[derive(Clone, Copy, PartialEq, PartialOrd, FromPrimitive, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, FromPrimitive, Debug)]
 pub enum SmdlNote {
     C = 0x0,
     CS = 0x1,
@@ -57,7 +57,7 @@ impl From<u8> for SmdlNote {
 }
 
 #[repr(u8)]
-#[derive(Clone, PartialEq, PartialOrd, FromPrimitive, Debug)]
+#[derive(Clone, PartialEq, Eq, PartialOrd, FromPrimitive, Debug)]
 pub enum SmdlPause {
     HalfNote = 0x80,
     DottedQuarterNote = 0x81,
@@ -101,7 +101,7 @@ impl SmdlPause {
 }
 
 #[repr(u8)]
-#[derive(Clone, PartialEq, PartialOrd, FromPrimitive, Debug)]
+#[derive(Clone, PartialEq, Eq, PartialOrd, FromPrimitive, Debug)]
 pub enum SmdlSpecialOpCode {
     WaitAgain = 0x90,
     WaitAdd = 0x91,
@@ -184,7 +184,7 @@ impl SmdlSpecialOpCode {
     }
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum SmdlEvent {
     Special { op: SmdlSpecialOpCode, params: Vec<u8> },
     Pause { value: SmdlPause },

@@ -29,7 +29,7 @@ use crate::dse::st_swdl::pcmd::SwdlPcmd;
 const WAVI_HEADER: &[u8] = b"wavi";
 
 #[repr(u16)]
-#[derive(Clone, Copy, PartialEq, PartialOrd, FromPrimitive, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, FromPrimitive, Debug)]
 pub enum SampleFormatConsts {
     Pcm8bit = 0x0000,
     Pcm16bit = 0x0100,
@@ -37,7 +37,7 @@ pub enum SampleFormatConsts {
     Psg = 0x0300,  // possibly
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct SwdlPcmdReference {
     pub offset: u32,
     pub length: u32
@@ -53,7 +53,7 @@ impl SwdlPcmdReference {
     }
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct SwdlSampleInfoTblEntry {
     pub id: u16,
     pub ftune: i8,
@@ -203,7 +203,7 @@ impl From<SwdlSampleInfoTblEntry> for StBytes {
     }
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct SwdlWavi {
     pub sample_info_table: Vec<Option<SwdlSampleInfoTblEntry>>,
     initial_length: usize

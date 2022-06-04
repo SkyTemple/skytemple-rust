@@ -22,7 +22,7 @@ use num_derive::FromPrimitive;
 use num_traits::FromPrimitive;
 
 #[repr(u8)]
-#[derive(PartialEq, PartialOrd, FromPrimitive)]
+#[derive(PartialEq, Eq, PartialOrd, FromPrimitive)]
 pub enum DmaType {
     Wall = 0,
     Water = 1,
@@ -38,7 +38,7 @@ impl<'source> FromPyObject<'source> for DmaType {
 }
 
 #[repr(u8)]
-#[derive(PartialEq, PartialOrd, FromPrimitive)]
+#[derive(PartialEq, Eq, PartialOrd, FromPrimitive)]
 pub enum DmaExtraType {
     Floor1 = 0,
     WallOrVoid = 1,

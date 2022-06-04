@@ -24,7 +24,7 @@ use crate::python::*;
 
 ///
 
-#[derive(Clone, Copy, PartialEq, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
 struct TwoU16([u8; 4]);
 
 impl TwoU16 {
@@ -48,7 +48,7 @@ impl NullablePrimitive for TwoU16 {
 
 ///
 
-#[derive(Clone, Copy, PartialEq, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
 struct Pair24([u8; 3]);
 
 impl Pair24 {

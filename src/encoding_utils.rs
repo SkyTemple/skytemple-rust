@@ -158,7 +158,7 @@ macro_rules! stateful_decoder {
         mod $stmod {
             pub use self::State::*;
 
-            #[derive(PartialEq, Clone, Copy)]
+            #[derive(PartialEq, Eq, Clone, Copy)]
             pub enum State {
                 $inist,
                 $(

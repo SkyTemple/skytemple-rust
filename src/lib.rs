@@ -17,6 +17,9 @@
  * along with SkyTemple.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+// We allow this, because it currently incorrectly flags code expanded by the gettextrs crate.
+#![allow(clippy::format_push_string)]
+
 #[macro_use] pub(crate) mod encoding_utils;
 #[macro_use] pub(crate) mod macros;
 #[macro_use] pub(crate) mod gettext;

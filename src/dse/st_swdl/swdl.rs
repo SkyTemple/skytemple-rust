@@ -30,7 +30,7 @@ use crate::dse::st_swdl::wavi::{SwdlPcmdReference, SwdlWavi};
 
 const SWDL_HEADER: &[u8] = b"swdl";
 
-#[derive(Clone, PartialEq, Debug)]
+#[derive(Clone, PartialEq, Eq, Debug)]
 pub struct SwdlPcmdLen {
     pub reference: u32,
     pub external: bool,
@@ -68,7 +68,7 @@ impl From<SwdlPcmdLen> for StBytes {
     }
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct SwdlHeader {
     pub version: u16,
     pub unk1: u8,
@@ -166,7 +166,7 @@ impl SwdlHeader {
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Swdl {
     pub header: SwdlHeader,
     pub wavi: SwdlWavi,

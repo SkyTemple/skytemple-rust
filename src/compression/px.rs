@@ -39,7 +39,7 @@ const PX_MIN_MATCH_SEQLEN: usize = 3;
 const PX_NB_POSSIBLE_SEQUENCES_LEN: usize = 7;
 
 #[repr(i8)]
-#[derive(PartialEq, PartialOrd, FromPrimitive)]
+#[derive(PartialEq, Eq, PartialOrd, FromPrimitive)]
 #[allow(clippy::enum_variant_names)]
 enum Operation {
     CopyAsis = -1,
@@ -56,7 +56,7 @@ enum Operation {
 }
 
 #[repr(u8)]
-#[derive(PartialEq, PartialOrd)]
+#[derive(PartialEq, Eq, PartialOrd)]
 pub enum PxCompLevel {
     // No compression     - All command bytes are 0xFF, and values are stored uncompressed. File size is increased!
     Level0 = 0,
