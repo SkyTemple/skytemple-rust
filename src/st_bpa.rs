@@ -171,8 +171,8 @@ impl Bpa {
     /// each rows of tiles is one image set and each column is one frame.
     pub fn pil_to_tiles(&mut self, image: In256ColIndexedImage, py: Python) -> PyResult<()> {
         let image = image.extract(py)?;
-        let w = *&image.0 .1;
-        let h = *&image.0 .2;
+        let w = image.0 .1;
+        let h = image.0 .2;
 
         self.number_of_frames = (w / BPA_TILE_DIM) as u16;
         self.number_of_tiles = (h / BPA_TILE_DIM) as u16;
@@ -215,8 +215,8 @@ impl Bpa {
         let mut first_image_dims: Option<(usize, usize)> = None;
         for image in images {
             let image = image.extract(py)?;
-            let w = *&image.0 .1;
-            let h = *&image.0 .2;
+            let w = image.0 .1;
+            let h = image.0 .2;
             let (tiles, _) = TiledImage::native_to_tiled_seq(image, BPA_TILE_DIM, w, h)?;
             frames.push(tiles);
             if first_image_dims.is_none() {

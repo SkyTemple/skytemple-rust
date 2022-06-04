@@ -370,8 +370,8 @@ impl Bpc {
         py: Python,
     ) -> PyResult<()> {
         let image = image.extract(py)?;
-        let w = *&image.0 .1;
-        let h = *&image.0 .2;
+        let w = image.0 .1;
+        let h = image.0 .2;
         let (tiles, _) = TiledImage::native_to_tiled_seq(image, BPC_TILE_DIM, w, h)?;
         let mut layer = self.layers[layer_id].borrow_mut(py);
         layer.tiles = tiles.into_iter().map(|x| x.0.into()).collect();
@@ -400,8 +400,8 @@ impl Bpc {
         py: Python,
     ) -> PyResult<Vec<StBytes>> {
         let image = image.extract(py)?;
-        let w = *&image.0 .1;
-        let h = *&image.0 .2;
+        let w = image.0 .1;
+        let h = image.0 .2;
         debug_assert_eq!(self.tiling_width, self.tiling_height);
         let (tiles, palettes, tilemap) = TiledImage::native_to_tiled(
             image,
