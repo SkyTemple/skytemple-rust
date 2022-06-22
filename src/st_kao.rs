@@ -276,6 +276,13 @@ impl Kao {
         }
         Ok(Self { portraits })
     }
+    /// Creates a new empty KAO with the specified number of entries.
+    #[classmethod]
+    pub fn create_new(_cls: &PyType, number_entries: usize) -> Self {
+        Self {
+            portraits: vec![arr![None; 40]; number_entries]
+        }
+    }
     /// Returns the number of entries.
     pub fn n_entries(&self) -> usize {
         self.portraits.len()
