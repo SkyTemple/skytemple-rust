@@ -39,7 +39,7 @@ const PX_MIN_MATCH_SEQLEN: usize = 3;
 const PX_NB_POSSIBLE_SEQUENCES_LEN: usize = 7;
 
 #[repr(i8)]
-#[derive(PartialEq, Eq, PartialOrd, FromPrimitive)]
+#[derive(PartialEq, Eq, PartialOrd, FromPrimitive, Debug)]
 #[allow(clippy::enum_variant_names)]
 enum Operation {
     CopyAsis = -1,
@@ -68,6 +68,7 @@ pub enum PxCompLevel {
     Level3 = 3,
 }
 
+#[derive(Debug)]
 struct CompOp {
     // The operation to do
     typ: Operation, // = Operation.CopyAsis
@@ -89,8 +90,8 @@ struct MatchingSeq {
 
 pub struct PxCompressor<F: Buf> {
     flags: [u8; 9],
-    in_raw_buffer: F,
-    in_cur_buffer: F,
+    in_buffer: F,
+    in_cur_buffer: Cursor<F>,
     output: BytesMut,
     compression_level: PxCompLevel,
     should_search_first: bool,
@@ -114,8 +115,8 @@ impl PxCompressor<Bytes> {
         let pad: usize = if input_size % 8 != 0 { 1 } else { 0 };
         let mut slf = Self {
             flags: [0; 9],
-            in_raw_buffer: buffer.clone(),
-            in_cur_buffer: buffer,
+            in_buffer: buffer.clone(),
+            in_cur_buffer: Cursor::new(buffer),
             // Allocate at least as much memory as the input + some extra in case of dummy compression!
             // Worst case, we got 1 more bytes per 8 bytes.
             // And if we're not divisible by 8, add an extra
@@ -298,17 +299,24 @@ impl PxCompressor<Bytes> {
     /// Search through the lookback buffer for a string of bytes that matches the
     /// string beginning at l_cursor. It searches for at least 3 matching bytes
     /// at first, then, finds the longest matching sequence it can!
-    fn can_use_a_matching_sequence(&mut self, buf: Bytes, result: &mut CompOp) -> PyResult<bool> {
+    fn can_use_a_matching_sequence(
+        &mut self,
+        buf: Cursor<Bytes>,
+        result: &mut CompOp,
+    ) -> PyResult<bool> {
         // Get offset of LookBack Buffer beginning
-        let current_offset = buf.len() - buf.remaining();
+        let current_offset = buf.position() as usize;
         let lb_buffer_begin = if current_offset > PX_LOOKBACK_BUFFER_SIZE {
             current_offset - PX_LOOKBACK_BUFFER_SIZE
         } else {
             0
         };
 
-        let it_seq_end =
-            Self::adv_as_much_as_possible(current_offset, buf.len(), PX_MAX_MATCH_SEQLEN);
+        let it_seq_end = Self::adv_as_much_as_possible(
+            current_offset as usize,
+            self.in_buffer.len(),
+            PX_MAX_MATCH_SEQLEN,
+        );
 
         let cur_seq_len = it_seq_end - current_offset;
 
@@ -335,8 +343,8 @@ impl PxCompressor<Bytes> {
                     if candidate + PX_MIN_MATCH_SEQLEN < seqres.length {
                         valid_high_nibble = *candidate;
                     }
-                    debug_assert!(valid_high_nibble <= PX_MAX_MATCH_SEQLEN - PX_MIN_MATCH_SEQLEN);
                 }
+                debug_assert!(valid_high_nibble <= PX_MAX_MATCH_SEQLEN - PX_MIN_MATCH_SEQLEN);
             }
             let signed_offset = -(current_offset as i64 - seqres.pos as i64);
             result.lownybble = ((signed_offset >> 8) & 0xF) as u8;
@@ -370,25 +378,29 @@ impl PxCompressor<Bytes> {
 
         let mut cur_search_pos = searchbeg;
 
-        let mut searchbeg_buffer = self.in_raw_buffer.clone();
+        let mut searchbeg_buffer = self.in_buffer.clone();
         searchbeg_buffer.advance(tofindbeg);
         searchbeg_buffer.truncate(seq_to_find_short_end - tofindbeg);
         while cur_search_pos < searchend {
             let fnd_tpl = Self::find_subsequence(
-                &self.in_raw_buffer[cur_search_pos..searchend],
+                &self.in_buffer[cur_search_pos..searchend],
                 &searchbeg_buffer,
             );
             if let Some(x) = fnd_tpl {
-                cur_search_pos = x;
+                cur_search_pos += x;
+            } else {
+                cur_search_pos = searchend;
             }
+
             if cur_search_pos != searchend {
                 let nbmatches = Self::count_equal_consecutive_elem(
-                    &self.in_raw_buffer,
+                    &self.in_buffer,
                     cur_search_pos,
                     Self::adv_as_much_as_possible(cur_search_pos, searchend, PX_MAX_MATCH_SEQLEN),
                     tofindbeg,
                     tofindend,
                 );
+                debug_assert!(nbmatches <= PX_MAX_MATCH_SEQLEN);
                 if longestmatch.length < nbmatches {
                     longestmatch.length = nbmatches;
                     longestmatch.pos = cur_search_pos;
@@ -526,8 +538,8 @@ impl PxCompressor<Bytes> {
     fn count_equal_consecutive_elem(
         data: &[u8],
         mut first_1: usize,
-        mut first_2: usize,
         last_1: usize,
+        mut first_2: usize,
         last_2: usize,
     ) -> usize {
         let mut count = 0;
