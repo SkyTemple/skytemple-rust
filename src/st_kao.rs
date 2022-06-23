@@ -20,7 +20,7 @@
 use crate::bytes::{StBytes, StBytesMut};
 use crate::gettext::gettext;
 use crate::image::tiled::TiledImage;
-use crate::image::{In16ColIndexedImage, InIndexedImage, IndexedImage, PixelGenerator};
+use crate::image::{In16ColSolidIndexedImage, InIndexedImage, IndexedImage, PixelGenerator};
 use crate::python::*;
 use crate::st_at_common::{CommonAt, COMMON_AT_MUST_COMPRESS_3};
 use arr_macro::arr;
@@ -223,7 +223,7 @@ impl KaoImage {
         Ok(Self::KAO_IMG_PAL_B_SIZE + self.compressed_img_data.len())
     }
     /// Sets the portrait using image data with 16-bit color palette as input.
-    pub fn set(&mut self, py: Python, source: In16ColIndexedImage) -> PyResult<()> {
+    pub fn set(&mut self, py: Python, source: In16ColSolidIndexedImage) -> PyResult<()> {
         let (pal, img) = Self::bitmap_to_kao(source.extract(py)?)?;
         debug_assert_eq!(Self::KAO_IMG_PAL_B_SIZE, pal.len());
         self.pal_data = pal;
@@ -345,7 +345,7 @@ impl Kao {
         py: Python,
         index: usize,
         subindex: usize,
-        img: In16ColIndexedImage,
+        img: In16ColSolidIndexedImage,
     ) -> PyResult<()> {
         if index <= self.portraits.len() {
             if subindex < Self::PORTRAIT_SLOTS as usize {

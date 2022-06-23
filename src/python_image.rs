@@ -43,7 +43,7 @@ where
         // TODO: Maybe support in the future via (automatic) Tilequant?
     } else if T::MAX_COLORS == 16 {
         // Quantize
-        iimg = pil_simple_quant(py, iimg)?;
+        iimg = pil_simple_quant(py, iimg, T::CAN_HAVE_TRANSPARENCY)?;
     } else {
         // Otherwise we don't support checking further..., input image must be indexed
         // TODO: Maybe support in the future via (automatic) Tilequant?
@@ -103,15 +103,32 @@ impl IntoPy<PyObject> for IndexedImage {
 /// Simple single-palette image quantization. Reduces to 15 colors and adds one transparent color at index 0.
 /// The transparent (alpha=0) pixels in the input image are converted to that color (if can_have_transparency=True).
 /// If you need to do tiled multi-palette quantization, use Tilequant instead!
-fn pil_simple_quant(py: Python, mut pil_img: PyObject) -> PyResult<PyObject> {
-    if pil_img.getattr(py, "mode")?.extract::<&str>(py)? != "RGBA" {
-        let args = PyTuple::new(py, ["RGBA"]);
-        pil_img = pil_img.getattr(py, "convert")?.call1(py, args)?;
+fn pil_simple_quant(
+    py: Python,
+    mut pil_img: PyObject,
+    can_have_transparency: bool,
+) -> PyResult<PyObject> {
+    let args;
+    let transparency_map: Vec<bool>;
+    if can_have_transparency {
+        if pil_img.getattr(py, "mode")?.extract::<&str>(py)? != "RGBA" {
+            args = PyTuple::new(py, ["RGBA"]);
+            pil_img = pil_img.getattr(py, "convert")?.call1(py, args)?;
+        }
+        transparency_map =
+            PyIterator::from_object(py, &pil_img.getattr(py, "getdata")?.call0(py)?)?
+                .map(|x| Ok(x?.extract::<&PyTuple>()?.get_item(3)?.extract::<usize>()? == 0))
+                .collect::<PyResult<Vec<bool>>>()?;
+    } else {
+        if pil_img.getattr(py, "mode")?.extract::<&str>(py)? != "RGB" {
+            args = PyTuple::new(py, ["RGB"]);
+            pil_img = pil_img.getattr(py, "convert")?.call1(py, args)?;
+        }
+        transparency_map =
+            PyIterator::from_object(py, &pil_img.getattr(py, "getdata")?.call0(py)?)?
+                .map(|x| false)
+                .collect();
     }
-    let transparency_map: Vec<bool> =
-        PyIterator::from_object(py, &pil_img.getattr(py, "getdata")?.call0(py)?)?
-            .map(|x| Ok(x?.extract::<&PyTuple>()?.get_item(3)?.extract::<usize>()? == 0))
-            .collect::<PyResult<Vec<bool>>>()?;
     let args = PyTuple::new(
         py,
         [

@@ -93,6 +93,7 @@ pub type TiledImageData = (Tiles, StBytesMut, Vec<TilemapEntry>);
 
 pub trait InIndexedImage<'py>: Sized {
     const MAX_COLORS: usize;
+    const CAN_HAVE_TRANSPARENCY: bool;
     #[cfg(feature = "python")]
     fn unwrap_py(self) -> PyObject;
     #[cfg(feature = "python")]
@@ -114,15 +115,41 @@ pub trait InIndexedImage<'py>: Sized {
 pub struct In16ColIndexedImage(pub PyObject); // PIL Image
 #[cfg(feature = "python")]
 #[derive(FromPyObject)]
+/// Like above, but expected to have no transparency.
+/// (will be converted to RGB when imported and not already indexed).
+/// This is only relevant for the assumption that can be made during import, the first color
+/// is still reserved for transparency!
+///
+/// Why does this exist? We use Pillow to convert and quantize non-indexed images. When going
+/// via RGBA there is some loss in the color data when doing that, so ideally we want to avoid
+/// having to go through RGBA if possible.
+pub struct In16ColSolidIndexedImage(pub PyObject); // PIL Image
+#[cfg(feature = "python")]
+#[derive(FromPyObject)]
 pub struct In256ColIndexedImage(pub PyObject); // PIL Image
 
 #[cfg(not(feature = "python"))]
 pub struct In16ColIndexedImage(pub IndexedImage);
 #[cfg(not(feature = "python"))]
+pub struct In16ColSolidIndexedImage(pub IndexedImage);
+#[cfg(not(feature = "python"))]
 pub struct In256ColIndexedImage(pub IndexedImage);
 
 impl InIndexedImage<'_> for In16ColIndexedImage {
     const MAX_COLORS: usize = 16;
+    const CAN_HAVE_TRANSPARENCY: bool = true;
+    #[cfg(feature = "python")]
+    fn unwrap_py(self) -> PyObject {
+        self.0
+    }
+    #[cfg(not(feature = "python"))]
+    fn extract(self, _py: Python) -> PyResult<IndexedImage> {
+        Ok(self.0)
+    }
+}
+impl InIndexedImage<'_> for In16ColSolidIndexedImage {
+    const MAX_COLORS: usize = 16;
+    const CAN_HAVE_TRANSPARENCY: bool = false;
     #[cfg(feature = "python")]
     fn unwrap_py(self) -> PyObject {
         self.0
@@ -134,6 +161,7 @@ impl InIndexedImage<'_> for In16ColIndexedImage {
 }
 impl InIndexedImage<'_> for In256ColIndexedImage {
     const MAX_COLORS: usize = 256;
+    const CAN_HAVE_TRANSPARENCY: bool = true;
     #[cfg(feature = "python")]
     fn unwrap_py(self) -> PyObject {
         self.0
