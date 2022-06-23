@@ -167,7 +167,7 @@ jobs:
         run: |
           ls /${{ matrix.path }}/bin
           ln -s /${{ matrix.path }}/bin/mingw*-make.exe /${{ matrix.path }}/bin/make.exe
-          ln -s /${{ matrix.path }}/lib/libpython3.9.dll.a /${{ matrix.path }}/lib/libpython39.dll.a
+          ln -s /${{ matrix.path }}/lib/libpython3.10.dll.a /${{ matrix.path }}/lib/libpython310.dll.a
       - name: Build Python wheels
         shell: msys2 {0}
         run: |
@@ -176,7 +176,7 @@ jobs:
           CARGO_BUILD_TARGET: ${{ matrix.rust_target }}
           PYO3_CROSS_LIB_DIR: ${{ matrix.lib_dir }}
           PYO3_CROSS_INCLUDE_DIR: ${{ matrix.include_dir }}
-          PYO3_CROSS_PYTHON_VERSION: "3.9"
+          PYO3_CROSS_PYTHON_VERSION: "3.10"
           GETTEXT_LIB_DIR: "/${{ matrix.path }}/lib/"
           GETTEXT_INCLUDE_DIR: "/${{ matrix.path }}/include/"
           GETTEXT_BIN_DIR: "/${{ matrix.path }}/bin/"
