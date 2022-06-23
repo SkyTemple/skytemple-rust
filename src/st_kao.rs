@@ -280,7 +280,7 @@ impl Kao {
     #[classmethod]
     pub fn create_new(_cls: &PyType, number_entries: usize) -> Self {
         Self {
-            portraits: vec![arr![None; 40]; number_entries]
+            portraits: vec![arr![None; 40]; number_entries],
         }
     }
     /// Returns the number of entries.
