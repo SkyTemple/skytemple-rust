@@ -398,7 +398,7 @@ impl Bpc {
         image: In256ColIndexedImage,
         force_import: bool,
         py: Python,
-    ) -> PyResult<Vec<StBytes>> {
+    ) -> PyResult<Vec<Vec<u8>>> {
         let image = image.extract(py)?;
         let w = image.0 .1;
         let h = image.0 .2;
@@ -422,7 +422,7 @@ impl Bpc {
         layer.number_tiles = (layer.tiles.len() - 1) as u16;
         layer.chunk_tilemap_len =
             layer.tilemap.len() as u16 / self.tiling_width / self.tiling_height;
-        Ok(palettes.chunks(16).map(|x| x.into()).collect())
+        Ok(palettes.chunks(16 * 3).map(|x| x.to_vec()).collect())
     }
 
     pub fn get_tile(&self, layer: usize, index: usize, py: Python) -> PyResult<TilemapEntry> {
