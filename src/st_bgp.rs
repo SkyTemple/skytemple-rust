@@ -185,10 +185,12 @@ impl Bgp {
     fn extract_palette(data: &[u8]) -> Vec<Vec<u8>> {
         let mut palettes = Vec::with_capacity(BGP_MAX_PAL as usize);
         for palette in data.chunks(BGP_PAL_NUMBER_COLORS * BGP_PAL_ENTRY_LEN as usize) {
-            palettes.push(palette
-                .chunks(BGP_PAL_ENTRY_LEN as usize)
-                .flat_map(|bl| vec![bl[0], bl[1], bl[2]])
-                .collect::<Vec<u8>>())
+            palettes.push(
+                palette
+                    .chunks(BGP_PAL_ENTRY_LEN as usize)
+                    .flat_map(|bl| vec![bl[0], bl[1], bl[2]])
+                    .collect::<Vec<u8>>(),
+            )
         }
         palettes
     }
