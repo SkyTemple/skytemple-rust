@@ -24,6 +24,7 @@ use crate::python::*;
 use bytes::{Buf, BufMut, Bytes, BytesMut};
 use itertools::Itertools;
 use std::cmp::{max, min};
+use std::io::Cursor;
 use std::iter::{once, repeat, repeat_with};
 
 pub const BGP_RES_WIDTH: usize = 256;
@@ -61,16 +62,17 @@ pub struct Bgp {
 #[pymethods]
 impl Bgp {
     #[new]
-    pub fn new(mut data: StBytes, py: Python) -> PyResult<Self> {
-        let palette_begin = data.get_u32_le() as usize;
+    pub fn new(data: StBytes, py: Python) -> PyResult<Self> {
+        let mut header = Cursor::new(&data.0);
+        let palette_begin = header.get_u32_le() as usize;
         debug_assert_eq!(BGP_HEADER_LENGTH as usize, palette_begin);
-        let palette_length = data.get_u32_le() as usize;
-        let tiles_begin = data.get_u32_le() as usize;
-        let tiles_length = data.get_u32_le() as usize;
-        let tilemap_data_begin = data.get_u32_le() as usize;
-        let tilemap_data_length = data.get_u32_le() as usize;
-        let unknown1 = data.get_u32_le();
-        let unknown2 = data.get_u32_le();
+        let palette_length = header.get_u32_le() as usize;
+        let tiles_begin = header.get_u32_le() as usize;
+        let tiles_length = header.get_u32_le() as usize;
+        let tilemap_data_begin = header.get_u32_le() as usize;
+        let tilemap_data_length = header.get_u32_le() as usize;
+        let unknown1 = header.get_u32_le();
+        let unknown2 = header.get_u32_le();
 
         Ok(Self {
             palettes: Self::extract_palette(&data[palette_begin..(palette_begin + palette_length)]),
@@ -125,6 +127,7 @@ impl Bgp {
         force_import: bool,
         py: Python,
     ) -> PyResult<()> {
+        // TODO: This is very slow somehow.
         let (tiles, palettes, tilemap) = TiledImage::native_to_tiled(
             pil.extract(py)?,
             BGP_PAL_NUMBER_COLORS as u8,
@@ -180,11 +183,14 @@ impl Bgp {
 
 impl Bgp {
     fn extract_palette(data: &[u8]) -> Vec<Vec<u8>> {
-        data.chunks(data.len() / BGP_PAL_NUMBER_COLORS)
-            .chunks(BGP_PAL_ENTRY_LEN as usize)
-            .into_iter()
-            .map(|bl| bl.flat_map(|bll| vec![bll[0], bll[1], bll[2]]).collect())
-            .collect::<Vec<Vec<u8>>>()
+        let mut palettes = Vec::with_capacity(BGP_MAX_PAL as usize);
+        for palette in data.chunks(BGP_PAL_NUMBER_COLORS * BGP_PAL_ENTRY_LEN as usize) {
+            palettes.push(palette
+                .chunks(BGP_PAL_ENTRY_LEN as usize)
+                .flat_map(|bl| vec![bl[0], bl[1], bl[2]])
+                .collect::<Vec<u8>>())
+        }
+        palettes
     }
 
     fn extract_tilemap(mut data: &[u8], py: Python) -> PyResult<Vec<Py<TilemapEntry>>> {
