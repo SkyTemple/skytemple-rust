@@ -30,6 +30,12 @@ jobs:
           - "strings,python"
           - "dse"
           - "dse,python"
+          - "mappa_bin"
+          - "mappa_bin,python"
+          - "md"
+          - "md,python"
+          - "item_p"
+          - "item_p,python"
           - "romfs"
           - "strings,map_bg,kao,python,python,with_pmd_wan,dse,dungeon_graphics,misc_graphics,romfs"
     name: Build

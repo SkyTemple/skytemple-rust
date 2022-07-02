@@ -20,49 +20,64 @@
 extern crate proc_macro;
 use proc_macro::TokenStream;
 use quote::quote;
+use syn::DeriveInput;
+use syn::Ident;
 use syn::parse_macro_input;
 
-#[proc_macro_attribute]
-pub fn pyclass(_: TokenStream, item: TokenStream) -> TokenStream {
-    // We are removing all #[pyo3] inner attributes.
-    let mut class = parse_macro_input!(item as syn::ItemStruct);
+/// Derive conversion from/to Python integers for PrimitiveEnums.
+/// Only works if packed_struct and pyo3 are available.
+#[proc_macro_derive(EnumToPy_u16)]
+pub fn enum_to_py_derive_u16(input: TokenStream) -> TokenStream {
+    let input = parse_macro_input!(input as DeriveInput);
+    let span = input.ident.span();
+    do_enum_to_py_derive(input, Ident::new("u16", span))
+}
 
-    match &mut class.fields {
-        syn::Fields::Named(fields) => fields
-            .named
-            .iter_mut()
-            .for_each(|field| {field.attrs = vec![];}),
-        syn::Fields::Unnamed(fields) => fields
-            .unnamed
-            .iter_mut()
-            .for_each(|field| {field.attrs = vec![];}),
-        syn::Fields::Unit => {}
+/// Derive conversion from/to Python integers for PrimitiveEnums.
+/// Only works if packed_struct and pyo3 are available.
+#[proc_macro_derive(EnumToPy_u8)]
+pub fn enum_to_py_derive_u8(input: TokenStream) -> TokenStream {
+    let input = parse_macro_input!(input as DeriveInput);
+    let span = input.ident.span();
+    do_enum_to_py_derive(input, Ident::new("u8", span))
+}
+
+/// Derive conversion from/to Python integers for PrimitiveEnums.
+/// Only works if packed_struct and pyo3 are available.
+#[proc_macro_derive(EnumToPy_i8)]
+pub fn enum_to_py_derive_i8(input: TokenStream) -> TokenStream {
+    let input = parse_macro_input!(input as DeriveInput);
+    let span = input.ident.span();
+    do_enum_to_py_derive(input, Ident::new("i8", span))
+}
+
+fn do_enum_to_py_derive(input: DeriveInput, bytesize: Ident) -> TokenStream {
+    let ident = &input.ident;
+    let expanded = quote! {
+        impl ::pyo3::prelude::IntoPy<::pyo3::prelude::PyObject> for #ident
+        {
+            fn into_py(self, py: ::pyo3::prelude::Python<'_>) -> ::pyo3::prelude::PyObject {
+                packed_struct::PrimitiveEnum::to_primitive(&self).into_py(py)
+            }
+        }
+
+        impl<'source> ::pyo3::prelude::FromPyObject<'source> for #ident
+        {
+            fn extract(ob: &'source ::pyo3::prelude::PyAny) -> ::pyo3::prelude::PyResult<Self> {
+                if let Ok(obj) = ob.extract::<#bytesize>() {
+                    <Self as packed_struct::PrimitiveEnum>::from_primitive(obj).ok_or_else(
+                        || exceptions::PyTypeError::new_err(
+                            "Invalid value to convert into enum.",
+                        )
+                    )
+                } else {
+                    Err(exceptions::PyTypeError::new_err(
+                        "Invalid type to convert into enum.",
+                    ))
+                }
+            }
+        }
     };
 
-    quote!(#class).into()
-}
-
-#[proc_macro_attribute]
-pub fn pymethods(_: TokenStream, item: TokenStream) -> TokenStream {
-    item
-}
-
-#[proc_macro_attribute]
-pub fn classmethod(_: TokenStream, item: TokenStream) -> TokenStream {
-    item
-}
-
-#[proc_macro_attribute]
-pub fn new(_: TokenStream, item: TokenStream) -> TokenStream {
-    item
-}
-
-#[proc_macro_attribute]
-pub fn pyo3(_: TokenStream, item: TokenStream) -> TokenStream {
-    item
-}
-
-#[proc_macro_attribute]
-pub fn args(_: TokenStream, item: TokenStream) -> TokenStream {
-    item
+    TokenStream::from(expanded)
 }

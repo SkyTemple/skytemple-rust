@@ -19,6 +19,11 @@
 
 // We allow this, because it currently incorrectly flags code expanded by the gettextrs crate.
 #![allow(clippy::format_push_string)]
+// Seems to be a "bug" with Pyo3 atm:
+#![allow(clippy::borrow_deref_ref)]
+
+#[macro_use]
+extern crate skytemple_rust_macros;
 
 #[macro_use]
 pub(crate) mod encoding_utils;
@@ -81,8 +86,14 @@ pub mod st_dpci;
 pub mod st_dpl;
 #[cfg(feature = "dungeon_graphics")]
 pub mod st_dpla;
+#[cfg(feature = "item_p")]
+pub mod st_item_p;
 #[cfg(feature = "kao")]
 pub mod st_kao;
+#[cfg(feature = "mappa_bin")]
+pub mod st_mappa_bin;
+#[cfg(feature = "md")]
+pub mod st_md;
 #[cfg(feature = "compression")]
 pub mod st_pkdpx;
 #[cfg(feature = "strings")]
@@ -92,5 +103,7 @@ pub mod st_string;
 pub mod pmd_wan;
 #[cfg(feature = "romfs")]
 pub mod romfs;
+pub mod st_sir0;
+pub mod static_data;
 
 pub type PyResult<T> = crate::python::PyResult<T>;

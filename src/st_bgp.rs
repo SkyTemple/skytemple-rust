@@ -127,7 +127,6 @@ impl Bgp {
         force_import: bool,
         py: Python,
     ) -> PyResult<()> {
-        // TODO: This is very slow somehow.
         let (tiles, palettes, tilemap) = TiledImage::native_to_tiled(
             pil.extract(py)?,
             BGP_PAL_NUMBER_COLORS as u8,

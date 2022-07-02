@@ -18,6 +18,7 @@
  */
 
 use crate::python::{exceptions, PyErr};
+use packed_struct::PackingError;
 use std::borrow::Cow;
 
 #[inline]
@@ -30,4 +31,10 @@ pub fn convert_encoding_err(err: Cow<'static, str>) -> PyErr {
 #[allow(unused)]
 pub fn convert_io_err(err: std::io::Error) -> PyErr {
     PyErr::from(err)
+}
+
+#[inline]
+#[allow(unused)]
+pub fn convert_packing_err(err: PackingError) -> PyErr {
+    todo!()
 }

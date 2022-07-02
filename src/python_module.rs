@@ -72,8 +72,14 @@ use crate::st_dpci::create_st_dpci_module;
 use crate::st_dpl::create_st_dpl_module;
 #[cfg(feature = "dungeon_graphics")]
 use crate::st_dpla::create_st_dpla_module;
+#[cfg(feature = "item_p")]
+use crate::st_item_p::create_st_item_p_module;
 #[cfg(feature = "kao")]
 use crate::st_kao::create_st_kao_module;
+#[cfg(feature = "mappa_bin")]
+use crate::st_mappa_bin::create_st_mappa_bin_module;
+#[cfg(feature = "md")]
+use crate::st_md::create_st_md_module;
 #[cfg(feature = "compression")]
 use crate::st_pkdpx::create_st_pkdpx_module;
 #[cfg(feature = "strings")]
@@ -125,6 +131,12 @@ fn skytemple_rust(py: Python, module: &PyModule) -> PyResult<()> {
     add_submodule(module, create_st_dpl_module(py)?, modules)?;
     #[cfg(feature = "dungeon_graphics")]
     add_submodule(module, create_st_dpla_module(py)?, modules)?;
+    #[cfg(feature = "md")]
+    add_submodule(module, create_st_md_module(py)?, modules)?;
+    #[cfg(feature = "item_p")]
+    add_submodule(module, create_st_item_p_module(py)?, modules)?;
+    #[cfg(feature = "mappa_bin")]
+    add_submodule(module, create_st_mappa_bin_module(py)?, modules)?;
     #[cfg(feature = "dse")]
     add_submodule(module, create_st_smdl_module(py)?, modules)?;
     #[cfg(feature = "dse")]
