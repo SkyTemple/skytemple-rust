@@ -25,6 +25,10 @@
 #[macro_use]
 extern crate skytemple_rust_macros;
 
+#[cfg(not(feature = "python"))]
+#[macro_use]
+extern crate skytemple_rust_macros_no_py;
+
 #[macro_use]
 pub(crate) mod encoding_utils;
 #[macro_use]

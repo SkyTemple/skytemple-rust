@@ -16,7 +16,7 @@
 #  along with SkyTemple.  If not, see <https://www.gnu.org/licenses/>.
 from typing import Sequence, List
 
-from skytemple_rust import Sir0Serializable
+from skytemple_rust.st_sir0 import Sir0Serializable
 
 
 class Dpla(Sir0Serializable):

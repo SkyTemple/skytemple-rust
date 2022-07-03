@@ -17,9 +17,6 @@
  * along with SkyTemple.  If not, see <https://www.gnu.org/licenses/>.
  */
 /** Definitions of a Pyo3 types without Python or Pyo3 */
-#[macro_use]
-extern crate skytemple_rust_macros_no_py;
-
 pub use skytemple_rust_macros::*;
 use std::error::Error;
 use std::fmt::{Display, Formatter};
