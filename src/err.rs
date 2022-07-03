@@ -18,6 +18,7 @@
  */
 
 use crate::python::{exceptions, PyErr};
+#[cfg(feature = "packed_struct")]
 use packed_struct::PackingError;
 use std::borrow::Cow;
 
@@ -33,8 +34,9 @@ pub fn convert_io_err(err: std::io::Error) -> PyErr {
     PyErr::from(err)
 }
 
+#[cfg(feature = "packed_struct")]
 #[inline]
 #[allow(unused)]
 pub fn convert_packing_err(err: PackingError) -> PyErr {
-    todo!()
+    exceptions::PyValueError::new_err(format!("Failed packing/unpacking data: {}", err))
 }
