@@ -18,7 +18,7 @@ from typing import Union, List, Dict, Sequence
 
 from range_typed_integers import *
 
-from skytemple_rust import Sir0Serializable
+from skytemple_rust.st_sir0 import Sir0Serializable
 
 _MappaFloorStructureType = u8
 _MappaFloorWeather = u8

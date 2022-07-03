@@ -12,8 +12,8 @@ name = "skytemple_rust"
 
 [features]
 default = [
-    "python", "strings", "compression", "image",
-    "kao", "map_bg", "dungeon_graphics", "misc_graphics", "dse",
+    "python", "strings", "compression", "image", "static_data",
+    "sir0", "kao", "map_bg", "dungeon_graphics", "misc_graphics", "dse",
     "md", "item_p", "mappa_bin",
     "with_pmd_wan"
 ]
@@ -24,15 +24,17 @@ python = ["pyo3", "pyo3-log"]
 strings = ["encoding-index-singlebyte"]
 compression = []
 image = []
+static_data = []
 
+sir0 = []
 kao = ["compression", "image", "arr_macro"]
 map_bg = ["compression", "image"]
 misc_graphics = ["image"]
 dungeon_graphics = ["image"]
 dse = ["time"]
 md = ["packed_struct"]
-item_p = ["packed_struct"]
-mappa_bin = ["packed_struct"]
+item_p = ["packed_struct", "static_data", "sir0"]
+mappa_bin = ["packed_struct", "static_data", "sir0"]
 
 with_pmd_wan = ["pmd_wan", "anyhow", "python"]
 

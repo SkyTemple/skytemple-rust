@@ -81,7 +81,7 @@ pub struct ItemP {
 #[pymethods]
 impl ItemP {
     #[new]
-    pub fn new(data: StBytes, pointer_to_pointers: usize, py: Python) -> PyResult<Self> {
+    pub fn new(data: StBytes, pointer_to_pointers: u32, py: Python) -> PyResult<Self> {
         todo!()
     }
 
@@ -97,22 +97,22 @@ impl ItemP {
     pub fn _sir0_unwrap(
         cls: &PyType,
         content_data: StBytes,
-        data_pointer: usize,
-        static_data: InStaticData,
+        data_pointer: u32,
+        static_data: Option<InStaticData>,
     ) -> PyResult<Self> {
         Ok(Self::sir0_unwrap(content_data, data_pointer, static_data)?)
     }
 }
 
 impl Sir0Serializable for ItemP {
-    fn sir0_serialize_parts(&self) -> Sir0Result<(StBytes, Vec<usize>, Option<usize>)> {
+    fn sir0_serialize_parts(&self) -> Sir0Result<(StBytes, Vec<u32>, Option<u32>)> {
         todo!()
     }
 
     fn sir0_unwrap(
         content_data: StBytes,
-        data_pointer: usize,
-        static_data: InStaticData,
+        data_pointer: u32,
+        static_data: Option<InStaticData>,
     ) -> Sir0Result<Self> {
         todo!()
     }

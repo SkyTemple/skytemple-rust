@@ -96,6 +96,8 @@ pub mod st_mappa_bin;
 pub mod st_md;
 #[cfg(feature = "compression")]
 pub mod st_pkdpx;
+#[cfg(feature = "sir0")]
+pub mod st_sir0;
 #[cfg(feature = "strings")]
 pub mod st_string;
 
@@ -103,7 +105,8 @@ pub mod st_string;
 pub mod pmd_wan;
 #[cfg(feature = "romfs")]
 pub mod romfs;
-pub mod st_sir0;
+
+#[cfg(feature = "static_data")]
 pub mod static_data;
 
 pub type PyResult<T> = crate::python::PyResult<T>;

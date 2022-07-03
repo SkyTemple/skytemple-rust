@@ -1066,7 +1066,6 @@ impl MdEntry {
     pub fn __str__(&self) -> String {
         format!("{:?}", self)
     }
-
 }
 
 #[pyclass(module = "skytemple_rust.st_md")]

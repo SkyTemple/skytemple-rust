@@ -82,6 +82,8 @@ use crate::st_mappa_bin::create_st_mappa_bin_module;
 use crate::st_md::create_st_md_module;
 #[cfg(feature = "compression")]
 use crate::st_pkdpx::create_st_pkdpx_module;
+#[cfg(feature = "sir0")]
+use crate::st_sir0::create_st_sir0_module;
 #[cfg(feature = "strings")]
 use crate::st_string::create_st_string_module;
 
@@ -91,6 +93,8 @@ fn skytemple_rust(py: Python, module: &PyModule) -> PyResult<()> {
     info!("Loading skytemple_rust...");
     let sys = py.import("sys")?;
     let modules: &PyDict = sys.getattr("modules")?.cast_as()?;
+    #[cfg(feature = "sir0")]
+    add_submodule(module, create_st_sir0_module(py)?, modules)?;
     #[cfg(feature = "with_pmd_wan")]
     add_submodule(module, create_pmd_wan_module(py)?, modules)?;
     #[cfg(feature = "compression")]

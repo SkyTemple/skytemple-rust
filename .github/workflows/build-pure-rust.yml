@@ -37,7 +37,9 @@ jobs:
           - "item_p"
           - "item_p,python"
           - "romfs"
-          - "strings,map_bg,kao,python,python,with_pmd_wan,dse,dungeon_graphics,misc_graphics,romfs"
+          - "static_data"
+          - "sir0"
+          - "strings,map_bg,kao,python,python,with_pmd_wan,dse,dungeon_graphics,misc_graphics,romfs,static_data,sir0"
     name: Build
     runs-on: ubuntu-latest
     steps:
