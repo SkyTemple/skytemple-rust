@@ -17,10 +17,13 @@
  * along with SkyTemple.  If not, see <https://www.gnu.org/licenses/>.
  */
 use crate::bytes::StBytes;
+use crate::err::convert_packing_err;
 use crate::python::*;
-use crate::st_sir0::{Sir0Result, Sir0Serializable};
+use crate::st_sir0::{Sir0Error, Sir0Result, Sir0Serializable};
 use crate::static_data::InStaticData;
 use packed_struct::prelude::*;
+use std::mem::size_of;
+use std::ops::Deref;
 
 #[derive(Clone, PackedStruct, Debug, PartialEq, Eq)]
 #[packed_struct(endian = "lsb")]
@@ -47,27 +50,42 @@ pub struct ItemPEntry {
     #[pyo3(get, set)]
     pub action_name: u8,
     #[pyo3(get, set)]
-    #[packed_field(size_bytes = "1")]
-    pub is_valid: bool,
+    #[packed_field(size_bits = "1")]
+    pub ai_flag_3: bool,
     #[pyo3(get, set)]
-    #[packed_field(size_bytes = "1")]
-    pub is_in_td: bool,
-    #[pyo3(get, set)]
-    #[packed_field(size_bytes = "1")]
-    pub ai_flag_1: bool,
-    #[pyo3(get, set)]
-    #[packed_field(size_bytes = "1")]
+    #[packed_field(size_bits = "1")]
     pub ai_flag_2: bool,
     #[pyo3(get, set)]
-    #[packed_field(size_bytes = "1")]
-    pub ai_flag_3: bool,
+    #[packed_field(size_bits = "1")]
+    pub ai_flag_1: bool,
+    #[pyo3(get, set)]
+    #[packed_field(size_bits = "1")]
+    pub unk_bitflag_5: bool,
+    #[pyo3(get, set)]
+    #[packed_field(size_bits = "1")]
+    pub unk_bitflag_4: bool,
+    #[pyo3(get, set)]
+    #[packed_field(size_bits = "1")]
+    pub unk_bitflag_3: bool,
+    #[pyo3(get, set)]
+    #[packed_field(size_bits = "1")]
+    pub is_in_td: bool,
+    #[pyo3(get, set)]
+    #[packed_field(size_bits = "1")]
+    pub is_valid: bool,
+    #[pyo3(get, set)]
+    pub null: u8,
 }
 
 #[pymethods]
 impl ItemPEntry {
     #[cfg(feature = "python")]
-    pub fn __eq__(&self, other: PyObject) -> bool {
-        todo!()
+    pub fn __eq__(&self, other: PyObject, py: Python) -> bool {
+        if let Ok(other) = other.extract::<Py<ItemPEntry>>(py) {
+            self == other.borrow(py).deref()
+        } else {
+            false
+        }
     }
 }
 
@@ -81,8 +99,19 @@ pub struct ItemP {
 #[pymethods]
 impl ItemP {
     #[new]
+    #[allow(unused)]
     pub fn new(data: StBytes, pointer_to_pointers: u32, py: Python) -> PyResult<Self> {
-        todo!()
+        static_assert_size!(<ItemPEntry as PackedStruct>::ByteArray, 16);
+        Ok(Self {
+            item_list: data
+                .chunks_exact(size_of::<<ItemPEntry as PackedStruct>::ByteArray>())
+                .map(|b| {
+                    <ItemPEntry as PackedStruct>::unpack(b.try_into().unwrap())
+                        .map_err(convert_packing_err)
+                        .and_then(|v| Py::new(py, v))
+                })
+                .collect::<PyResult<Vec<Py<ItemPEntry>>>>()?,
+        })
     }
 
     #[cfg(feature = "python")]
@@ -95,7 +124,7 @@ impl ItemP {
     #[classmethod]
     #[pyo3(name = "sir0_unwrap")]
     pub fn _sir0_unwrap(
-        cls: &PyType,
+        _cls: &PyType,
         content_data: StBytes,
         data_pointer: u32,
         static_data: Option<InStaticData>,
@@ -106,15 +135,26 @@ impl ItemP {
 
 impl Sir0Serializable for ItemP {
     fn sir0_serialize_parts(&self) -> Sir0Result<(StBytes, Vec<u32>, Option<u32>)> {
-        todo!()
+        let content = Python::with_gil(|py| {
+            self.item_list
+                .iter()
+                .map(|v| {
+                    v.borrow(py)
+                        .pack()
+                        .map_err(|e| Sir0Error::SerializeFailed(anyhow::Error::from(e)))
+                })
+                .collect::<Sir0Result<Vec<[u8; 16]>>>()
+        })?;
+        Ok((StBytes::from(content.concat()), vec![], None))
     }
 
     fn sir0_unwrap(
         content_data: StBytes,
         data_pointer: u32,
-        static_data: Option<InStaticData>,
+        _static_data: Option<InStaticData>,
     ) -> Sir0Result<Self> {
-        todo!()
+        Python::with_gil(|py| Self::new(content_data, data_pointer, py))
+            .map_err(|e| Sir0Error::UnwrapFailed(anyhow::Error::from(e)))
     }
 }
 
@@ -130,7 +170,11 @@ impl ItemPWriter {
     }
 
     pub fn write(&self, model: Py<ItemP>, py: Python) -> PyResult<StBytes> {
-        todo!()
+        model
+            .borrow(py)
+            .sir0_serialize_parts()
+            .map(|(c, _, _)| c)
+            .map_err(|e| exceptions::PyValueError::new_err(format!("{}", e)))
     }
 }
 

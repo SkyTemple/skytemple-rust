@@ -126,7 +126,7 @@ fn pil_simple_quant(
         }
         transparency_map =
             PyIterator::from_object(py, &pil_img.getattr(py, "getdata")?.call0(py)?)?
-                .map(|x| false)
+                .map(|_| false)
                 .collect();
     }
     let args = PyTuple::new(
