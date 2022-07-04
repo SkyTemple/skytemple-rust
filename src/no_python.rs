@@ -28,6 +28,16 @@ pub(crate) type PyResult<T> = Result<T, PyErr>;
 #[derive(Copy, Clone)]
 pub struct Python;
 
+impl Python {
+    // Dummy. This would acquire the Python GIL if Python were used.
+    pub fn with_gil<F, R>(f: F) -> R
+    where
+        F: FnOnce(Python) -> R,
+    {
+        f(Python)
+    }
+}
+
 /// Dummy. Just pass this when you don't use Python.
 #[derive(Copy, Clone)]
 pub struct PyType;
