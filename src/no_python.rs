@@ -19,7 +19,7 @@
 /** Definitions of a Pyo3 types without Python or Pyo3 */
 pub use skytemple_rust_macros::*;
 use std::error::Error;
-use std::fmt::{Display, Formatter};
+use std::fmt::{Debug, Display, Formatter};
 use std::io;
 
 pub(crate) type PyResult<T> = Result<T, PyErr>;
@@ -111,6 +111,24 @@ where
     }
 }
 
+impl<T> PartialEq for Py<T>
+where
+    T: PartialEq + Clone,
+{
+    fn eq(&self, other: &Self) -> bool {
+        self.0 == other.0
+    }
+}
+
+impl<T> Debug for Py<T>
+where
+    T: Debug + Clone,
+{
+    fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), std::fmt::Error> {
+        self.0.fmt(f)
+    }
+}
+
 pub mod exceptions {
     use crate::no_python::PyErr;
 
@@ -129,4 +147,5 @@ pub mod exceptions {
     impl_py_exception!(PyValueError);
     impl_py_exception!(PyRuntimeError);
     impl_py_exception!(PyAssertionError);
+    impl_py_exception!(PyIndexError);
 }

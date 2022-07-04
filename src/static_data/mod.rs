@@ -1,3 +1,4 @@
+#[cfg(feature = "python")]
 use crate::python::{FromPyObject, PyAny, PyResult};
 
 #[cfg(feature = "python")]

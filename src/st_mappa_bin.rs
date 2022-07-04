@@ -23,7 +23,8 @@ use crate::static_data::InStaticData;
 use packed_struct::prelude::*;
 use std::collections::BTreeMap;
 
-#[derive(EnumToPy_u8, PrimitiveEnum_u8, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug)]
+#[derive(PrimitiveEnum_u8, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug)]
+#[cfg_attr(feature = "python", derive(EnumToPy_u8))]
 pub enum MappaFloorStructureType {
     MediumLarge = 0,
     Small = 1,
@@ -43,7 +44,8 @@ pub enum MappaFloorStructureType {
     MediumLarge15 = 15,
 }
 
-#[derive(EnumToPy_u8, PrimitiveEnum_u8, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug)]
+#[derive(PrimitiveEnum_u8, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug)]
+#[cfg_attr(feature = "python", derive(EnumToPy_u8))]
 pub enum MappaFloorWeather {
     Clear = 0,
     Sunny = 1,
@@ -56,7 +58,8 @@ pub enum MappaFloorWeather {
     Random = 8,
 }
 
-#[derive(EnumToPy_u8, PrimitiveEnum_u8, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug)]
+#[derive(PrimitiveEnum_u8, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug)]
+#[cfg_attr(feature = "python", derive(EnumToPy_u8))]
 pub enum MappaFloorDarknessLevel {
     NoDarkness = 0,
     HeavyDarkness = 1,
@@ -65,7 +68,8 @@ pub enum MappaFloorDarknessLevel {
     FourTile = 4,
 }
 
-#[derive(EnumToPy_u8, PrimitiveEnum_u8, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug)]
+#[derive(PrimitiveEnum_u8, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug)]
+#[cfg_attr(feature = "python", derive(EnumToPy_u8))]
 pub enum MappaTrapType {
     Unused = 0,
     MudTrap = 1,
@@ -204,9 +208,9 @@ pub struct MappaFloorTerrainSettings {
     pub unk7: bool,
 }
 
-#[pyclass(module = "skytemple_rust.st_mappa_bin")]
 #[derive(Clone, PackedStruct, Debug, PartialEq, Eq)]
 #[packed_struct(endian = "lsb")]
+#[pyclass(module = "skytemple_rust.st_mappa_bin")]
 pub struct MappaFloorLayout {
     #[pyo3(get, set)]
     #[packed_field(size_bytes = "1", ty = "enum")]

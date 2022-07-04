@@ -69,7 +69,8 @@ impl MdPropertiesState {
     }
 }
 
-#[derive(EnumToPy_u16, PrimitiveEnum_u16, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug)]
+#[derive(PrimitiveEnum_u16, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug)]
+#[cfg_attr(feature = "python", derive(EnumToPy_u16))]
 pub enum EvolutionMethod {
     None = 0,
     Level = 1,
@@ -79,7 +80,8 @@ pub enum EvolutionMethod {
     NoReq = 5,
 }
 
-#[derive(EnumToPy_u16, PrimitiveEnum_u16, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug)]
+#[derive(PrimitiveEnum_u16, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug)]
+#[cfg_attr(feature = "python", derive(EnumToPy_u16))]
 pub enum AdditionalRequirement {
     None = 0,
     LinkCable = 1,
@@ -99,7 +101,8 @@ pub enum AdditionalRequirement {
     Mimic = 15,
 }
 
-#[derive(EnumToPy_u8, PrimitiveEnum_u8, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug)]
+#[derive(PrimitiveEnum_u8, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug)]
+#[cfg_attr(feature = "python", derive(EnumToPy_u8))]
 pub enum Gender {
     Invalid = 0,
     Male = 1,
@@ -107,7 +110,8 @@ pub enum Gender {
     Genderless = 3,
 }
 
-#[derive(EnumToPy_u8, PrimitiveEnum_u8, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug)]
+#[derive(PrimitiveEnum_u8, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug)]
+#[cfg_attr(feature = "python", derive(EnumToPy_u8))]
 pub enum PokeType {
     None = 0,
     Normal = 1,
@@ -130,7 +134,8 @@ pub enum PokeType {
     Neutral = 18,
 }
 
-#[derive(EnumToPy_u8, PrimitiveEnum_u8, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug)]
+#[derive(PrimitiveEnum_u8, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug)]
+#[cfg_attr(feature = "python", derive(EnumToPy_u8))]
 pub enum MovementType {
     Standard = 0,
     Unknown1 = 1,
@@ -140,7 +145,8 @@ pub enum MovementType {
     Water = 5,
 }
 
-#[derive(EnumToPy_u8, PrimitiveEnum_u8, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug)]
+#[derive(PrimitiveEnum_u8, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug)]
+#[cfg_attr(feature = "python", derive(EnumToPy_u8))]
 pub enum IQGroup {
     A = 0,
     B = 1,
@@ -160,7 +166,8 @@ pub enum IQGroup {
     Invalid = 0xF,
 }
 
-#[derive(EnumToPy_u8, PrimitiveEnum_u8, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug)]
+#[derive(PrimitiveEnum_u8, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug)]
+#[cfg_attr(feature = "python", derive(EnumToPy_u8))]
 pub enum Ability {
     Stench = 0x1,
     ThickFat = 0x2,
@@ -289,7 +296,8 @@ pub enum Ability {
     Null = 0x00,
 }
 
-#[derive(EnumToPy_i8, PrimitiveEnum_i8, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug)]
+#[derive(PrimitiveEnum_i8, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug)]
+#[cfg_attr(feature = "python", derive(EnumToPy_i8))]
 pub enum ShadowSize {
     Small = 0,
     Medium = 1,
@@ -442,11 +450,7 @@ impl MdEntry {
 
     #[getter]
     pub fn md_index_base(&self, py: Python) -> PyResult<u32> {
-        Ok(self.md_index
-            % MdPropertiesState::instance(py)?
-                .as_ref(py)
-                .borrow()
-                .num_entities)
+        Ok(self.md_index % MdPropertiesState::instance(py)?.borrow(py).num_entities)
     }
 
     // <editor-fold desc="Proxy getters for MdEntryData" defaultstate="collapsed">
@@ -1146,7 +1150,7 @@ impl Md {
                 let new_list = self
                     .entries
                     .iter()
-                    .filter(|e| e.borrow(py).entid() as usize == index)
+                    .filter(|e| e.borrow(py).data.entid as usize == index)
                     .cloned()
                     .collect();
                 let new_list_ref = ve.insert(new_list);
@@ -1227,19 +1231,12 @@ impl MdWriter {
     }
 
     pub fn write(&self, model: Py<Md>, py: Python) -> PyResult<StBytes> {
-        let mdl: PyRef<Md> = model.as_ref(py).borrow();
+        let mdl: PyRef<Md> = model.borrow(py);
 
         let entries = mdl
             .entries
             .iter()
-            .map(|entry| {
-                entry
-                    .as_ref(py)
-                    .borrow()
-                    .data
-                    .pack()
-                    .map_err(convert_packing_err)
-            })
+            .map(|entry| entry.borrow(py).data.pack().map_err(convert_packing_err))
             .collect::<PyResult<Vec<_>>>()?;
 
         let len_as_bytes = (mdl.entries.len() as u32).to_le_bytes();

@@ -26,7 +26,7 @@ compression = []
 image = []
 static_data = []
 
-sir0 = []
+sir0 = ["static_data", "anyhow"]
 kao = ["compression", "image", "arr_macro"]
 map_bg = ["compression", "image"]
 misc_graphics = ["image"]

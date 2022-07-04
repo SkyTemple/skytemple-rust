@@ -49,6 +49,12 @@ pub fn pymethods(_: TokenStream, item: TokenStream) -> TokenStream {
     item
 }
 
+/// getter for Python/PyO3-less environments.
+#[proc_macro_attribute]
+pub fn getter(_: TokenStream, item: TokenStream) -> TokenStream {
+    item
+}
+
 /// classmethod for Python/PyO3-less environments.
 #[proc_macro_attribute]
 pub fn classmethod(_: TokenStream, item: TokenStream) -> TokenStream {

@@ -22,9 +22,9 @@ use crate::st_sir0::{Sir0Result, Sir0Serializable};
 use crate::static_data::InStaticData;
 use packed_struct::prelude::*;
 
-#[pyclass(module = "skytemple_rust.st_item_p")]
 #[derive(Clone, PackedStruct, Debug, PartialEq, Eq)]
 #[packed_struct(endian = "lsb")]
+#[pyclass(module = "skytemple_rust.st_item_p")]
 pub struct ItemPEntry {
     #[pyo3(get, set)]
     pub buy_price: u16,
