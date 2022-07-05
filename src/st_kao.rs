@@ -302,15 +302,10 @@ impl Kao {
         Ok(())
     }
     /// Gets an image from the Kao catalog.
-    pub fn get(
-        &self,
-        py: Python,
-        index: usize,
-        subindex: usize,
-    ) -> PyResult<Option<PyClonedByRef<KaoImage>>> {
+    pub fn get(&self, index: usize, subindex: usize) -> PyResult<Option<Py<KaoImage>>> {
         if index < self.portraits.len() {
             if subindex < Self::PORTRAIT_SLOTS {
-                return return_option(py, &self.portraits[index][subindex]);
+                return Ok((&self.portraits[index][subindex]).clone());
             }
             return Err(exceptions::PyValueError::new_err(format!(
                 "The subindex requested must be between 0 and {}",

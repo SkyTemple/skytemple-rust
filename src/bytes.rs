@@ -17,6 +17,7 @@
  * along with SkyTemple.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+use crate::python::Py;
 #[cfg(feature = "python")]
 use crate::python::{
     FromPyObject, IntoPy, PyAny, PyByteArray, PyBytes, PyObject, PyResult, Python,
@@ -231,5 +232,25 @@ impl From<StBytesMut> for BytesMut {
 impl From<StBytesMut> for Bytes {
     fn from(v: StBytesMut) -> Self {
         v.0.freeze()
+    }
+}
+
+impl<T, E> TryFrom<StBytes> for Py<T>
+where
+    T: TryFrom<StBytes, Error = E>,
+{
+    type Error = E;
+
+    fn try_from(value: StBytes) -> Result<Self, Self::Error> {
+        todo!()
+    }
+}
+
+impl<T> From<Py<T>> for StBytes
+where
+    T: Into<StBytes>,
+{
+    fn from(value: Py<T>) -> Self {
+        todo!()
     }
 }

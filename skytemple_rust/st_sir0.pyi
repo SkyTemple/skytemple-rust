@@ -12,7 +12,7 @@ class Sir0Serializable(Protocol):
         ...
 
     @classmethod
-    def sir0_unwrap(cls, content_data: bytes, data_pointer: u32, static_data: Optional[Any] = None) -> 'Sir0Serializable':
+    def sir0_unwrap(cls, content_data: bytes, data_pointer: u32) -> 'Sir0Serializable':
         ...
 
 

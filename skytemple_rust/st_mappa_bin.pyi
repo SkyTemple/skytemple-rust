@@ -14,7 +14,7 @@
 #
 #  You should have received a copy of the GNU General Public License
 #  along with SkyTemple.  If not, see <https://www.gnu.org/licenses/>.
-from typing import Union, List, Dict, Sequence
+from typing import Union, List, Dict, Sequence, MutableSequence
 
 from range_typed_integers import *
 
@@ -65,7 +65,7 @@ class MappaItemList:
         ...
 
     @classmethod
-    def from_bytes(cls, data: bytes, item_list: List[_MappaItem], pointer: int) -> MappaItemList: ...
+    def from_bytes(cls, data: bytes, pointer: int) -> MappaItemList: ...
 
     def to_bytes(self) -> bytes: ...
 
@@ -108,7 +108,7 @@ class MappaFloorLayout:
     initial_enemy_density: i8
     kecleon_shop_chance: u8
     monster_house_chance: u8
-    unusued_chance: u8
+    unused_chance: u8
     sticky_item_chance: u8
     dead_ends: bool
     secondary_terrain: u8
@@ -171,7 +171,7 @@ class MappaFloorLayout:
 
 class MappaFloor:
     layout: MappaFloorLayout
-    monsters: Sequence[MappaMonster]
+    monsters: MutableSequence[MappaMonster]
     traps: MappaTrapList
     floor_items: MappaItemList
     shop_items: MappaItemList
@@ -201,6 +201,14 @@ class MappaBin(Sir0Serializable):
     floor_lists: Sequence[Sequence[MappaFloor]]
 
     def __init__(self, floor_lists: List[List[MappaFloor]]): ...
+
+    def add_floor_list(self, floor_list: List[MappaFloor]):...
+
+    def remove_floor_list(self, index: int):...
+
+    def add_floor_to_floor_list(self, floor_list_index: int, floor: MappaFloor): ...
+
+    def remove_floor_from_floor_list(self, floor_list_index: int, floor_index: int):  ...
 
     def __eq__(self, other: object) -> bool: ...
 

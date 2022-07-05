@@ -110,7 +110,4 @@ pub mod pmd_wan;
 #[cfg(feature = "romfs")]
 pub mod romfs;
 
-#[cfg(feature = "static_data")]
-pub mod static_data;
-
 pub type PyResult<T> = crate::python::PyResult<T>;

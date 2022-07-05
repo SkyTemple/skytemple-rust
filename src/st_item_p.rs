@@ -20,7 +20,6 @@ use crate::bytes::StBytes;
 use crate::err::convert_packing_err;
 use crate::python::*;
 use crate::st_sir0::{Sir0Error, Sir0Result, Sir0Serializable};
-use crate::static_data::InStaticData;
 use packed_struct::prelude::*;
 use std::mem::size_of;
 use std::ops::Deref;
@@ -81,7 +80,7 @@ pub struct ItemPEntry {
 impl ItemPEntry {
     #[cfg(feature = "python")]
     pub fn __eq__(&self, other: PyObject, py: Python) -> bool {
-        if let Ok(other) = other.extract::<Py<ItemPEntry>>(py) {
+        if let Ok(other) = other.extract::<Py<Self>>(py) {
             self == other.borrow(py).deref()
         } else {
             false
@@ -123,13 +122,8 @@ impl ItemP {
     #[cfg(feature = "python")]
     #[classmethod]
     #[pyo3(name = "sir0_unwrap")]
-    pub fn _sir0_unwrap(
-        _cls: &PyType,
-        content_data: StBytes,
-        data_pointer: u32,
-        static_data: Option<InStaticData>,
-    ) -> PyResult<Self> {
-        Ok(Self::sir0_unwrap(content_data, data_pointer, static_data)?)
+    pub fn _sir0_unwrap(_cls: &PyType, content_data: StBytes, data_pointer: u32) -> PyResult<Self> {
+        Ok(Self::sir0_unwrap(content_data, data_pointer)?)
     }
 }
 
@@ -148,11 +142,7 @@ impl Sir0Serializable for ItemP {
         Ok((StBytes::from(content.concat()), vec![], None))
     }
 
-    fn sir0_unwrap(
-        content_data: StBytes,
-        data_pointer: u32,
-        _static_data: Option<InStaticData>,
-    ) -> Sir0Result<Self> {
+    fn sir0_unwrap(content_data: StBytes, data_pointer: u32) -> Sir0Result<Self> {
         Python::with_gil(|py| Self::new(content_data, data_pointer, py))
             .map_err(|e| Sir0Error::UnwrapFailed(anyhow::Error::from(e)))
     }

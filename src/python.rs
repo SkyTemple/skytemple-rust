@@ -36,31 +36,12 @@ pub use pyo3::PyErr;
 #[cfg(feature = "python")]
 const USER_ERROR_MARK: &str = "_skytemple__user_error";
 
-// The Py::clone_ref method returns a copy of the Py container with Python.
-// Without Python, it returns a reference instead.
-// See no_python module.
-#[cfg(feature = "python")]
-pub type PyClonedByRef<T> = Py<T>;
-
 #[cfg(not(feature = "python"))]
 pub use crate::no_python::exceptions;
 #[cfg(not(feature = "python"))]
 pub use crate::no_python::PyErr;
 #[cfg(not(feature = "python"))]
 pub(crate) use crate::no_python::*;
-
-#[inline]
-#[allow(unused)]
-// Clonability is required for non-Python use cases.
-pub(crate) fn return_option<T>(
-    py: Python,
-    opt: &Option<Py<T>>,
-) -> PyResult<Option<PyClonedByRef<T>>>
-where
-    T: Clone,
-{
-    Ok(opt.as_ref().map(|x| x.clone_ref(py)))
-}
 
 /// Creates a PyValueError that is marked as an user error for Python contexts (for error reporting purposes).
 #[cfg(feature = "python")]

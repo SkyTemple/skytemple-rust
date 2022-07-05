@@ -18,9 +18,12 @@
  */
 /** Definitions of a Pyo3 types without Python or Pyo3 */
 pub use skytemple_rust_macros::*;
+use std::cell::RefCell;
 use std::error::Error;
 use std::fmt::{Debug, Display, Formatter};
 use std::io;
+use std::ops::{Deref, DerefMut};
+use std::sync::Arc;
 
 pub(crate) type PyResult<T> = Result<T, PyErr>;
 
@@ -80,41 +83,39 @@ impl PyBytes {
     }
 }
 
-pub type PyClonedByRef<'py, T> = &'py Py<T>;
 pub type PyRef<'a, T> = &'a T;
 pub type PyRefMut<'a, T> = &'a mut T;
 
-/// This would normally be a reference to an object on the Python heap.
-/// If not using Python, extract always clones, clone_ref returns a reference to Self,
+/// This would normally be a reference to an object on the Python heap. Without Python it's
+/// basically an Arc<RefCell<T>>.
+/// If not using Python, extract always clones, clone clones the inner Arc,
 /// and borrow and borrow_mut return normal Rust references to T instead.
 #[derive(Clone)]
-pub struct Py<T>(T)
-where
-    T: Clone;
+pub struct Py<T>(Arc<RefCell<T>>);
+impl<T> Py<T> {
+    pub fn new(_: Python, obj: T) -> PyResult<Self> {
+        Ok(Self(Arc::new(obj)))
+    }
+    pub fn borrow(&self, _: Python) -> &T {
+        &self.0.borrow().deref()
+    }
+    pub fn borrow_mut(&mut self, _: Python) -> &mut T {
+        self.0.borrow_mut().deref_mut()
+    }
+}
+
 impl<T> Py<T>
 where
     T: Clone,
 {
-    pub fn new(_: Python, obj: T) -> PyResult<Self> {
-        Ok(Self(obj))
-    }
-    pub fn extract<U>(&self, _: Python) -> PyResult<T> {
-        // where T: U (!!)
-        Ok(self.0.clone())
-    }
-    pub fn borrow(&self, _: Python) -> &T {
-        &self.0
-    }
-    pub fn borrow_mut(&mut self, _: Python) -> &mut T {
-        &mut self.0
-    }
-    pub fn clone_ref(&self, _: Python) -> &Py<T> {
-        self
+    pub fn extract(&self, _: Python) -> PyResult<T> {
+        Ok(T::clone(self.0.borrow().deref()))
     }
 }
+
 impl<T> Py<T>
 where
-    T: PyWrapable + Clone,
+    T: PyWrapable,
 {
     pub fn from(obj: T) -> Self {
         Self(obj)
@@ -123,7 +124,7 @@ where
 
 impl<T> PartialEq for Py<T>
 where
-    T: PartialEq + Clone,
+    T: PartialEq,
 {
     fn eq(&self, other: &Self) -> bool {
         self.0 == other.0
@@ -132,7 +133,7 @@ where
 
 impl<T> Debug for Py<T>
 where
-    T: Debug + Clone,
+    T: Debug,
 {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), std::fmt::Error> {
         self.0.fmt(f)

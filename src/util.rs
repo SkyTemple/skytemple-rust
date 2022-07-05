@@ -16,7 +16,13 @@
  * You should have received a copy of the GNU General Public License
  * along with SkyTemple.  If not, see <https://www.gnu.org/licenses/>.
  */
+use crate::bytes::StBytes;
+use crate::python::PyErr;
+use crate::PyResult;
 use std::cmp::{max, min};
+use std::fmt::{Debug, Formatter};
+use std::hash::{Hash, Hasher};
+use std::hint::unreachable_unchecked;
 
 #[inline]
 #[allow(unused)]
@@ -53,4 +59,109 @@ pub(crate) fn gcd(a: usize, b: usize) -> usize {
 #[allow(unused)]
 pub(crate) fn lcm(a: usize, b: usize) -> usize {
     a * b / gcd(a, b)
+}
+
+/// Smart pointer to lazily build data from StBytes.
+/// Can fail converting from StBytes/T and into T.
+pub enum Lazy<T>
+where
+    T: Into<StBytes> + TryFrom<StBytes>,
+{
+    Source(StBytes),
+    Instance(T),
+}
+
+impl<T> Clone for Lazy<T>
+where
+    T: Into<StBytes> + TryFrom<StBytes> + Clone,
+{
+    fn clone(&self) -> Self {
+        match self {
+            Self::Source(v) => Self::Source(v.clone()),
+            Self::Instance(v) => Self::Instance(v.clone()),
+        }
+    }
+}
+
+impl<T> Debug for Lazy<T>
+where
+    T: Into<StBytes> + TryFrom<StBytes> + Debug,
+{
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Source(v) => write!(f, "Lazy::Source({:?})", v),
+            Self::Instance(v) => write!(f, "Lazy::Instance({:?})", v),
+        }
+    }
+}
+
+impl<T, E> PartialEq for Lazy<T>
+where
+    T: Into<StBytes> + TryFrom<StBytes, Error = E> + PartialEq,
+    E: Into<PyErr>,
+{
+    fn eq(&self, other: &Self) -> bool {
+        self.as_bytes() == other.as_bytes()
+    }
+}
+
+impl<T, E> Eq for Lazy<T>
+where
+    T: Into<StBytes> + TryFrom<StBytes, Error = E> + Eq,
+    E: Into<PyErr>,
+{
+}
+
+impl<T, E> Hash for Lazy<T>
+where
+    T: Into<StBytes> + TryFrom<StBytes, Error = E> + Hash,
+    E: Into<PyErr>,
+{
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.as_bytes().hash(state)
+    }
+}
+
+impl<T, E> Lazy<T>
+where
+    T: Into<StBytes> + TryFrom<StBytes, Error = E>,
+    E: Into<PyErr>,
+{
+    pub fn instance(&mut self) -> PyResult<&T> {
+        self.instance_mut().map(|v| &*v)
+    }
+    pub fn instance_mut(&mut self) -> PyResult<&mut T> {
+        Ok(match self {
+            Lazy::Source(v) => {
+                *self = Self::Instance(T::try_from(v.clone()).map_err(Into::into)?);
+                match self {
+                    Lazy::Instance(v) => v,
+                    Lazy::Source(_) => unsafe { unreachable_unchecked() },
+                }
+            }
+            Lazy::Instance(v) => v,
+        })
+    }
+    pub fn as_bytes(&self) -> StBytes {
+        todo!()
+    }
+}
+
+impl<T> From<StBytes> for Lazy<T>
+where
+    T: Into<StBytes> + TryFrom<StBytes>,
+{
+    fn from(value: StBytes) -> Self {
+        Self::Source(value)
+    }
+}
+
+impl<T, E> From<Lazy<T>> for StBytes
+where
+    T: Into<StBytes> + TryFrom<StBytes, Error = E>,
+    E: Into<PyErr>,
+{
+    fn from(source: Lazy<T>) -> Self {
+        source.as_bytes()
+    }
 }

@@ -1,7 +1,6 @@
 use crate::bytes::{StBytes, StBytesMut};
 use crate::python::PyErr;
 use crate::python::*;
-use crate::static_data::InStaticData;
 use bytes::{Buf, BufMut, Bytes, BytesMut};
 use std::convert::TryFrom;
 use std::vec;
@@ -51,19 +50,15 @@ where
 {
     fn sir0_serialize_parts(&self) -> Sir0Result<(StBytes, Vec<u32>, Option<u32>)>;
 
-    fn sir0_unwrap(
-        content_data: StBytes,
-        data_pointer: u32,
-        static_data: Option<InStaticData>,
-    ) -> Sir0Result<Self>;
+    fn sir0_unwrap(content_data: StBytes, data_pointer: u32) -> Sir0Result<Self>;
 
     fn wrap(&self) -> Sir0Result<Sir0> {
         let (content, pointer_offsets, data_pointer) = self.sir0_serialize_parts()?;
         Ok(Sir0::new(content, pointer_offsets, data_pointer))
     }
 
-    fn unwrap(self_as_sir0: Sir0, static_data: Option<InStaticData>) -> Sir0Result<Self> {
-        Self::sir0_unwrap(self_as_sir0.content, self_as_sir0.data_pointer, static_data)
+    fn unwrap(self_as_sir0: Sir0) -> Sir0Result<Self> {
+        Self::sir0_unwrap(self_as_sir0.content, self_as_sir0.data_pointer)
     }
 }
 
