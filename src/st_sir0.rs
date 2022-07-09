@@ -14,6 +14,10 @@ pub enum Sir0Error {
     SerializeFailed(anyhow::Error),
     #[error("Unwrap failed: {0}")]
     UnwrapFailed(anyhow::Error),
+    #[error("Serialization failed: {0}")]
+    SerializeFailedPy(PyErr),
+    #[error("Unwrap failed: {0}")]
+    UnwrapFailedPy(PyErr),
     #[error("Sir0 file is too short. Length: {0}")]
     Sir0TooShort(usize),
     #[error("File is not a valid Sir0 file (wrong magic value).")]
@@ -40,7 +44,14 @@ pub enum Sir0Error {
 
 impl From<Sir0Error> for PyErr {
     fn from(source: Sir0Error) -> Self {
-        exceptions::PyValueError::new_err(format!("Error trying to process Sir0 data: {}", source))
+        match source {
+            Sir0Error::SerializeFailedPy(e) => e,
+            Sir0Error::UnwrapFailedPy(e) => e,
+            _ => exceptions::PyValueError::new_err(format!(
+                "Error trying to process Sir0 data: {}",
+                source
+            )),
+        }
     }
 }
 

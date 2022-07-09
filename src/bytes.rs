@@ -235,22 +235,24 @@ impl From<StBytesMut> for Bytes {
     }
 }
 
-impl<T, E> TryFrom<StBytes> for Py<T>
-where
-    T: TryFrom<StBytes, Error = E>,
-{
-    type Error = E;
+pub trait AsStBytes {
+    fn as_bytes(&self) -> StBytes;
+}
 
-    fn try_from(value: StBytes) -> Result<Self, Self::Error> {
-        todo!()
+impl<T> AsStBytes for Py<T>
+where
+    Self: Into<StBytes>,
+{
+    fn as_bytes(&self) -> StBytes {
+        self.clone().into()
     }
 }
 
-impl<T> From<Py<T>> for StBytes
+impl<T> AsStBytes for &T
 where
-    T: Into<StBytes>,
+    T: AsStBytes,
 {
-    fn from(value: Py<T>) -> Self {
-        todo!()
+    fn as_bytes(&self) -> StBytes {
+        T::as_bytes(self)
     }
 }

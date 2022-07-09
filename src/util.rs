@@ -16,7 +16,7 @@
  * You should have received a copy of the GNU General Public License
  * along with SkyTemple.  If not, see <https://www.gnu.org/licenses/>.
  */
-use crate::bytes::StBytes;
+use crate::bytes::{AsStBytes, StBytes};
 use crate::python::PyErr;
 use crate::PyResult;
 use std::cmp::{max, min};
@@ -65,7 +65,7 @@ pub(crate) fn lcm(a: usize, b: usize) -> usize {
 /// Can fail converting from StBytes/T and into T.
 pub enum Lazy<T>
 where
-    T: Into<StBytes> + TryFrom<StBytes>,
+    T: AsStBytes + TryFrom<StBytes>,
 {
     Source(StBytes),
     Instance(T),
@@ -73,7 +73,7 @@ where
 
 impl<T> Clone for Lazy<T>
 where
-    T: Into<StBytes> + TryFrom<StBytes> + Clone,
+    T: AsStBytes + TryFrom<StBytes> + Clone,
 {
     fn clone(&self) -> Self {
         match self {
@@ -85,7 +85,7 @@ where
 
 impl<T> Debug for Lazy<T>
 where
-    T: Into<StBytes> + TryFrom<StBytes> + Debug,
+    T: AsStBytes + TryFrom<StBytes> + Debug,
 {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
@@ -97,7 +97,7 @@ where
 
 impl<T, E> PartialEq for Lazy<T>
 where
-    T: Into<StBytes> + TryFrom<StBytes, Error = E> + PartialEq,
+    T: AsStBytes + TryFrom<StBytes, Error = E> + PartialEq,
     E: Into<PyErr>,
 {
     fn eq(&self, other: &Self) -> bool {
@@ -107,14 +107,14 @@ where
 
 impl<T, E> Eq for Lazy<T>
 where
-    T: Into<StBytes> + TryFrom<StBytes, Error = E> + Eq,
+    T: AsStBytes + TryFrom<StBytes, Error = E> + Eq,
     E: Into<PyErr>,
 {
 }
 
 impl<T, E> Hash for Lazy<T>
 where
-    T: Into<StBytes> + TryFrom<StBytes, Error = E> + Hash,
+    T: AsStBytes + TryFrom<StBytes, Error = E> + Hash,
     E: Into<PyErr>,
 {
     fn hash<H: Hasher>(&self, state: &mut H) {
@@ -124,7 +124,7 @@ where
 
 impl<T, E> Lazy<T>
 where
-    T: Into<StBytes> + TryFrom<StBytes, Error = E>,
+    T: AsStBytes + TryFrom<StBytes, Error = E>,
     E: Into<PyErr>,
 {
     pub fn instance(&mut self) -> PyResult<&T> {
@@ -142,14 +142,11 @@ where
             Lazy::Instance(v) => v,
         })
     }
-    pub fn as_bytes(&self) -> StBytes {
-        todo!()
-    }
 }
 
 impl<T> From<StBytes> for Lazy<T>
 where
-    T: Into<StBytes> + TryFrom<StBytes>,
+    T: AsStBytes + TryFrom<StBytes>,
 {
     fn from(value: StBytes) -> Self {
         Self::Source(value)
@@ -158,10 +155,23 @@ where
 
 impl<T, E> From<Lazy<T>> for StBytes
 where
-    T: Into<StBytes> + TryFrom<StBytes, Error = E>,
+    T: AsStBytes + TryFrom<StBytes, Error = E>,
     E: Into<PyErr>,
 {
     fn from(source: Lazy<T>) -> Self {
         source.as_bytes()
+    }
+}
+
+impl<T, E> AsStBytes for Lazy<T>
+where
+    T: AsStBytes + TryFrom<StBytes, Error = E>,
+    E: Into<PyErr>,
+{
+    fn as_bytes(&self) -> StBytes {
+        match self {
+            Lazy::Source(s) => s.clone(),
+            Lazy::Instance(i) => i.as_bytes(),
+        }
     }
 }

@@ -58,3 +58,10 @@ pub fn create_value_user_error<S: Into<String> + IntoPy<PyObject> + Send + Sync 
 pub fn create_value_user_error<S: Into<String> + Send + Sync + 'static>(msg: S) -> PyErr {
     exceptions::PyValueError::new_err(msg)
 }
+
+#[cfg(feature = "python")]
+#[derive(FromPyObject)]
+pub enum SliceOrInt<'a> {
+    Slice(&'a pyo3::types::PySlice),
+    Int(isize),
+}
