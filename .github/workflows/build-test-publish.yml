@@ -5,113 +5,6 @@ name: Build with and for Python
 on: [push, pull_request]
 
 jobs:
-  typechecks:
-    runs-on: ubuntu-latest
-    name: Type checks
-    strategy:
-      max-parallel: 5
-      matrix:
-        python-version: [ "3.8", "3.9", "3.10" ]
-    steps:
-      - uses: actions/checkout@v1
-      - uses: theCapypara/mypy-check@rust-support
-        name: Run type checks
-        with:
-          mypy_flags: '--config-file mypy.ini'
-          requirements: '-r requirements.txt'
-          python_version: '${{ matrix.python-version }}'
-
-  build_linux:
-    runs-on: ubuntu-latest
-    name: Wheel Linux
-    steps:
-      # For tags we assume the version in setup.py is correct!
-      - name: Checkout
-        uses: actions/checkout@v2
-      - name: Rewrite version for dev if not tag
-        if: "!startsWith(github.ref, 'refs/tags/')"
-        run: |
-          perl -i -pe "s/__version__\s*=\s*'(.*?)(\.rc.*|\.a.*|\.post.*)?'/__version__='\1.dev0+${GITHUB_SHA::8}'/" setup.py
-      - name: Note version
-        run: |
-          echo "PACKAGE_VERSION=$(python3 -- ./setup.py --version)" >> $GITHUB_ENV
-      - name: Set up Python 3.8
-        uses: actions/setup-python@v1
-        with:
-          python-version: 3.8
-      - name: Upgrade pip
-        run: |
-          python -m pip install --upgrade pip
-      - name: Build Python wheels
-        uses: RalfG/python-wheels-manylinux-build@v0.3.4-manylinux2014_x86_64
-        with:
-          python-versions: 'cp38-cp38 cp39-cp39 cp310-cp310'
-          build-requirements: 'GitPython'
-          pre-build-command: 'source ./build-manylinux.sh'
-      - name: Upload wheels
-        uses: actions/upload-artifact@v2
-        with:
-          name: wheels-linux
-          path: dist/*.whl
-  build_macos_windows:
-    runs-on: ${{ matrix.os }}
-    name: Mac/Win Wheel
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ macos-10.15, windows-2019 ]
-        python-version: [ '3.8', '3.9', '3.10' ]
-        arch: [ 'x64', 'x86' ]
-        exclude:
-          - os: macos-10.15
-            arch: 'x86'
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v2
-      - name: Rewrite version for dev if not tag
-        if: "!startsWith(github.ref, 'refs/tags/')"
-        shell: bash
-        run: |
-          perl -i -pe "s/__version__\s*=\s*'(.*?)(\.rc.*|\.a.*|\.post.*)?'/__version__='\1.dev0+${GITHUB_SHA::8}'/" setup.py
-      - name: Note version
-        shell: bash
-        run: |
-          echo "PACKAGE_VERSION=$(python3 -- ./setup.py --version)" >> $GITHUB_ENV
-      - name: Setup Rust
-        uses: actions-rs/toolchain@v1
-        with:
-          toolchain: nightly
-          override: true
-          target: "${{ matrix.os == 'windows-2019' && 'i686-pc-windows-msvc' || 'x86_64-apple-darwin' }}"
-      - name: Set up Python
-        uses: actions/setup-python@v1
-        with:
-          python-version: ${{ matrix.python-version }}
-          architecture: ${{ matrix.arch }}
-      - name: Upgrade pip, install dev dependencies
-        run: |
-          python -m pip install --upgrade pip wheel
-          python -m pip install -r dev-requirements.txt
-          python -m pip install -r requirements.txt
-      - name: Download GNU Tar
-        uses: suisei-cn/actions-download-file@v1
-        if: "matrix.os == 'windows-2019'"
-        with:
-          url: https://skytemple.org/build_deps/tar.exe
-          target: "C:\\tarout"
-      - name: Prepend GNU Tar to Path
-        if: "matrix.os == 'windows-2019'"
-        shell: powershell
-        run:
-          echo "C:\tarout" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
-      - name: Build Python wheels
-        run: |
-          python setup.py bdist_wheel
-      - name: Upload wheels
-        uses: actions/upload-artifact@v2
-        with:
-          name: wheels-${{ matrix.os }}-py${{ matrix.python-version }}-${{ matrix.arch }}
-          path: dist/*.whl
   build_mingw:
     runs-on: windows-2019
     name: Msys Wheel
@@ -141,11 +34,6 @@ jobs:
             mingw-w64-${{ matrix.arch }}-diffutils
       - name: Checkout
         uses: actions/checkout@v2
-      - name: Rewrite version for dev if not tag
-        if: "!startsWith(github.ref, 'refs/tags/')"
-        shell: msys2 {0}
-        run: |
-          perl -i -pe "s/__version__\s*=\s*'(.*?)(\.rc.*|\.a.*|\.post.*)?'/__version__='\1.dev0+${GITHUB_SHA::8}'/" setup.py
       - name: Note version
         shell: msys2 {0}
         run: |
@@ -167,7 +55,7 @@ jobs:
         run: |
           ls /${{ matrix.path }}/bin
           ln -s /${{ matrix.path }}/bin/mingw*-make.exe /${{ matrix.path }}/bin/make.exe
-          ln -s /${{ matrix.path }}/lib/libpython3.9.dll.a /${{ matrix.path }}/lib/libpython39.dll.a
+          ln -s /${{ matrix.path }}/lib/libpython3.10.dll.a /${{ matrix.path }}/lib/libpython310.dll.a
       - name: Build Python wheels
         shell: msys2 {0}
         run: |
@@ -176,7 +64,7 @@ jobs:
           CARGO_BUILD_TARGET: ${{ matrix.rust_target }}
           PYO3_CROSS_LIB_DIR: ${{ matrix.lib_dir }}
           PYO3_CROSS_INCLUDE_DIR: ${{ matrix.include_dir }}
-          PYO3_CROSS_PYTHON_VERSION: "3.9"
+          PYO3_CROSS_PYTHON_VERSION: "3.10"
           GETTEXT_LIB_DIR: "/${{ matrix.path }}/lib/"
           GETTEXT_INCLUDE_DIR: "/${{ matrix.path }}/include/"
           GETTEXT_BIN_DIR: "/${{ matrix.path }}/bin/"
@@ -185,27 +73,3 @@ jobs:
         with:
           name: wheels-msys2-py-${{ matrix.msystem }}
           path: dist/*.whl
-  deploy:
-    if: startsWith(github.ref, 'refs/tags/')
-    needs:
-      - build_linux
-      - build_macos_windows
-    runs-on: ubuntu-latest
-    name: Deploy wheels to PyPI
-    steps:
-      - name: Download wheels
-        uses: actions/download-artifact@v2
-      - name: Set up Python 3.8
-        uses: actions/setup-python@v1
-        with:
-          python-version: 3.8
-      - name: Upgrade pip
-        run: |
-          python -m pip install --upgrade pip
-          pip install twine
-      - name: Publish wheels to PyPI
-        env:
-          TWINE_USERNAME: ${{ secrets.PYPI_USERNAME }}
-          TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
-        run: |
-          twine upload wheels-linux/*manylinux*.whl wheels-windows*/*.whl wheels-macos*/*.whl
