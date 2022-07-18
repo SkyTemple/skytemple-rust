@@ -21,6 +21,7 @@ use crate::err::convert_packing_err;
 use crate::python::*;
 use crate::st_mappa_bin::{MappaFloorDarknessLevel, MappaFloorStructureType, MappaFloorWeather};
 use packed_struct::prelude::*;
+use packed_struct::PackingResult;
 use std::ops::Deref;
 
 #[pyclass(module = "skytemple_rust.st_mappa_bin")]
@@ -29,29 +30,112 @@ use std::ops::Deref;
 pub struct MappaFloorTerrainSettings {
     #[pyo3(get, set)]
     #[packed_field(size_bits = "1")]
-    pub has_secondary_terrain: bool,
-    #[pyo3(get, set)]
-    #[packed_field(size_bits = "1")]
-    pub unk1: bool,
-    #[pyo3(get, set)]
-    #[packed_field(size_bits = "1")]
-    pub generate_imperfect_rooms: bool,
-    #[pyo3(get, set)]
-    #[packed_field(size_bits = "1")]
-    pub unk3: bool,
-    #[pyo3(get, set)]
-    #[packed_field(size_bits = "1")]
-    pub unk4: bool,
-    #[pyo3(get, set)]
-    #[packed_field(size_bits = "1")]
-    pub unk5: bool,
+    pub unk7: bool,
     #[pyo3(get, set)]
     #[packed_field(size_bits = "1")]
     pub unk6: bool,
     #[pyo3(get, set)]
     #[packed_field(size_bits = "1")]
-    pub unk7: bool,
+    pub unk5: bool,
+    #[pyo3(get, set)]
+    #[packed_field(size_bits = "1")]
+    pub unk4: bool,
+    #[pyo3(get, set)]
+    #[packed_field(size_bits = "1")]
+    pub unk3: bool,
+    #[pyo3(get, set)]
+    #[packed_field(size_bits = "1")]
+    pub generate_imperfect_rooms: bool,
+    #[pyo3(get, set)]
+    #[packed_field(size_bits = "1")]
+    pub unk1: bool,
+    #[pyo3(get, set)]
+    #[packed_field(size_bits = "1")]
+    pub has_secondary_terrain: bool,
 }
+
+#[pymethods]
+impl MappaFloorTerrainSettings {
+    #[new]
+    #[allow(clippy::too_many_arguments)]
+    pub fn new(
+        has_secondary_terrain: bool,
+        unk1: bool,
+        generate_imperfect_rooms: bool,
+        unk3: bool,
+        unk4: bool,
+        unk5: bool,
+        unk6: bool,
+        unk7: bool,
+    ) -> Self {
+        Self {
+            has_secondary_terrain,
+            unk1,
+            generate_imperfect_rooms,
+            unk3,
+            unk4,
+            unk5,
+            unk6,
+            unk7,
+        }
+    }
+}
+
+#[cfg(feature = "python")]
+#[pyproto]
+impl pyo3::PyObjectProtocol for MappaFloorTerrainSettings {
+    fn __richcmp__(&self, other: PyRef<Self>, op: pyo3::basic::CompareOp) -> Py<PyAny> {
+        let py = other.py();
+        match op {
+            pyo3::basic::CompareOp::Eq => (self == other.deref()).into_py(py),
+            pyo3::basic::CompareOp::Ne => (self != other.deref()).into_py(py),
+            _ => py.NotImplemented(),
+        }
+    }
+}
+
+/// MappaFloorTerrainSettings but on the Python heap
+/// (packable wrapper around Py<MappaFloorTerrainSettings>
+#[derive(FromPyObject, Clone, Debug)]
+#[pyo3(transparent)]
+#[repr(transparent)]
+pub struct PyMappaFloorTerrainSettings(Py<MappaFloorTerrainSettings>);
+
+impl PackedStruct for PyMappaFloorTerrainSettings {
+    type ByteArray = <MappaFloorTerrainSettings as PackedStruct>::ByteArray;
+
+    fn pack(&self) -> PackingResult<Self::ByteArray> {
+        Python::with_gil(|py| {
+            <MappaFloorTerrainSettings as PackedStruct>::pack(self.0.borrow(py).deref())
+        })
+    }
+
+    fn unpack(src: &Self::ByteArray) -> PackingResult<Self> {
+        Python::with_gil(|py| {
+            Ok(Self(
+                Py::new(
+                    py,
+                    <MappaFloorTerrainSettings as PackedStruct>::unpack(src)?,
+                )
+                .map_err(|_| PackingError::InternalError)?,
+            ))
+        })
+    }
+}
+
+impl IntoPy<PyObject> for PyMappaFloorTerrainSettings {
+    fn into_py(self, py: Python) -> PyObject {
+        self.0.into_py(py)
+    }
+}
+
+impl PartialEq for PyMappaFloorTerrainSettings {
+    fn eq(&self, other: &Self) -> bool {
+        Python::with_gil(|py| self.0.borrow(py).deref() == other.0.borrow(py).deref())
+    }
+}
+
+impl Eq for PyMappaFloorTerrainSettings {}
 
 #[derive(Clone, PackedStruct, Debug, PartialEq, Eq)]
 #[packed_struct(endian = "lsb")]
@@ -88,7 +172,7 @@ pub struct MappaFloorLayout {
     pub secondary_terrain: u8,
     #[pyo3(get, set)]
     #[packed_field(size_bytes = "1")]
-    pub terrain_settings: MappaFloorTerrainSettings,
+    pub terrain_settings: PyMappaFloorTerrainSettings,
     #[pyo3(get, set)]
     #[packed_field(size_bytes = "1")]
     pub unk_e: bool,
@@ -142,7 +226,7 @@ impl MappaFloorLayout {
         sticky_item_chance: u8,
         dead_ends: bool,
         secondary_terrain: u8,
-        terrain_settings: MappaFloorTerrainSettings,
+        terrain_settings: Py<MappaFloorTerrainSettings>,
         unk_e: bool,
         item_density: u8,
         trap_density: u8,
@@ -174,7 +258,7 @@ impl MappaFloorLayout {
             sticky_item_chance,
             dead_ends,
             secondary_terrain,
-            terrain_settings,
+            terrain_settings: PyMappaFloorTerrainSettings(terrain_settings),
             unk_e,
             item_density,
             trap_density,
@@ -199,12 +283,23 @@ impl MappaFloorLayout {
         self._max_coin_amount_raw as u16 * 5
     }
 
-    #[cfg(feature = "python")]
-    pub fn __eq__(&self, other: PyObject, py: Python) -> bool {
-        if let Ok(other) = other.extract::<Py<Self>>(py) {
-            self == other.borrow(py).deref()
-        } else {
-            false
+    #[setter]
+    pub fn set_max_coin_amount(&mut self, value: u16) -> PyResult<()> {
+        self._max_coin_amount_raw = u8::try_from(value / 5)
+            .map_err(|_| exceptions::PyValueError::new_err("Coin amount too big."))?;
+        Ok(())
+    }
+}
+
+#[cfg(feature = "python")]
+#[pyproto]
+impl pyo3::PyObjectProtocol for MappaFloorLayout {
+    fn __richcmp__(&self, other: PyRef<Self>, op: pyo3::basic::CompareOp) -> Py<PyAny> {
+        let py = other.py();
+        match op {
+            pyo3::basic::CompareOp::Eq => (self == other.deref()).into_py(py),
+            pyo3::basic::CompareOp::Ne => (self != other.deref()).into_py(py),
+            _ => py.NotImplemented(),
         }
     }
 }
@@ -217,7 +312,7 @@ impl TryFrom<StBytes> for Py<MappaFloorLayout> {
         Python::with_gil(|py| {
             Py::new(
                 py,
-                MappaFloorLayout::unpack_from_slice(&value[..]).map_err(convert_packing_err)?,
+                MappaFloorLayout::unpack_from_slice(&value[..32]).map_err(convert_packing_err)?,
             )
         })
     }

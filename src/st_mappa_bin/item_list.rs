@@ -16,7 +16,7 @@
  * You should have received a copy of the GNU General Public License
  * along with SkyTemple.  If not, see <https://www.gnu.org/licenses/>.
  */
-use crate::bytes::{AsStBytes, StBytes};
+use crate::bytes::StBytes;
 use crate::python::*;
 use crate::st_mappa_bin::Probability;
 use bytes::{Buf, BufMut, BytesMut};
@@ -61,13 +61,17 @@ impl MappaItemList {
     pub fn to_bytes(slf: Py<Self>) -> StBytes {
         slf.into()
     }
+}
 
-    #[cfg(feature = "python")]
-    pub fn __eq__(&self, other: PyObject, py: Python) -> bool {
-        if let Ok(other) = other.extract::<Py<Self>>(py) {
-            self == other.borrow(py).deref()
-        } else {
-            false
+#[cfg(feature = "python")]
+#[pyproto]
+impl pyo3::PyObjectProtocol for MappaItemList {
+    fn __richcmp__(&self, other: PyRef<Self>, op: pyo3::basic::CompareOp) -> Py<PyAny> {
+        let py = other.py();
+        match op {
+            pyo3::basic::CompareOp::Eq => (self == other.deref()).into_py(py),
+            pyo3::basic::CompareOp::Ne => (self != other.deref()).into_py(py),
+            _ => py.NotImplemented(),
         }
     }
 }
@@ -77,14 +81,14 @@ impl TryFrom<StBytes> for Py<MappaItemList> {
 
     fn try_from(mut value: StBytes) -> Result<Self, Self::Error> {
         let mut processing_categories = true;
-        let mut item_or_cat_id = 0;
+        let mut item_or_cat_id: i32 = 0;
         #[cfg(debug_assertions)]
         let mut orig_value = value.clone();
 
-        let mut items = BTreeMap::new();
-        let mut categories = BTreeMap::new();
+        let mut items: BTreeMap<u16, Probability> = BTreeMap::new();
+        let mut categories: BTreeMap<u16, Probability> = BTreeMap::new();
 
-        while item_or_cat_id <= MappaItemList::MAX_ITEM_ID {
+        while item_or_cat_id <= MappaItemList::MAX_ITEM_ID as i32 {
             let val_prim = value.get_u16_le();
             let val = Probability::from_primitive(val_prim).unwrap();
 
@@ -95,14 +99,28 @@ impl TryFrom<StBytes> for Py<MappaItemList> {
 
             if let Some(weight) = weight {
                 if processing_categories {
-                    categories.insert(item_or_cat_id, weight);
+                    categories.insert(
+                        item_or_cat_id.try_into().map_err(|_| {
+                            exceptions::PyValueError::new_err(
+                                "Overflow while trying to load item list.",
+                            )
+                        })?,
+                        weight,
+                    );
                 } else {
-                    items.insert(item_or_cat_id, weight);
+                    items.insert(
+                        item_or_cat_id.try_into().map_err(|_| {
+                            exceptions::PyValueError::new_err(
+                                "Overflow while trying to load item list.",
+                            )
+                        })?,
+                        weight,
+                    );
                 }
                 item_or_cat_id += 1;
             } else {
                 // Skip
-                item_or_cat_id += val_prim - MappaItemList::CMD_SKIP;
+                item_or_cat_id += val_prim as i32 - MappaItemList::CMD_SKIP as i32;
             }
 
             if processing_categories && item_or_cat_id >= 0xF {
@@ -118,7 +136,7 @@ impl TryFrom<StBytes> for Py<MappaItemList> {
             let orig_value_len = orig_value.len();
             debug_assert_eq!(
                 StBytes(orig_value.copy_to_bytes(orig_value_len - value.len())),
-                AsStBytes::as_bytes(&mil)
+                crate::bytes::AsStBytes::as_bytes(&mil)
             );
         }
 

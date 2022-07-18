@@ -23,6 +23,7 @@ use crate::st_mappa_bin::MappaFloor;
 use crate::st_sir0::{Sir0Error, Sir0Result, Sir0Serializable};
 use crate::util::Lazy;
 use bytes::Buf;
+use std::ops::Deref;
 
 struct MappaReader {
     source: StBytes,
@@ -75,8 +76,7 @@ impl MappaReader {
     }
 
     fn collect_floor_list(&self, pointer: usize) -> PyResult<Vec<Py<MappaFloor>>> {
-        let mut buf = self.source.clone();
-        buf.advance(pointer);
+        let mut buf = self.source.slice(pointer..self.dungeon_list_index_start);
         // The zeroth floor is just nulls, we omit it.
         let zero = vec![0u8; Self::FLOOR_IDX_ENTRY_LEN];
         let mut tmpbuf = buf.copy_to_bytes(Self::FLOOR_IDX_ENTRY_LEN);
@@ -85,79 +85,101 @@ impl MappaReader {
             "The first floor of a dungeon must be a null floor."
         );
         let mut floors = Vec::with_capacity(100);
-        tmpbuf = buf.copy_to_bytes(Self::FLOOR_IDX_ENTRY_LEN);
-        Python::with_gil(|py| -> PyResult<()> {
-            while tmpbuf != zero {
-                floors.push(self.collect_floor(StBytes(tmpbuf), py)?);
-                tmpbuf = buf.copy_to_bytes(Self::FLOOR_IDX_ENTRY_LEN);
-            }
-            Ok(())
-        })?;
+        if buf.remaining() >= Self::FLOOR_IDX_ENTRY_LEN {
+            tmpbuf = buf.copy_to_bytes(Self::FLOOR_IDX_ENTRY_LEN);
+            Python::with_gil(|py| -> PyResult<()> {
+                while tmpbuf != zero {
+                    floors.push(self.collect_floor(StBytes(tmpbuf), py)?);
+                    if buf.remaining() < Self::FLOOR_IDX_ENTRY_LEN {
+                        break;
+                    }
+                    tmpbuf = buf.copy_to_bytes(Self::FLOOR_IDX_ENTRY_LEN);
+                }
+                Ok(())
+            })?;
+        }
         Ok(floors)
     }
 
     fn collect_floor(&self, mut floor_data: StBytes, py: Python) -> PyResult<Py<MappaFloor>> {
         let layout = self.resolve_pointer(
             self.floor_layout_data_start + 32 * (floor_data.get_u16_le() as usize),
+            Some(32),
         )?;
         let monsters = self.resolve_pointer(
             self.read_floor_data_pnt(self.monster_spawn_list_index_start, floor_data.get_u16_le())?,
+            None,
         )?;
         let traps = self.resolve_pointer(
             self.read_floor_data_pnt(self.trap_spawn_list_index_start, floor_data.get_u16_le())?,
+            Some(50),
         )?;
         let floor_items = self.resolve_pointer(
             self.read_floor_data_pnt(self.item_spawn_list_index_start, floor_data.get_u16_le())?,
+            None,
         )?;
         let shop_items = self.resolve_pointer(
             self.read_floor_data_pnt(self.item_spawn_list_index_start, floor_data.get_u16_le())?,
+            None,
         )?;
         let mh_items = self.resolve_pointer(
             self.read_floor_data_pnt(self.item_spawn_list_index_start, floor_data.get_u16_le())?,
+            None,
         )?;
         let buried_items = self.resolve_pointer(
             self.read_floor_data_pnt(self.item_spawn_list_index_start, floor_data.get_u16_le())?,
+            None,
         )?;
         let unk1_items = self.resolve_pointer(
             self.read_floor_data_pnt(self.item_spawn_list_index_start, floor_data.get_u16_le())?,
+            None,
         )?;
         let unk2_items = self.resolve_pointer(
             self.read_floor_data_pnt(self.item_spawn_list_index_start, floor_data.get_u16_le())?,
+            None,
         )?;
 
+        // TODO: Can we keep more lazy? The others are dynamically sized, but maybe there's
+        //       some tricks we could do.
         Py::new(
             py,
             MappaFloor {
                 layout: Lazy::Source(layout),
-                monsters: Lazy::Source(monsters),
+                monsters: Lazy::instance_from_source(monsters)?,
                 traps: Lazy::Source(traps),
-                floor_items: Lazy::Source(floor_items),
-                shop_items: Lazy::Source(shop_items),
-                monster_house_items: Lazy::Source(mh_items),
-                buried_items: Lazy::Source(buried_items),
-                unk_items1: Lazy::Source(unk1_items),
-                unk_items2: Lazy::Source(unk2_items),
+                floor_items: Lazy::instance_from_source(floor_items)?,
+                shop_items: Lazy::instance_from_source(shop_items)?,
+                monster_house_items: Lazy::instance_from_source(mh_items)?,
+                buried_items: Lazy::instance_from_source(buried_items)?,
+                unk_items1: Lazy::instance_from_source(unk1_items)?,
+                unk_items2: Lazy::instance_from_source(unk2_items)?,
             },
         )
     }
     fn read_floor_data_pnt(&self, index_list_start: usize, index: u16) -> PyResult<usize> {
         let idx = index_list_start + 4 * (index as usize);
         if idx + 4 > self.source.len() {
-            Err(exceptions::PyIndexError::new_err(
-                "Pointer in floor list out of bounds.",
-            ))
+            Err(exceptions::PyIndexError::new_err(format!(
+                "Pointer in floor list out of bounds ({} > {}).",
+                idx + 4,
+                self.source.len()
+            )))
         } else {
             Ok((&self.source[idx..]).get_u32_le() as usize)
         }
     }
-    fn resolve_pointer(&self, pnt: usize) -> PyResult<StBytes> {
+    fn resolve_pointer(&self, pnt: usize, len: Option<usize>) -> PyResult<StBytes> {
         let mut b = self.source.clone();
         if pnt > b.len() {
             Err(exceptions::PyIndexError::new_err(
                 "Pointer in floor list out of bounds.",
             ))
         } else {
-            b.advance(pnt);
+            if let Some(len) = len {
+                b = StBytes(b.slice(pnt..pnt + len));
+            } else {
+                b.advance(pnt);
+            }
             Ok(b)
         }
     }
@@ -201,6 +223,28 @@ impl MappaBin {
         if floor_list_index < self.floor_lists.len() {
             self.floor_lists[floor_list_index].push(floor);
             Ok(())
+        } else {
+            Err(exceptions::PyIndexError::new_err(
+                "Floor list index out of bounds",
+            ))
+        }
+    }
+
+    pub fn insert_floor_in_floor_list(
+        &mut self,
+        floor_list_index: usize,
+        insert_index: usize,
+        floor: Py<MappaFloor>,
+    ) -> PyResult<()> {
+        if floor_list_index < self.floor_lists.len() {
+            if insert_index > self.floor_lists[floor_list_index].len() {
+                Err(exceptions::PyIndexError::new_err(
+                    "Floor insert index out of bounds",
+                ))
+            } else {
+                self.floor_lists[floor_list_index].insert(insert_index, floor);
+                Ok(())
+            }
         } else {
             Err(exceptions::PyIndexError::new_err(
                 "Floor list index out of bounds",
@@ -256,6 +300,42 @@ impl Sir0Serializable for MappaBin {
                 .collect_floor_lists()
                 .map_err(|e| Sir0Error::UnwrapFailed(anyhow::Error::from(e)))?,
         })
+    }
+}
+
+// Pyo3 does not compare nested Py vectors by value.
+impl PartialEq for MappaBin {
+    fn eq(&self, other: &Self) -> bool {
+        if self.floor_lists.len() != other.floor_lists.len() {
+            false
+        } else {
+            Python::with_gil(|py| {
+                for (sfl, ofl) in self.floor_lists.iter().zip(other.floor_lists.iter()) {
+                    if sfl.len() != ofl.len() {
+                        return false;
+                    }
+                    for (sf, of) in sfl.iter().zip(ofl.iter()) {
+                        if sf.borrow(py).deref() != of.borrow(py).deref() {
+                            return false;
+                        }
+                    }
+                }
+                true
+            })
+        }
+    }
+}
+
+#[cfg(feature = "python")]
+#[pyproto]
+impl pyo3::PyObjectProtocol for MappaBin {
+    fn __richcmp__(&self, other: PyRef<Self>, op: pyo3::basic::CompareOp) -> Py<PyAny> {
+        let py = other.py();
+        match op {
+            pyo3::basic::CompareOp::Eq => (self == other.deref()).into_py(py),
+            pyo3::basic::CompareOp::Ne => (self != other.deref()).into_py(py),
+            _ => py.NotImplemented(),
+        }
     }
 }
 

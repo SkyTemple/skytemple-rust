@@ -43,6 +43,11 @@ static DEFAULT_FLOOR: MinimizedMappaFloor = MinimizedMappaFloor {
     unk_items2_idx: 0,
 };
 
+enum FloorMinimized<'a> {
+    Default,
+    Floor(&'a MinimizedMappaFloor),
+}
+
 #[derive(Default, PackedStruct)]
 #[packed_struct(endian = "lsb")]
 pub struct MinimizedMappaFloor {
@@ -83,6 +88,7 @@ impl MinimizedMappa {
 
                 for floor in floor_list {
                     let floor_brw = floor.borrow(py);
+                    debug_assert_eq!(32, floor_brw.layout.as_bytes().len());
                     o_floor_list.push(MinimizedMappaFloor {
                         layout_idx: Self::find_or_insert(
                             &mut o_layout,
@@ -151,12 +157,15 @@ impl MinimizedMappa {
     {
         let source_bytes = source.as_bytes().0;
         let source_hash = Self::calculate_hash(&source_bytes);
-        let index;
+        debug_assert_eq!(
+            storage.contains(&source_bytes),
+            hash_storage.contains(&source_hash)
+        );
         let index = {
             if let Some(index) = hash_storage.iter().position(|&h| h == source_hash) {
                 index
             } else {
-                index = hash_storage.len();
+                let index = hash_storage.len();
                 hash_storage.push(source_hash);
                 storage.push(source_bytes);
                 index
@@ -186,17 +195,24 @@ impl Sir0Serializable for MinimizedMappa {
             .iter()
             // The default floor at the beginning is the null floor at the start of all floor lists.
             .flat_map(|fl| {
-                once(&DEFAULT_FLOOR)
-                    .chain(fl.iter())
+                once(FloorMinimized::Default)
+                    .chain(fl.iter().map(FloorMinimized::Floor))
             })
             .map(|f| {
-                let byf = f.pack().unwrap();
-                if byf == EMPTY_MINIMIZED_FLOOR {
-                    Err(exceptions::PyValueError::new_err(gettext(
-                        "Could not save floor: It contains too much empty data.\nThis probably happened because a lot of spawn lists are empty.\nPlease check the floors you edited and fill them with more data. If you are using the randomizer, check your allowed item list."
-                    )))
-                } else {
-                    Ok(byf)
+                match f {
+                    FloorMinimized::Default => {
+                        Ok(DEFAULT_FLOOR.pack().unwrap())
+                    }
+                    FloorMinimized::Floor(f) => {
+                        let byf = f.pack().unwrap();
+                        if byf == EMPTY_MINIMIZED_FLOOR {
+                            Err(exceptions::PyValueError::new_err(gettext(
+                                "Could not save floor: It contains too much empty data.\nThis probably happened because a lot of spawn lists are empty.\nPlease check the floors you edited and fill them with more data. If you are using the randomizer, check your allowed item list."
+                            )))
+                        } else {
+                            Ok(byf)
+                        }
+                    }
                 }
             })
             .collect::<PyResult<Vec<_>>>()
@@ -212,12 +228,12 @@ impl Sir0Serializable for MinimizedMappa {
         let start_floor_list_lut = data.len() as u32;
         let mut cursor_floor_data: u32 = 0;
         data.reserve(self.floor_lists.len() * 4);
-        for _ in &self.floor_lists {
+        for fl in &self.floor_lists {
             pointer_offsets.push(data.len() as u32);
             data.put_u32_le(cursor_floor_data);
             cursor_floor_data = cursor_floor_data
                 .checked_add(
-                    ((self.floor_lists.len() + 1) * 18)
+                    ((fl.len() + 1) * 18)
                         .try_into()
                         .map_err(convert_try_from_int)?,
                 )
@@ -227,7 +243,7 @@ impl Sir0Serializable for MinimizedMappa {
         }
 
         // Padding
-        pad(&mut data, 4, 0xAA); // This SHOULD do nothing, since if we are not 4-bytes aligned something went really wrong.
+        pad(&mut data, 4, 0xAA);
 
         // Floor layout data
         let start_floor_layout_data = data.len() as u32;

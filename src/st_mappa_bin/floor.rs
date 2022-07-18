@@ -164,13 +164,17 @@ impl MappaFloor {
         self.unk_items2 = Lazy::Instance(value);
         Ok(())
     }
+}
 
-    #[cfg(feature = "python")]
-    pub fn __eq__(&self, other: PyObject, py: Python) -> bool {
-        if let Ok(other) = other.extract::<Py<Self>>(py) {
-            self == other.borrow(py).deref()
-        } else {
-            false
+#[cfg(feature = "python")]
+#[pyproto]
+impl pyo3::PyObjectProtocol for MappaFloor {
+    fn __richcmp__(&self, other: PyRef<Self>, op: pyo3::basic::CompareOp) -> Py<PyAny> {
+        let py = other.py();
+        match op {
+            pyo3::basic::CompareOp::Eq => (self == other.deref()).into_py(py),
+            pyo3::basic::CompareOp::Ne => (self != other.deref()).into_py(py),
+            _ => py.NotImplemented(),
         }
     }
 }

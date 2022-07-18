@@ -127,9 +127,16 @@ where
     T: AsStBytes + TryFrom<StBytes, Error = E>,
     E: Into<PyErr>,
 {
+    /// Creates a Lazy wrapper from some byte source but immediately constructs it.
+    /// This is useful, if the source has an unbound length.
+    pub fn instance_from_source(source: StBytes) -> PyResult<Self> {
+        Ok(Self::Instance(source.try_into().map_err(Into::into)?))
+    }
+
     pub fn instance(&mut self) -> PyResult<&T> {
         self.instance_mut().map(|v| &*v)
     }
+
     pub fn instance_mut(&mut self) -> PyResult<&mut T> {
         Ok(match self {
             Lazy::Source(v) => {

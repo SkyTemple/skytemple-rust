@@ -48,7 +48,7 @@ impl TryFrom<StBytes> for Py<MappaTrapList> {
                 Py::new(
                     py,
                     MappaTrapList::new(
-                        (0u8..=25)
+                        (0u8..25)
                             .map(|i| {
                                 (
                                     MappaTrapType::from_primitive(i).unwrap(),
@@ -67,7 +67,7 @@ impl From<Py<MappaTrapList>> for StBytes {
     fn from(value: Py<MappaTrapList>) -> Self {
         Python::with_gil(|py| {
             let value_brw = value.borrow(py);
-            let x = (0u8..=25)
+            let x = (0u8..25)
                 .flat_map(|i| {
                     value_brw
                         .weights
@@ -136,13 +136,17 @@ impl MappaTrapList {
             ))
         }
     }
+}
 
-    #[cfg(feature = "python")]
-    pub fn __eq__(&self, other: PyObject, py: Python) -> bool {
-        if let Ok(other) = other.extract::<Py<Self>>(py) {
-            self == other.borrow(py).deref()
-        } else {
-            false
+#[cfg(feature = "python")]
+#[pyproto]
+impl pyo3::PyObjectProtocol for MappaTrapList {
+    fn __richcmp__(&self, other: PyRef<Self>, op: pyo3::basic::CompareOp) -> Py<PyAny> {
+        let py = other.py();
+        match op {
+            pyo3::basic::CompareOp::Eq => (self == other.deref()).into_py(py),
+            pyo3::basic::CompareOp::Ne => (self != other.deref()).into_py(py),
+            _ => py.NotImplemented(),
         }
     }
 }

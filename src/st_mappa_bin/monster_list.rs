@@ -19,6 +19,7 @@
 use crate::bytes::StBytes;
 use crate::err::convert_packing_err;
 use crate::python::*;
+use bytes::Buf;
 use packed_struct::prelude::*;
 #[cfg(feature = "python")]
 use pyo3::types::PyList;
@@ -178,17 +179,30 @@ impl MappaMonsterList {
     }
 }
 
+#[cfg(feature = "python")]
+#[pyproto]
+impl pyo3::PyObjectProtocol for MappaMonsterList {
+    fn __richcmp__(&self, other: PyRef<Self>, op: pyo3::basic::CompareOp) -> Py<PyAny> {
+        let py = other.py();
+        match op {
+            pyo3::basic::CompareOp::Eq => (self == other.deref()).into_py(py),
+            pyo3::basic::CompareOp::Ne => (self != other.deref()).into_py(py),
+            _ => py.NotImplemented(),
+        }
+    }
+}
+
 impl TryFrom<StBytes> for Py<MappaMonsterList> {
     type Error = PyErr;
 
-    fn try_from(value: StBytes) -> Result<Self, Self::Error> {
+    fn try_from(mut value: StBytes) -> Result<Self, Self::Error> {
         static_assert_size!(<MappaMonster as PackedStruct>::ByteArray, 0x08);
 
         Python::with_gil(|py| {
             let mut monsters = Vec::with_capacity(50);
             loop {
-                let monster =
-                    MappaMonster::unpack_from_slice(&value[..]).map_err(convert_packing_err)?;
+                let monster = MappaMonster::unpack_from_slice(&value.copy_to_bytes(0x08)[..])
+                    .map_err(convert_packing_err)?;
                 if monster.md_index == 0 {
                     break;
                 }
@@ -250,13 +264,17 @@ impl MappaMonster {
     pub fn set_level(&mut self, level: u8) {
         self.level_raw = (level as u16) * Self::LEVEL_MULTIPLIER;
     }
+}
 
-    #[cfg(feature = "python")]
-    pub fn __eq__(&self, other: PyObject, py: Python) -> bool {
-        if let Ok(other) = other.extract::<Py<Self>>(py) {
-            self == other.borrow(py).deref()
-        } else {
-            false
+#[cfg(feature = "python")]
+#[pyproto]
+impl pyo3::PyObjectProtocol for MappaMonster {
+    fn __richcmp__(&self, other: PyRef<Self>, op: pyo3::basic::CompareOp) -> Py<PyAny> {
+        let py = other.py();
+        match op {
+            pyo3::basic::CompareOp::Eq => (self == other.deref()).into_py(py),
+            pyo3::basic::CompareOp::Ne => (self != other.deref()).into_py(py),
+            _ => py.NotImplemented(),
         }
     }
 }
