@@ -18,7 +18,7 @@
  */
 /** Definitions of a Pyo3 types without Python or Pyo3 */
 pub use skytemple_rust_macros::*;
-use std::cell::RefCell;
+use std::cell::{Ref, RefCell, RefMut};
 use std::error::Error;
 use std::fmt::{Debug, Display, Formatter};
 use std::io;
@@ -94,13 +94,13 @@ pub type PyRefMut<'a, T> = &'a mut T;
 pub struct Py<T>(Arc<RefCell<T>>);
 impl<T> Py<T> {
     pub fn new(_: Python, obj: T) -> PyResult<Self> {
-        Ok(Self(Arc::new(obj)))
+        Ok(Self(Arc::new(RefCell::new(obj))))
     }
-    pub fn borrow(&self, _: Python) -> &T {
-        &self.0.borrow().deref()
+    pub fn borrow(&self, _: Python) -> Ref<T> {
+        self.0.borrow()
     }
-    pub fn borrow_mut(&mut self, _: Python) -> &mut T {
-        self.0.borrow_mut().deref_mut()
+    pub fn borrow_mut(&mut self, _: Python) -> RefMut<T> {
+        self.0.borrow_mut()
     }
 }
 
@@ -118,7 +118,7 @@ where
     T: PyWrapable,
 {
     pub fn from(obj: T) -> Self {
-        Self(obj)
+        Self(Arc::new(RefCell::new(obj)))
     }
 }
 
