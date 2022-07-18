@@ -169,7 +169,7 @@ impl KaoImage {
                 new_order.push(k1 as i16);
             }
         }
-        new_order = new_order.into_iter().filter(|x| *x != -1).collect();
+        new_order.retain(|x| *x != -1);
         for x in 0..16 {
             if !new_order.contains(&x) {
                 new_order.push(x);
@@ -305,7 +305,7 @@ impl Kao {
     pub fn get(&self, index: usize, subindex: usize) -> PyResult<Option<Py<KaoImage>>> {
         if index < self.portraits.len() {
             if subindex < Self::PORTRAIT_SLOTS {
-                return Ok((&self.portraits[index][subindex]).clone());
+                return Ok(self.portraits[index][subindex].clone());
             }
             return Err(exceptions::PyValueError::new_err(format!(
                 "The subindex requested must be between 0 and {}",

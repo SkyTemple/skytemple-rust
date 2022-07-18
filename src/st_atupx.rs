@@ -62,7 +62,7 @@ impl Atupx {
         })
     }
     pub fn decompress(&self) -> PyResult<StBytesMut> {
-        Ok(Custom999Decompressor::run(&*self.data, self.len_decomp as usize).into())
+        Ok(Custom999Decompressor::run(&self.data[..], self.len_decomp as usize).into())
     }
     pub fn to_bytes(&self) -> StBytesMut {
         let mut res = BytesMut::with_capacity(self.len_comp as usize);
