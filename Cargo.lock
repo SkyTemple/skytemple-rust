@@ -109,7 +109,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "42c3da1db1f384ad643e27cb6ba4f08f2a7cd8753bef8dd95c39fe45d7a474c8"
 dependencies = [
  "binwrite_derive",
- "paste",
+ "paste 0.1.18",
 ]
 
 [[package]]
@@ -695,6 +695,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "paste"
+version = "1.0.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0c520e05135d6e763148b6426a837e239041653ba7becd2e538c076c738025fc"
+
+[[package]]
 name = "paste-impl"
 version = "0.1.18"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -755,7 +761,7 @@ dependencies = [
  "indoc",
  "libc",
  "parking_lot",
- "paste",
+ "paste 0.1.18",
  "pyo3-build-config",
  "pyo3-macros",
  "unindent",
@@ -910,6 +916,7 @@ dependencies = [
  "num-derive",
  "num-traits",
  "packed_struct",
+ "paste 1.0.7",
  "pmd_wan",
  "pyo3",
  "pyo3-log",

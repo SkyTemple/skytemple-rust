@@ -19,10 +19,12 @@
 use crate::bytes::{AsStBytes, StBytes};
 use crate::python::PyErr;
 use crate::PyResult;
+use bytes::BytesMut;
 use std::cmp::{max, min};
 use std::fmt::{Debug, Formatter};
 use std::hash::{Hash, Hasher};
 use std::hint::unreachable_unchecked;
+use std::iter::repeat;
 
 #[inline]
 #[allow(unused)]
@@ -180,5 +182,12 @@ where
             Lazy::Source(s) => s.clone(),
             Lazy::Instance(i) => i.as_bytes(),
         }
+    }
+}
+
+pub fn pad(data: &mut BytesMut, padlen: usize, padwith: u8) {
+    let lenp = data.len() % padlen;
+    if lenp != 0 {
+        data.extend(repeat(padwith).take(padlen - lenp))
     }
 }

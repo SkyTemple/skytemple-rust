@@ -24,6 +24,8 @@ use packed_struct::prelude::*;
 use std::mem::size_of;
 use std::ops::Deref;
 
+impl_pylist!("skytemple_rust.st_item_p", ItemPEntryList, Py<ItemPEntry>);
+
 #[derive(Clone, PackedStruct, Debug, PartialEq, Eq)]
 #[packed_struct(endian = "lsb")]
 #[pyclass(module = "skytemple_rust.st_item_p")]
@@ -92,8 +94,7 @@ impl pyo3::PyObjectProtocol for ItemPEntry {
 #[pyclass(module = "skytemple_rust.st_item_p")]
 #[derive(Clone)]
 pub struct ItemP {
-    #[pyo3(get, set)]
-    pub item_list: Vec<Py<ItemPEntry>>,
+    pub item_list: Py<ItemPEntryList>,
 }
 
 #[pymethods]
@@ -103,15 +104,40 @@ impl ItemP {
     pub fn new(data: StBytes, pointer_to_pointers: u32, py: Python) -> PyResult<Self> {
         static_assert_size!(<ItemPEntry as PackedStruct>::ByteArray, 16);
         Ok(Self {
-            item_list: data
-                .chunks_exact(size_of::<<ItemPEntry as PackedStruct>::ByteArray>())
-                .map(|b| {
-                    <ItemPEntry as PackedStruct>::unpack(b.try_into().unwrap())
-                        .map_err(convert_packing_err)
-                        .and_then(|v| Py::new(py, v))
-                })
-                .collect::<PyResult<Vec<Py<ItemPEntry>>>>()?,
+            item_list: Py::new(
+                py,
+                data.chunks_exact(size_of::<<ItemPEntry as PackedStruct>::ByteArray>())
+                    .map(|b| {
+                        <ItemPEntry as PackedStruct>::unpack(b.try_into().unwrap())
+                            .map_err(convert_packing_err)
+                            .and_then(|v| Py::new(py, v))
+                    })
+                    .collect::<PyResult<ItemPEntryList>>()?,
+            )?,
         })
+    }
+
+    #[cfg(feature = "python")]
+    #[getter]
+    pub fn item_list(&self) -> Py<ItemPEntryList> {
+        self.item_list.clone()
+    }
+
+    #[cfg(feature = "python")]
+    #[setter]
+    pub fn set_item_list(&mut self, py: Python, value: PyObject) -> PyResult<()> {
+        if let Ok(val) = value.extract::<Py<ItemPEntryList>>(py) {
+            self.item_list = val;
+            Ok(())
+        } else {
+            match value.extract::<Vec<Py<ItemPEntry>>>(py) {
+                Ok(v) => {
+                    self.item_list = Py::new(py, ItemPEntryList(v))?;
+                    Ok(())
+                }
+                Err(e) => Err(e),
+            }
+        }
     }
 
     #[cfg(feature = "python")]
@@ -132,6 +158,8 @@ impl Sir0Serializable for ItemP {
     fn sir0_serialize_parts(&self) -> Sir0Result<(StBytes, Vec<u32>, Option<u32>)> {
         let content = Python::with_gil(|py| {
             self.item_list
+                .borrow(py)
+                .0
                 .iter()
                 .map(|v| {
                     v.borrow(py)
@@ -174,6 +202,7 @@ pub(crate) fn create_st_item_p_module(py: Python) -> PyResult<(&str, &PyModule)>
     let name: &'static str = "skytemple_rust.st_item_p";
     let m = PyModule::new(py, name)?;
     m.add_class::<ItemPEntry>()?;
+    m.add_class::<ItemPEntryList>()?;
     m.add_class::<ItemP>()?;
     m.add_class::<ItemPWriter>()?;
 

@@ -21,176 +21,15 @@ use crate::err::convert_packing_err;
 use crate::python::*;
 use bytes::Buf;
 use packed_struct::prelude::*;
-#[cfg(feature = "python")]
-use pyo3::types::PyList;
-#[cfg(feature = "python")]
-use pyo3::types::PyTuple;
 use std::iter::repeat;
+use std::mem;
 use std::ops::Deref;
-use std::{mem, vec};
 
-#[pyclass(module = "skytemple_rust.st_mappa_bin")]
-#[derive(Clone, Debug, PartialEq)]
-pub struct MappaMonsterList {
-    pub list: Vec<Py<MappaMonster>>,
-}
-
-#[cfg(feature = "python")]
-#[pymethods]
-impl MappaMonsterList {
-    pub fn __iter__(&mut self) -> MappaMonsterListIterator {
-        MappaMonsterListIterator::new(self.list.clone().into_iter())
-    }
-    pub fn __getitem__(&self, idx: SliceOrInt, py: Python) -> PyResult<PyObject> {
-        match idx {
-            SliceOrInt::Slice(sl) => {
-                let pylist = PyList::new(py, self.list.iter().cloned());
-                pylist
-                    .call_method1("__getitem__", PyTuple::new(py, [sl]))
-                    .map(|v| v.into_py(py))
-            }
-            SliceOrInt::Int(idx) => {
-                if idx >= 0 && idx as usize <= self.list.len() {
-                    Ok(self.list[idx as usize].clone().into_py(py))
-                } else {
-                    Err(exceptions::PyIndexError::new_err("list index out of range"))
-                }
-            }
-        }
-    }
-    pub fn __setitem__(&mut self, idx: SliceOrInt, o: PyObject, py: Python) -> PyResult<()> {
-        match idx {
-            SliceOrInt::Slice(sl) => {
-                let pylist = PyList::new(py, self.list.iter().cloned());
-                pylist.call_method1("__setitem__", PyTuple::new(py, [sl.into_py(py), o]))?;
-                self.list = pylist
-                    .into_iter()
-                    .map(|o| o.extract())
-                    .collect::<PyResult<Vec<Py<MappaMonster>>>>()?;
-                Ok(())
-            }
-            SliceOrInt::Int(idx) => {
-                if idx >= 0 && idx as usize <= self.list.len() {
-                    self.list[idx as usize] = o.extract(py)?;
-                    Ok(())
-                } else {
-                    Err(exceptions::PyIndexError::new_err("list index out of range"))
-                }
-            }
-        }
-    }
-    pub fn __delitem__(&mut self, idx: SliceOrInt, py: Python) -> PyResult<()> {
-        match idx {
-            SliceOrInt::Slice(sl) => {
-                let pylist = PyList::new(py, self.list.iter().cloned());
-                pylist.call_method1("__delitem__", PyTuple::new(py, [sl]))?;
-                self.list = pylist
-                    .into_iter()
-                    .map(|o| o.extract())
-                    .collect::<PyResult<Vec<Py<MappaMonster>>>>()?;
-                Ok(())
-            }
-            SliceOrInt::Int(idx) => {
-                if idx >= 0 && idx as usize <= self.list.len() {
-                    self.list.remove(idx as usize);
-                    Ok(())
-                } else {
-                    Err(exceptions::PyIndexError::new_err("list index out of range"))
-                }
-            }
-        }
-    }
-    pub fn __len__(&self) -> usize {
-        self.list.len()
-    }
-    pub fn index(&self, value: PyObject, py: Python) -> PyResult<usize> {
-        if let Ok(value) = value.extract::<Py<MappaMonster>>(py) {
-            if let Some(idx) = self.list.iter().position(|x| {
-                x.call_method1(py, "__eq__", PyTuple::new(py, [value.clone()]))
-                    .and_then(|x| x.is_true(py))
-                    .unwrap_or_default()
-            }) {
-                Ok(idx)
-            } else {
-                Err(exceptions::PyValueError::new_err("not in list"))
-            }
-        } else {
-            Err(exceptions::PyValueError::new_err("not in list"))
-        }
-    }
-    pub fn count(&self, value: PyObject, py: Python) -> usize {
-        if let Ok(value) = value.extract::<Py<MappaMonster>>(py) {
-            self.list
-                .iter()
-                .filter(|x| {
-                    x.call_method1(py, "__eq__", PyTuple::new(py, [value.clone()]))
-                        .and_then(|x| x.is_true(py))
-                        .unwrap_or_default()
-                })
-                .count()
-        } else {
-            0
-        }
-    }
-    pub fn insert(&mut self, index: usize, value: Py<MappaMonster>) {
-        self.list.insert(index, value)
-    }
-    pub fn append(&mut self, value: Py<MappaMonster>) {
-        self.list.push(value)
-    }
-    pub fn clear(&mut self) {
-        self.list.clear()
-    }
-    pub fn extend(&mut self, _value: PyObject) -> PyResult<()> {
-        Err(exceptions::PyNotImplementedError::new_err("Not supported."))
-    }
-    #[args(index = "0")]
-    pub fn pop(&mut self, idx: isize) -> PyResult<Py<MappaMonster>> {
-        if idx == 0 {
-            if !self.list.is_empty() {
-                Ok(self.list.pop().unwrap())
-            } else {
-                Err(exceptions::PyIndexError::new_err("pop from empty list"))
-            }
-        } else if idx >= 0 && idx as usize <= self.list.len() {
-            Ok(self.list.remove(idx as usize))
-        } else {
-            Err(exceptions::PyIndexError::new_err("pop index out of range"))
-        }
-    }
-    pub fn remove(&mut self, value: PyObject, py: Python) -> PyResult<()> {
-        if let Ok(value) = value.extract::<Py<MappaMonster>>(py) {
-            if let Some(idx) = self.list.iter().position(|x| {
-                x.call_method1(py, "__eq__", PyTuple::new(py, [value.clone()]))
-                    .and_then(|x| x.is_true(py))
-                    .unwrap_or_default()
-            }) {
-                self.list.remove(idx);
-                Ok(())
-            } else {
-                Err(exceptions::PyValueError::new_err("not in list"))
-            }
-        } else {
-            Err(exceptions::PyValueError::new_err("not in list"))
-        }
-    }
-    pub fn __iadd__(&mut self, value: PyObject) -> PyResult<()> {
-        self.extend(value)
-    }
-}
-
-#[cfg(feature = "python")]
-#[pyproto]
-impl pyo3::PyObjectProtocol for MappaMonsterList {
-    fn __richcmp__(&self, other: PyRef<Self>, op: pyo3::basic::CompareOp) -> Py<PyAny> {
-        let py = other.py();
-        match op {
-            pyo3::basic::CompareOp::Eq => (self == other.deref()).into_py(py),
-            pyo3::basic::CompareOp::Ne => (self != other.deref()).into_py(py),
-            _ => py.NotImplemented(),
-        }
-    }
-}
+impl_pylist!(
+    "skytemple_rust.st_mappa_bin",
+    MappaMonsterList,
+    Py<MappaMonster>
+);
 
 impl TryFrom<StBytes> for Py<MappaMonsterList> {
     type Error = PyErr;
@@ -208,7 +47,7 @@ impl TryFrom<StBytes> for Py<MappaMonsterList> {
                 }
                 monsters.push(Py::new(py, monster)?);
             }
-            Py::new(py, MappaMonsterList { list: monsters })
+            Py::new(py, MappaMonsterList(monsters))
         })
     }
 }
@@ -218,7 +57,7 @@ impl From<Py<MappaMonsterList>> for StBytes {
         Python::with_gil(|py| {
             let value_brw = value.borrow(py);
             value_brw
-                .list
+                .0
                 .iter()
                 .flat_map(|m| m.borrow(py).pack().unwrap())
                 .chain(repeat(0).take(mem::size_of::<<MappaMonster as PackedStruct>::ByteArray>()))
@@ -276,23 +115,5 @@ impl pyo3::PyObjectProtocol for MappaMonster {
             pyo3::basic::CompareOp::Ne => (self != other.deref()).into_py(py),
             _ => py.NotImplemented(),
         }
-    }
-}
-
-#[pyclass(module = "skytemple_rust.st_mappa_bin")]
-pub struct MappaMonsterListIterator {
-    iter: vec::IntoIter<Py<MappaMonster>>,
-}
-
-impl MappaMonsterListIterator {
-    pub fn new(iter: vec::IntoIter<Py<MappaMonster>>) -> Self {
-        Self { iter }
-    }
-}
-
-#[pymethods]
-impl MappaMonsterListIterator {
-    pub fn __next__(&mut self) -> Option<Py<MappaMonster>> {
-        self.iter.next()
     }
 }

@@ -241,7 +241,7 @@ pub trait AsStBytes {
 
 impl<T> AsStBytes for Py<T>
 where
-    Self: Into<StBytes> + Clone
+    Self: Into<StBytes> + Clone,
 {
     fn as_bytes(&self) -> StBytes {
         self.clone().into()

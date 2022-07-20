@@ -96,7 +96,8 @@ impl pyo3::PyObjectProtocol for MappaFloorTerrainSettings {
 
 /// MappaFloorTerrainSettings but on the Python heap
 /// (packable wrapper around Py<MappaFloorTerrainSettings>
-#[derive(FromPyObject, Clone, Debug)]
+#[cfg_attr(feature = "python", derive(FromPyObject))]
+#[derive(Clone, Debug)]
 #[pyo3(transparent)]
 #[repr(transparent)]
 pub struct PyMappaFloorTerrainSettings(Py<MappaFloorTerrainSettings>);
@@ -123,6 +124,7 @@ impl PackedStruct for PyMappaFloorTerrainSettings {
     }
 }
 
+#[cfg(feature = "python")]
 impl IntoPy<PyObject> for PyMappaFloorTerrainSettings {
     fn into_py(self, py: Python) -> PyObject {
         self.0.into_py(py)
@@ -268,7 +270,9 @@ impl MappaFloorLayout {
             buried_item_density,
             water_density,
             darkness_level,
-            _max_coin_amount_raw: (max_coin_amount / 5).try_into()?,
+            _max_coin_amount_raw: (max_coin_amount / 5)
+                .try_into()
+                .map_err(|_| exceptions::PyValueError::new_err("Coin amount too big."))?,
             kecleon_shop_item_positions,
             empty_monster_house_chance,
             unk_hidden_stairs,

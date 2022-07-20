@@ -22,12 +22,13 @@ use crate::gettext::gettext;
 use crate::python::*;
 use crate::st_mappa_bin::MappaBin;
 use crate::st_sir0::{Sir0Error, Sir0Result, Sir0Serializable};
+use crate::util::pad;
 use anyhow::anyhow;
 use bytes::{BufMut, Bytes, BytesMut};
 use packed_struct::prelude::*;
 use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
-use std::iter::{once, repeat};
+use std::iter::once;
 use std::num::TryFromIntError;
 
 const EMPTY_MINIMIZED_FLOOR: [u8; 18] = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
@@ -334,13 +335,6 @@ impl Sir0Serializable for MinimizedMappa {
 
     fn sir0_unwrap(content_data: StBytes, data_pointer: u32) -> Sir0Result<Self> {
         MappaBin::sir0_unwrap(content_data, data_pointer).map(|m| Self::from_mappa(&m))
-    }
-}
-
-fn pad(data: &mut BytesMut, padlen: usize, padwith: u8) {
-    let lenp = data.len() % padlen;
-    if lenp != 0 {
-        data.extend(repeat(padwith).take(padlen - lenp))
     }
 }
 

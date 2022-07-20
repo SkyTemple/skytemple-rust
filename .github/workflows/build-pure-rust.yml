@@ -36,6 +36,8 @@ jobs:
           - "md,python"
           - "item_p"
           - "item_p,python"
+          - "waza_p"
+          - "waza_p,python"
           - "romfs"
           - "sir0"
           - "strings,map_bg,kao,python,python,with_pmd_wan,dse,dungeon_graphics,misc_graphics,romfs,sir0"

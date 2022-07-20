@@ -86,6 +86,8 @@ use crate::st_pkdpx::create_st_pkdpx_module;
 use crate::st_sir0::create_st_sir0_module;
 #[cfg(feature = "strings")]
 use crate::st_string::create_st_string_module;
+#[cfg(feature = "waza_p")]
+use crate::st_waza_p::create_st_waza_p_module;
 
 #[pymodule]
 fn skytemple_rust(py: Python, module: &PyModule) -> PyResult<()> {
@@ -139,6 +141,8 @@ fn skytemple_rust(py: Python, module: &PyModule) -> PyResult<()> {
     add_submodule(module, create_st_md_module(py)?, modules)?;
     #[cfg(feature = "item_p")]
     add_submodule(module, create_st_item_p_module(py)?, modules)?;
+    #[cfg(feature = "waza_p")]
+    add_submodule(module, create_st_waza_p_module(py)?, modules)?;
     #[cfg(feature = "mappa_bin")]
     add_submodule(module, create_st_mappa_bin_module(py)?, modules)?;
     #[cfg(feature = "dse")]

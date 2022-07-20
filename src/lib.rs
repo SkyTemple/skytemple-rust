@@ -105,6 +105,8 @@ pub mod st_pkdpx;
 pub mod st_sir0;
 #[cfg(feature = "strings")]
 pub mod st_string;
+#[cfg(feature = "waza_p")]
+pub mod st_waza_p;
 
 #[cfg(feature = "with_pmd_wan")]
 pub mod pmd_wan;

@@ -75,7 +75,7 @@ where
 
 // Based on C++ algorithm by psy_commando from
 // https://projectpokemon.org/docs/mystery-dungeon-nds/sir0siro-format-r46/
-fn decode_sir0_pointer_offsets(
+pub(crate) fn decode_sir0_pointer_offsets(
     data: StBytes,
     pointer_offset_list_pointer: u32,
     relative: bool,
@@ -119,23 +119,31 @@ fn decode_sir0_pointer_offsets(
 
 // Based on C++ algorithm by psy_commando from
 // https://projectpokemon.org/docs/mystery-dungeon-nds/sir0siro-format-r46/
-fn encode_sir0_pointer_offsets(pointer_offsets: &[u32], relative: bool) -> Sir0Result<StBytes> {
-    let mut buffer = StBytesMut::from(vec![0; 4 * pointer_offsets.len()]);
+pub(crate) fn encode_sir0_pointer_offsets<S, I>(
+    pointer_offsets: S,
+    relative: bool,
+) -> Sir0Result<StBytes>
+where
+    S: IntoIterator<Item = u32, IntoIter = I>,
+    I: Iterator<Item = u32> + ExactSizeIterator,
+{
+    let pointer_offsets_iter = pointer_offsets.into_iter();
+    let mut buffer = StBytesMut::from(vec![0; 4 * pointer_offsets_iter.len()]);
     let mut cursor = 0;
     // used to add up the sum of all the offsets up to the current one
     let mut offset_so_far = 0;
-    for offset in pointer_offsets {
+    for offset in pointer_offsets_iter {
         let offset_to_encode = if relative {
             offset - offset_so_far
         } else {
             // If we are not working relative, we can just use the offset directly.
-            *offset
+            offset
         };
 
         // This tells the loop whether it needs to encode null bytes, if at least one higher byte was non-zero
         let mut has_higher_non_zero = false;
         // Set the value to the latest offset, so we can properly subtract it from the next offset.
-        offset_so_far = *offset;
+        offset_so_far = offset;
 
         // Encode every bytes of the 4 bytes integer we have to
         for i in [4, 3, 2, 1] {
@@ -304,7 +312,7 @@ impl Sir0Writer {
             .collect::<Vec<u32>>();
 
         // Pointer offsets list
-        let pol = encode_sir0_pointer_offsets(&pointer_offsets, true)?;
+        let pol = encode_sir0_pointer_offsets(pointer_offsets, true)?;
 
         let len_content_padding = Self::len_pad(content.len());
         let len_eof_padding = Self::len_pad(pol.len());

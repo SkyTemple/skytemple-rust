@@ -1231,7 +1231,7 @@ impl MdWriter {
     }
 
     pub fn write(&self, model: Py<Md>, py: Python) -> PyResult<StBytes> {
-        let mdl: PyRef<Md> = model.borrow(py);
+        let mdl = model.borrow(py);
 
         let entries = mdl
             .entries
