@@ -14,7 +14,7 @@
 #
 #  You should have received a copy of the GNU General Public License
 #  along with SkyTemple.  If not, see <https://www.gnu.org/licenses/>.
-from typing import Sequence
+from typing import MutableSequence
 
 from range_typed_integers import *
 
@@ -42,7 +42,7 @@ class ItemPEntry:
 
 
 class ItemP(Sir0Serializable):
-    item_list: Sequence[ItemPEntry]
+    item_list: MutableSequence[ItemPEntry]
 
     def __init__(self, data: bytes, pointer_to_pointers: int): ...
 

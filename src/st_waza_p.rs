@@ -50,6 +50,14 @@ pub struct LevelUpMove {
     pub level_id: u16,
 }
 
+#[pymethods]
+impl LevelUpMove {
+    #[new]
+    pub fn new(move_id: u16, level_id: u16) -> Self {
+        Self { move_id, level_id }
+    }
+}
+
 #[cfg(feature = "python")]
 #[pyproto]
 impl pyo3::PyObjectProtocol for LevelUpMove {
@@ -76,6 +84,20 @@ pub struct MoveLearnset {
 
 #[pymethods]
 impl MoveLearnset {
+    #[new]
+    pub fn new(
+        level_up_moves: Vec<Py<LevelUpMove>>,
+        tm_hm_moves: Vec<u32>,
+        egg_moves: Vec<u32>,
+        py: Python,
+    ) -> PyResult<Self> {
+        Ok(Self {
+            level_up_moves: Py::new(py, LevelUpMoveList(level_up_moves))?,
+            tm_hm_moves: Py::new(py, U32List(tm_hm_moves))?,
+            egg_moves: Py::new(py, U32List(egg_moves))?,
+        })
+    }
+
     #[getter]
     #[cfg(feature = "python")]
     pub fn level_up_moves(&self) -> Py<LevelUpMoveList> {

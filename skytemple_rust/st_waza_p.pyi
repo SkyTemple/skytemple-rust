@@ -14,7 +14,7 @@
 #
 #  You should have received a copy of the GNU General Public License
 #  along with SkyTemple.  If not, see <https://www.gnu.org/licenses/>.
-from typing import MutableSequence
+from typing import MutableSequence, Sequence
 
 from range_typed_integers import *
 
@@ -25,6 +25,9 @@ class LevelUpMove:
     move_id: u16
     level_id: u16
 
+    def __init__(self, move_id: u16, level_id: u16):
+        ...
+
     def __eq__(self, other: object) -> bool:
         ...
 
@@ -33,6 +36,9 @@ class MoveLearnset:
     level_up_moves: MutableSequence[LevelUpMove]
     tm_hm_moves: MutableSequence[u32]
     egg_moves: MutableSequence[u32]
+
+    def __init__(self, level_up_moves: Sequence[LevelUpMove], tm_hm_moves: Sequence[u32], egg_moves: Sequence[u32]):
+        ...
 
     def __eq__(self, other: object) -> bool:
         ...
