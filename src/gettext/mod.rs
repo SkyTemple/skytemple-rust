@@ -17,16 +17,11 @@
  * along with SkyTemple.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-//! This module provides either gettextrs or stubs on platforms that don't support it.
+//! This module provides a gettextrs stub.
 
-#[cfg(not(target_env = "msvc"))]
-pub use gettextrs::gettext;
-
-#[cfg(target_env = "msvc")]
 #[macro_use]
 pub mod macro_stub;
 
-#[cfg(target_env = "msvc")]
 pub fn gettext<T: Into<String>>(msgid: T) -> String {
     return msgid.into();
 }
