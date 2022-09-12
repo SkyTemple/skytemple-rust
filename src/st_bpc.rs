@@ -167,9 +167,6 @@ impl Bpc {
         }
 
         // Read the first layer tilemap
-        #[cfg(not(feature = "python"))]
-        let mut l0borrowed = layers[0].borrow_mut(py);
-        #[cfg(feature = "python")]
         let mut l0borrowed = layers[0].borrow_mut(py);
         l0borrowed.tilemap = Self::read_tilemap_data(
             BpcTilemapDecompressor::run(
@@ -182,7 +179,6 @@ impl Bpc {
             tiling_height,
             py,
         )?;
-        #[cfg(feature = "python")]
         drop(l0borrowed);
 
         if number_of_layers > 1 {
@@ -426,7 +422,7 @@ impl Bpc {
     }
 
     pub fn get_tile(&self, layer: usize, index: usize, py: Python) -> PyResult<TilemapEntry> {
-        self.layers[layer].borrow(py).tilemap[index].extract::<TilemapEntry>(py)
+        self.layers[layer].borrow(py).tilemap[index].extract(py)
     }
 
     pub fn set_tile(
@@ -453,7 +449,7 @@ impl Bpc {
         } else {
             b.tilemap[mtidx..mtidx + dim]
                 .iter()
-                .map(|x| x.extract::<TilemapEntry>(py))
+                .map(|x| x.extract(py))
                 .collect()
         }
     }
@@ -746,7 +742,6 @@ impl Bpc {
         let ldata = self.layers[layer_id].borrow(py);
         let mut is_using_bpa = !bpas.is_empty() && ldata.bpas.iter().any(|x| *x > 0);
         let number_tiles = ldata.number_tiles;
-        #[cfg(feature = "python")]
         drop(ldata);
         match mode {
             AnimatedExportMode::All(width_in_mtiles) => {
@@ -785,7 +780,6 @@ impl Bpc {
         let mut bpa_animation_indices = [0, 0, 0, 0];
         let mut frames = Vec::with_capacity(32);
         let orig_len = ldata.tiles.len();
-        #[cfg(feature = "python")]
         drop(ldata);
         let bpas_for_layer = self.get_bpas_for_layer(layer_id, bpas, py)?;
         loop {
@@ -803,7 +797,6 @@ impl Bpc {
                     bpa_animation_indices[bpaidx] %= bpa.0.get_number_of_frames(py)?;
                 }
             }
-            #[cfg(feature = "python")]
             drop(ldata);
             frames.push(match mode {
                 AnimatedExportMode::All(width_in_mtiles) => {
@@ -815,7 +808,7 @@ impl Bpc {
             });
 
             // RESET the layer's tiles to NOT include the BPA tiles!
-            ldata = self.layers[layer_id].borrow_mut(py);
+            let mut ldata = self.layers[layer_id].borrow_mut(py);
             ldata.tiles = take(&mut ldata.tiles).into_iter().take(orig_len).collect();
 
             // All animations have been played, we are done!
@@ -1014,7 +1007,10 @@ impl BpcWriter {
             .iter()
             .skip((model.tiling_width * model.tiling_height) as usize)
         {
+            #[cfg(feature = "python")]
             let entry = entry.extract::<InputTilemapEntry>(py)?;
+            #[cfg(not(feature = "python"))]
+            let entry = entry.extract(py)?;
             data.put_u16_le(entry.to_int() as u16);
         }
         BpcTilemapCompressor::run(data.freeze())

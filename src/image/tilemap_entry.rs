@@ -17,6 +17,7 @@
  * along with SkyTemple.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+use std::cell::Ref;
 use crate::python::*;
 
 #[derive(PartialEq, Eq, Debug, Clone, Default)]
@@ -197,6 +198,28 @@ impl ProvidesTilemapEntry for TilemapEntry {
 }
 
 impl ProvidesTilemapEntry for &TilemapEntry {
+    fn idx(&self) -> usize {
+        self.0
+    }
+
+    fn flip_x(&self) -> bool {
+        self.1
+    }
+
+    fn flip_y(&self) -> bool {
+        self.2
+    }
+
+    fn pal_idx(&self) -> u8 {
+        self.3
+    }
+
+    fn to_int(&self) -> usize {
+        TilemapEntry::_to_int(self)
+    }
+}
+
+impl<'a> ProvidesTilemapEntry for Ref<'a, TilemapEntry> {
     fn idx(&self) -> usize {
         self.0
     }
