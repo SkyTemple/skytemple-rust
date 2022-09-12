@@ -17,8 +17,8 @@
  * along with SkyTemple.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-use std::cell::Ref;
 use crate::python::*;
+use std::cell::Ref;
 
 #[derive(PartialEq, Eq, Debug, Clone, Default)]
 #[pyclass(module = "skytemple_rust")]
