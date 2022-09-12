@@ -1,4 +1,4 @@
-__version__ = '1.4.0'
+__version__ = '1.4.0a2'
 
 from setuptools import setup
 from setuptools_rust import Binding, RustExtension
