@@ -80,7 +80,7 @@ jobs:
       - name: Setup Rust
         uses: actions-rs/toolchain@v1
         with:
-          toolchain: nightly
+          toolchain: stable
           override: true
           target: "${{ matrix.os == 'windows-2019' && 'i686-pc-windows-msvc' || 'x86_64-apple-darwin' }}"
       - name: Set up Python
@@ -153,7 +153,7 @@ jobs:
       - name: Setup Rust
         uses: actions-rs/toolchain@v1
         with:
-          toolchain: nightly
+          toolchain: stable
           override: true
           target: ${{ matrix.rust_target }}
       - name: Upgrade pip, install dev dependencies
