@@ -21,18 +21,18 @@ use crate::python::*;
 use crate::st_mappa_bin::MappaTrapType;
 use bytes::Buf;
 use packed_struct::prelude::*;
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 use std::ops::Deref;
 
 #[pyclass(module = "skytemple_rust.st_mappa_bin")]
 #[derive(Clone, PartialEq, Eq)]
 pub struct MappaTrapList {
     #[pyo3(get, set)]
-    pub weights: HashMap<MappaTrapType, u16>,
+    pub weights: BTreeMap<MappaTrapType, u16>,
 }
 
 impl MappaTrapList {
-    pub fn new(weights: HashMap<MappaTrapType, u16>) -> Self {
+    pub fn new(weights: BTreeMap<MappaTrapType, u16>) -> Self {
         Self { weights }
     }
 }
@@ -55,7 +55,7 @@ impl TryFrom<StBytes> for Py<MappaTrapList> {
                                     value.get_u16_le(),
                                 )
                             })
-                            .collect::<HashMap<MappaTrapType, u16>>(),
+                            .collect::<BTreeMap<MappaTrapType, u16>>(),
                     ),
                 )
             })
@@ -101,7 +101,7 @@ impl MappaTrapList {
                         "Invalid key(s) or value(s) for trap dict.",
                     ))
                 })
-                .collect::<PyResult<HashMap<MappaTrapType, u16>>>()?;
+                .collect::<PyResult<BTreeMap<MappaTrapType, u16>>>()?;
             if weights_c.len() != 25 {
                 Err(exceptions::PyValueError::new_err(
                     "MappaTrapList constructor needs a weight value for all of the 25 traps.",
@@ -127,7 +127,7 @@ impl MappaTrapList {
                                 ))
                             }
                         })
-                        .collect::<PyResult<HashMap<MappaTrapType, u16>>>()?,
+                        .collect::<PyResult<BTreeMap<MappaTrapType, u16>>>()?,
                 ))
             }
         } else {
