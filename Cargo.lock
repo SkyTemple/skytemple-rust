@@ -901,7 +901,7 @@ checksum = "61ea8d54c77f8315140a05f4c7237403bf38b72704d031543aa1d16abbf517d1"
 
 [[package]]
 name = "skytemple_rust"
-version = "1.3.4"
+version = "1.4.0"
 dependencies = [
  "anyhow",
  "arr_macro",
