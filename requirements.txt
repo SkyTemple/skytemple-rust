@@ -1,2 +1,2 @@
 #explorerscript
-range-typed-integers==1.0.0
+range-typed-integers==1.0.1
