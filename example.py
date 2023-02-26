@@ -5,7 +5,7 @@ from glob import glob
 from typing import Optional
 
 from PIL import Image
-from skytemple_rust.pmd_wan import MetaFrame, ImageBytes, Resolution, MetaFrameGroup
+from skytemple_rust.pmd_wan import Fragment, ImageBytes, FragmentResolution, Frame
 
 from skytemple_rust import pmd_wan
 from skytemple_files.common.types.file_types import FileType
@@ -21,18 +21,18 @@ for gptrn in glob(WAN_FILE_PATTERN):
         try:
             image = pmd_wan.WanImage(f.read())
 
-            meta_frame: MetaFrame
-            meta_frame_group: MetaFrameGroup
-            for mfg_i, meta_frame_group in enumerate(image.meta_frame_store.meta_frame_groups):
+            fragment: Fragment
+            frame: Frame
+            for mfg_i, frame in enumerate(image.meta_frame_store.meta_frame_groups):
                 os.makedirs(f'/tmp/outimg/{basename}/{mfg_i}', exist_ok=True)
-                for mf_i, meta_frame_id in enumerate(meta_frame_group.meta_frames_id):
-                    meta_frame = image.meta_frame_store.meta_frames[meta_frame_id]
-                    meta_frame_img_bytes: ImageBytes = image.image_store.images[meta_frame.image_index]
-                    resolution: Resolution = meta_frame.resolution
+                for mf_i, meta_frame_id in enumerate(frame.meta_frames_id):
+                    fragment = image.meta_frame_store.meta_frames[meta_frame_id]
+                    meta_frame_img_bytes: ImageBytes = image.image_store.images[fragment.image_index]
+                    resolution: FragmentResolution = fragment.resolution
                     try:
                         im = Image.frombuffer('RGBA',
                                               (resolution.x, resolution.y),
-                                              bytearray(meta_frame_img_bytes.to_image(image.palette, meta_frame)),
+                                              bytearray(meta_frame_img_bytes.to_image(image.palette, fragment)),
                                               'raw', 'RGBA', 0, 1)
 
                         im.save(f'/tmp/outimg/{basename}/{mfg_i}/{mf_i}.png')
@@ -48,18 +48,18 @@ with open(PACK_FILE, 'rb') as f:
         sprite_bin_decompressed = FileType.PKDPX.deserialize(sprite).decompress()
         image = pmd_wan.WanImage(sprite_bin_decompressed)
 
-        meta_frame: MetaFrame
-        meta_frame_group: MetaFrameGroup
-        for mfg_i, meta_frame_group in enumerate(image.meta_frame_store.meta_frame_groups):
+        fragment: Fragment
+        frame: Frame
+        for mfg_i, frame in enumerate(image.meta_frame_store.meta_frame_groups):
             os.makedirs(f'/tmp/outimg/{s_i}/{mfg_i}', exist_ok=True)
-            for mf_i, meta_frame_id in enumerate(meta_frame_group.meta_frames_id):
-                meta_frame = image.meta_frame_store.meta_frames[meta_frame_id]
-                meta_frame_img_bytes: ImageBytes = image.image_store.images[meta_frame.image_index]
-                resolution: Optional[Resolution] = meta_frame.resolution
+            for mf_i, meta_frame_id in enumerate(frame.meta_frames_id):
+                fragment = image.meta_frame_store.meta_frames[meta_frame_id]
+                meta_frame_img_bytes: ImageBytes = image.image_store.images[fragment.image_index]
+                resolution: Optional[FragmentResolution] = fragment.resolution
                 try:
                     im = Image.frombuffer('RGBA',
                                           (resolution.x, resolution.y),
-                                          bytearray(meta_frame_img_bytes.to_image(image.palette, meta_frame)),
+                                          bytearray(meta_frame_img_bytes.to_image(image.palette, fragment)),
                                           'raw', 'RGBA', 0, 1)
 
                     im.save(f'/tmp/outimg/{s_i}/{mfg_i}/{mf_i}.png')

@@ -722,9 +722,9 @@ dependencies = [
 
 [[package]]
 name = "pmd_wan"
-version = "4.0.0"
+version = "5.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "65c83ce34f19e4aae659e244f552ae16f2e8533936e5423860add1b140c1c1fa"
+checksum = "cb912d5b203ad7a1a6afe3332867b937ad67760068a6b3df91029c682ff37063"
 dependencies = [
  "anyhow",
  "binread",
