@@ -68,10 +68,7 @@ impl FragmentBytes {
     pub fn decode_fragment(&self, resolution: &FragmentResolution) -> PyResult<Vec<u8>> {
         lib::decode_fragment_pixels(
             &self.mixed_pixels,
-            &lib::FragmentResolution::new(
-                resolution.x,
-                resolution.y,
-            ),
+            &lib::FragmentResolution::new(resolution.x, resolution.y),
         )
         .map_err(convert_decode_fragment_bytes_error)
     }
@@ -110,7 +107,7 @@ pub struct FrameStore {
     #[pyo3(get)]
     pub frames: Vec<Frame>,
     #[pyo3(get)]
-    pub max_fragment_alloc_count: u16
+    pub max_fragment_alloc_count: u16,
 }
 
 #[pyclass(module = "skytemple_rust.pmd_wan")]
@@ -144,7 +141,7 @@ pub struct FragmentFlip {
     #[pyo3(get)]
     pub flip_h: bool,
     #[pyo3(get)]
-    pub flip_v: bool
+    pub flip_v: bool,
 }
 
 #[pyclass(module = "skytemple_rust.pmd_wan")]
@@ -153,7 +150,7 @@ pub struct Frame {
     #[pyo3(get)]
     pub fragments: Vec<Fragment>,
     #[pyo3(get)]
-    pub frame_offset: Option<FrameOffset>
+    pub frame_offset: Option<FrameOffset>,
 }
 
 #[pyclass(module = "skytemple_rust.pmd_wan")]
@@ -293,7 +290,7 @@ fn wrap_fragment_bytes(lib_ent: &lib::FragmentBytes) -> FragmentBytes {
 fn wrap_frame_store(lib_ent: &lib::FrameStore) -> FrameStore {
     FrameStore {
         frames: wrap_vec(&lib_ent.frames, wrap_frame),
-        max_fragment_alloc_count: lib_ent.compute_fragment_alloc_counter()
+        max_fragment_alloc_count: lib_ent.compute_fragment_alloc_counter(),
     }
 }
 
@@ -308,14 +305,14 @@ fn wrap_fragment(lib_ent: &lib::Fragment) -> Fragment {
         flip: wrap_fragment_flip(lib_ent.flip),
         is_mosaic: lib_ent.is_mosaic,
         pal_idx: lib_ent.pal_idx,
-        resolution: wrap_fragment_resolution(&lib_ent.resolution)
+        resolution: wrap_fragment_resolution(&lib_ent.resolution),
     }
 }
 
 fn wrap_fragment_flip(lib_ent: lib::FragmentFlip) -> FragmentFlip {
     FragmentFlip {
         flip_h: lib_ent.flip_h,
-        flip_v: lib_ent.flip_v
+        flip_v: lib_ent.flip_v,
     }
 }
 
@@ -327,7 +324,12 @@ fn wrap_frame(lib_ent: &lib::Frame) -> Frame {
 }
 
 fn wrap_frame_offset(lib_ent: &lib::FrameOffset) -> FrameOffset {
-    FrameOffset { head: lib_ent.head, hand_left: lib_ent.hand_left, hand_right: lib_ent.hand_right, center: lib_ent.center }
+    FrameOffset {
+        head: lib_ent.head,
+        hand_left: lib_ent.hand_left,
+        hand_right: lib_ent.hand_right,
+        center: lib_ent.center,
+    }
 }
 
 fn wrap_fragment_resolution(lib_ent: &lib::FragmentResolution) -> FragmentResolution {
@@ -447,17 +449,20 @@ pub fn encode_image_to_static_wan_file(py: Python, image: PyObject) -> PyResult<
     .map_err(convert_anyhow_error_to_user)?;
 
     if let Some(frame_id) = frame_id {
-        wanimage.animation_store.anim_groups.push(vec![lib::Animation {
-            frames: vec![lib::AnimationFrame {
-                duration: 1,
-                flag: 0,
-                frame_id: frame_id as u16,
-                offset_x: 0,
-                offset_y: 0,
-                shadow_offset_x: 0,
-                shadow_offset_y: 0,
-            }],
-        }]);
+        wanimage
+            .animation_store
+            .anim_groups
+            .push(vec![lib::Animation {
+                frames: vec![lib::AnimationFrame {
+                    duration: 1,
+                    flag: 0,
+                    frame_id: frame_id as u16,
+                    offset_x: 0,
+                    offset_y: 0,
+                    shadow_offset_x: 0,
+                    shadow_offset_y: 0,
+                }],
+            }]);
 
         let mut buffer = Vec::new();
         let mut cursor = Cursor::new(&mut buffer);
