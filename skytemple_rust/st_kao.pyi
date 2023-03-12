@@ -19,6 +19,13 @@ from typing import Optional, Tuple, Union, Iterator
 from PIL.Image import Image
 
 
+class KaoPropertiesState:
+    kao_image_limit: int
+
+    @classmethod
+    def instance(cls) -> "KaoPropertiesState": ...
+
+
 class KaoImage:
     @classmethod
     def create_from_raw(cls, cimg: bytes, pal: bytes) -> 'KaoImage': ...

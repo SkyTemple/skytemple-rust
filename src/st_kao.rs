@@ -22,7 +22,7 @@ use crate::gettext::gettext;
 use crate::image::tiled::TiledImage;
 use crate::image::{In16ColSolidIndexedImage, InIndexedImage, IndexedImage, PixelGenerator};
 use crate::python::*;
-use crate::st_at_common::{CommonAt, COMMON_AT_MUST_COMPRESS_3};
+use crate::st_at_common::{CommonAt, COMMON_AT_BEST_3};
 use arr_macro::arr;
 use bytes::{Buf, BufMut};
 #[cfg(feature = "python")]
@@ -32,8 +32,46 @@ use pyo3::PyIterProtocol;
 use std::collections::hash_map::Entry;
 use std::collections::HashMap;
 use std::io::Cursor;
+use std::ops::Deref;
 use std::mem::swap;
+use std::sync::Mutex;
 use std::vec;
+
+const KAO_IMAGE_LIMIT: usize = 800;
+static mut KAO_PROPERTIES_STATE_INSTANCE: Mutex<Option<Py<KaoPropertiesState>>> = Mutex::new(None);
+
+#[pyclass(module = "skytemple_rust.st_kao")]
+#[derive(Clone)]
+struct KaoPropertiesState {
+    #[pyo3(get, set)]
+    kao_image_limit: usize,
+}
+
+impl KaoPropertiesState {
+    pub fn instance(py: Python) -> PyResult<Py<Self>> {
+        let inst_mutex = unsafe { &mut KAO_PROPERTIES_STATE_INSTANCE };
+        let inst_locked = inst_mutex.get_mut().unwrap();
+        if inst_locked.is_none() {
+            *inst_locked = Some(Py::new(
+                py,
+                KaoPropertiesState {
+                    kao_image_limit: KAO_IMAGE_LIMIT,
+                },
+            )?)
+        }
+        Ok(inst_locked.deref().as_ref().unwrap().clone())
+    }
+}
+
+#[pymethods]
+impl KaoPropertiesState {
+    #[cfg(feature = "python")]
+    #[classmethod]
+    #[pyo3(name = "instance")]
+    pub fn _instance(_cls: &PyType, py: Python) -> PyResult<Py<Self>> {
+        Self::instance(py)
+    }
+}
 
 #[pyclass(module = "skytemple_rust.st_kao")]
 #[derive(Clone)]
@@ -65,8 +103,8 @@ impl KaoImage {
         })
     }
     /// Create a new KaoImage from image data.
-    pub fn new_from_img(source: IndexedImage) -> PyResult<Self> {
-        let (pal, img) = Self::bitmap_to_kao(source)?;
+    pub fn new_from_img(source: IndexedImage, py: Python) -> PyResult<Self> {
+        let (pal, img) = Self::bitmap_to_kao(source, py)?;
         debug_assert_eq!(Self::KAO_IMG_PAL_B_SIZE, pal.len());
         Ok(Self {
             compressed_img_data: img,
@@ -89,15 +127,17 @@ impl KaoImage {
             .chain(self.compressed_img_data.0.clone().into_iter())
     }
 
-    fn bitmap_to_kao(source: IndexedImage) -> PyResult<(StBytesMut, StBytesMut)> {
+    fn bitmap_to_kao(source: IndexedImage, py: Python) -> PyResult<(StBytesMut, StBytesMut)> {
         let (img, pal) =
             TiledImage::native_to_tiled_seq(source, Self::TILE_DIM, Self::IMG_DIM, Self::IMG_DIM)?;
         let (img, pal) = Self::reorder_palette(TiledImage::unpack_tiles::<StBytesMut>(img), pal);
-        let compressed_img = CommonAt::compress(&img, COMMON_AT_MUST_COMPRESS_3.iter())?;
+        let compressed_img = CommonAt::compress(&img, COMMON_AT_BEST_3.iter())?;
+        let limit = KaoPropertiesState::instance(py)?.borrow(py).kao_image_limit;
         // Check image size
-        if compressed_img.len() > 800 {
+        if compressed_img.len() > limit {
             return Err(exceptions::PyValueError::new_err(gettext!(
-                "This portrait does not compress well, the result size is greater than 800 bytes ({} bytes total).\n If you haven't done already, try applying the 'ProvideATUPXSupport' to install an optimized compression algorithm, which might be able to better compress this image.",
+                "This portrait does not compress well, the result size is greater than {} bytes ({} bytes total).\n If you haven't done already, try applying the 'ProvideATUPXSupport' ASM patch to install an optimized compression algorithm, which might be able to better compress this image.\nIf this still doesn't work, try the 'ExpandPortraitStructs' instead.",
+                limit,
                 compressed_img.len()
             )));
         }
@@ -224,7 +264,7 @@ impl KaoImage {
     }
     /// Sets the portrait using image data with 16-bit color palette as input.
     pub fn set(&mut self, py: Python, source: In16ColSolidIndexedImage) -> PyResult<()> {
-        let (pal, img) = Self::bitmap_to_kao(source.extract(py)?)?;
+        let (pal, img) = Self::bitmap_to_kao(source.extract(py)?, py)?;
         debug_assert_eq!(Self::KAO_IMG_PAL_B_SIZE, pal.len());
         self.pal_data = pal;
         self.compressed_img_data = img;
@@ -345,7 +385,7 @@ impl Kao {
         if index <= self.portraits.len() {
             if subindex < Self::PORTRAIT_SLOTS as usize {
                 self.portraits[index][subindex] =
-                    Some(Py::new(py, KaoImage::new_from_img(img.extract(py)?)?)?);
+                    Some(Py::new(py, KaoImage::new_from_img(img.extract(py)?, py)?)?);
                 return Ok(());
             }
             return Err(exceptions::PyValueError::new_err(format!(
@@ -499,6 +539,7 @@ impl KaoWriter {
 pub(crate) fn create_st_kao_module(py: Python) -> PyResult<(&str, &PyModule)> {
     let name: &'static str = "skytemple_rust.st_kao";
     let m = PyModule::new(py, name)?;
+    m.add_class::<KaoPropertiesState>()?;
     m.add_class::<KaoImage>()?;
     m.add_class::<Kao>()?;
     m.add_class::<KaoWriter>()?;
