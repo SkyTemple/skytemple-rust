@@ -1,2 +1,2 @@
-setuptools-rust==1.3.0
+setuptools-rust==1.6.0
 toml
