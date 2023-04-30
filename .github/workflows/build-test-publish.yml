@@ -42,7 +42,7 @@ jobs:
           build-requirements: 'GitPython'
           pre-build-command: 'source ./build-manylinux.sh'
       - name: Upload wheels
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           name: wheels-linux
           path: dist/*.whl
@@ -101,7 +101,7 @@ jobs:
         run: |
           python setup.py bdist_wheel
       - name: Upload wheels
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           name: wheels-${{ matrix.os }}-py${{ matrix.python-version }}-${{ matrix.arch }}
           path: dist/*.whl
@@ -174,7 +174,7 @@ jobs:
           GETTEXT_INCLUDE_DIR: "/${{ matrix.path }}/include/"
           GETTEXT_BIN_DIR: "/${{ matrix.path }}/bin/"
       - name: Upload wheels
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           name: wheels-msys2-py-${{ matrix.msystem }}
           path: dist/*.whl
