@@ -285,6 +285,22 @@ impl BgList {
     pub fn add_level(&mut self, level: Py<BgListEntry>) {
         self.level.push(level)
     }
+
+    /// Overwrites a level in the level list.
+    pub fn set_level(&mut self, level_id: usize, level: Py<BgListEntry>) {
+        self.level[level_id] = level
+    }
+
+    /// Overwrites an entry in a level's BPA list.
+    pub fn set_level_bpa(
+        &mut self,
+        level_id: usize,
+        bpa_id: usize,
+        bpa_name: Option<&str>,
+        py: Python,
+    ) {
+        self.level[level_id].borrow_mut(py).bpa_names[bpa_id] = bpa_name.map(ToString::to_string)
+    }
 }
 
 #[pyclass(module = "skytemple_rust.st_bg_list_dat")]
