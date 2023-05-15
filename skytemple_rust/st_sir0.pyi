@@ -22,7 +22,7 @@ class Sir0:
     content_pointer_offsets: List[u32]
 
     def __init__(
-            self, content: bytes, pointer_offsets: List[u32], data_pointer: int = None
+            self, content: bytes, pointer_offsets: List[u32], data_pointer: Optional[int] = None
     ):
         ...
 
