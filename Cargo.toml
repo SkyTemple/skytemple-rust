@@ -1,6 +1,6 @@
 [package]
 name = "skytemple_rust"
-version = "1.5.1"
+version = "1.6.0"
 authors = ["Marco 'Capypara' Köpcke <hello@capypara.de>"]
 edition = "2021"
 repository = "https://github.com/SkyTemple/skytemple-rust"
@@ -15,7 +15,7 @@ default = [
     "python", "strings", "compression", "image",
     "sir0", "kao", "map_bg", "dungeon_graphics", "misc_graphics", "dse",
     "md", "item_p", "waza_p", "mappa_bin",
-    "with_pmd_wan"
+    "with_pmd_wan", "script_var_table"
 ]
 # non default: romfs
 
@@ -35,6 +35,7 @@ md = ["packed_struct"]
 item_p = ["packed_struct", "sir0"]
 waza_p = ["packed_struct", "sir0", "md"]
 mappa_bin = ["packed_struct", "sir0"]
+script_var_table = ["packed_struct"]
 
 with_pmd_wan = ["pmd_wan", "anyhow", "python"]
 

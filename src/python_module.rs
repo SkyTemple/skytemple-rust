@@ -88,6 +88,8 @@ use crate::st_sir0::create_st_sir0_module;
 use crate::st_string::create_st_string_module;
 #[cfg(feature = "waza_p")]
 use crate::st_waza_p::create_st_waza_p_module;
+#[cfg(feature = "script_var_table")]
+use crate::st_script_var_table::create_st_script_var_table_module;
 
 #[pymodule]
 fn skytemple_rust(py: Python, module: &PyModule) -> PyResult<()> {
@@ -151,6 +153,8 @@ fn skytemple_rust(py: Python, module: &PyModule) -> PyResult<()> {
     add_submodule(module, create_st_swdl_module(py)?, modules)?;
     #[cfg(feature = "strings")]
     add_submodule(module, create_st_string_module(py)?, modules)?;
+    #[cfg(feature = "script_var_table")]
+    add_submodule(module, create_st_script_var_table_module(py)?, modules)?;
 
     #[cfg(feature = "compression")]
     add_submodule(

@@ -40,6 +40,8 @@ jobs:
           - "waza_p,python"
           - "romfs"
           - "sir0"
+          - "script_var_table"
+          - "script_var_table,python"
           - "strings,map_bg,kao,python,python,with_pmd_wan,dse,dungeon_graphics,misc_graphics,romfs,sir0"
     name: Build
     runs-on: ubuntu-latest

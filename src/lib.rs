@@ -107,6 +107,8 @@ pub mod st_sir0;
 pub mod st_string;
 #[cfg(feature = "waza_p")]
 pub mod st_waza_p;
+#[cfg(feature = "script_var_table")]
+pub mod st_script_var_table;
 
 #[cfg(feature = "with_pmd_wan")]
 pub mod pmd_wan;

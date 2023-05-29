@@ -3,7 +3,7 @@ SkyTemple Rust Extensions
 
 |build| |pypi-version| |pypi-downloads| |pypi-license| |pypi-pyversions| |discord|
 
-.. |build| image:: https://img.shields.io/github/workflow/status/SkyTemple/skytemple-rust/Build,%20test%20and%20publish
+.. |build| image:: https://img.shields.io/github/actions/workflow/status/SkyTemple/skytemple-rust/build-test-publish.yml
     :target: https://pypi.org/project/skytemple-rust/
     :alt: Build Status
 
