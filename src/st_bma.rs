@@ -350,7 +350,7 @@ impl Bma {
 
             for (j, img) in chunks_higher.iter().enumerate() {
                 let fimg = &mut final_images[j];
-                debug_assert!(self.layer1 != None);
+                debug_assert!(self.layer1.is_some());
                 for (i, mt_idx) in self.layer1.as_ref().unwrap().iter().enumerate() {
                     let x = i % self.map_width_chunks as usize;
                     let y = i / self.map_width_chunks as usize;
@@ -441,9 +441,9 @@ impl Bma {
         py: Python,
     ) -> PyResult<()> {
         let expected_width =
-            self.tiling_width as usize * self.map_width_chunks as usize * BPC_TILE_DIM as usize;
+            self.tiling_width as usize * self.map_width_chunks as usize * BPC_TILE_DIM;
         let expected_height =
-            self.tiling_height as usize * self.map_height_chunks as usize * BPC_TILE_DIM as usize;
+            self.tiling_height as usize * self.map_height_chunks as usize * BPC_TILE_DIM;
         let mut lower_img: Option<IndexedImage> = match lower_img {
             None => None,
             Some(img) => Some(img.extract(py)?),

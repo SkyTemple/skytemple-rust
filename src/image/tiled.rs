@@ -254,7 +254,6 @@ impl TiledImage {
         let number_chunks = img_width * img_height / tile_dim / tile_dim;
         Self::tiled_to_native(
             (0..number_chunks)
-                .into_iter()
                 .map(|i| TilemapEntry(i, false, false, 0)),
             tiledata,
             paldata,
@@ -289,11 +288,11 @@ impl TiledImage {
             let chunk_y: usize = (i / tiles_in_chunks) / (img_width_in_tiles / chunk_dim);
             let tile_x: usize = (chunk_x * chunk_dim) + (i % chunk_dim);
             let tile_y: usize = (chunk_y * chunk_dim) + ((i / chunk_dim) % chunk_dim);
-            let chunk_iter: J = if tiledata.len() <= chunk_spec.idx() as usize {
+            let chunk_iter: J = if tiledata.len() <= chunk_spec.idx() {
                 warn!("TiledImage: TileMappingEntry {:?} contains invalid tile reference. Replaced with 0.", chunk_spec);
                 tiledata[0].0.clone()
             } else {
-                tiledata[chunk_spec.idx() as usize].0.clone()
+                tiledata[chunk_spec.idx()].0.clone()
             };
             // Since our internal image has one big flat palette, we need to calculate the offset to that
             let pal_start_offset = 16 * chunk_spec.pal_idx();

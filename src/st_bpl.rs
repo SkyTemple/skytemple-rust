@@ -258,7 +258,7 @@ impl BplWriter {
                 + model.animation_palette.len() * BPL_PAL_ENTRY_LEN
         } else {
             0
-        } as usize;
+        };
 
         let mut data = Vec::with_capacity(
             BPL_HEADER_LEN * model.number_palettes as usize * BPL_PAL_SIZE + animation_size,

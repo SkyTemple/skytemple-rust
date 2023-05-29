@@ -278,7 +278,7 @@ impl Bpc {
         py: Python,
     ) -> IndexedImage {
         let layer = self.layers[layer_id].borrow(py);
-        let tilemap = (0..layer.number_tiles + 1).into_iter().map(|i| {
+        let tilemap = (0..layer.number_tiles + 1).map(|i| {
             TilemapEntry(
                 i as usize,
                 false,
@@ -289,7 +289,7 @@ impl Bpc {
                 },
             )
         });
-        let width = width_in_tiles * BPC_TILE_DIM as usize;
+        let width = width_in_tiles * BPC_TILE_DIM;
         let height = (((layer.number_tiles + 1) as f32 / width_in_tiles as f32).ceil()) as usize
             * BPC_TILE_DIM;
         TiledImage::tiled_to_native(

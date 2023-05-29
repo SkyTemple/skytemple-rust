@@ -320,7 +320,7 @@ impl Kao {
     /// Set the KaoImage at the specified location.
     pub fn set(&mut self, index: usize, subindex: usize, img: Py<KaoImage>) -> PyResult<()> {
         if index <= self.portraits.len() {
-            if subindex < Self::PORTRAIT_SLOTS as usize {
+            if subindex < Self::PORTRAIT_SLOTS {
                 self.portraits[index][subindex] = Some(img);
                 return Ok(());
             }
@@ -343,7 +343,7 @@ impl Kao {
         img: In16ColSolidIndexedImage,
     ) -> PyResult<()> {
         if index <= self.portraits.len() {
-            if subindex < Self::PORTRAIT_SLOTS as usize {
+            if subindex < Self::PORTRAIT_SLOTS {
                 self.portraits[index][subindex] =
                     Some(Py::new(py, KaoImage::new_from_img(img.extract(py)?)?)?);
                 return Ok(());

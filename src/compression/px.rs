@@ -313,7 +313,7 @@ impl PxCompressor<Bytes> {
         };
 
         let it_seq_end = Self::adv_as_much_as_possible(
-            current_offset as usize,
+            current_offset,
             self.in_buffer.len(),
             PX_MAX_MATCH_SEQLEN,
         );
@@ -645,7 +645,7 @@ where
         let mut cur = Cursor::new(&*(self.output));
         cur.seek(SeekFrom::End(offset))?;
 
-        let mut buf: Vec<u8> = vec![0; bytes_to_copy as usize];
+        let mut buf: Vec<u8> = vec![0; bytes_to_copy];
         cur.read_exact(&mut buf[..])?;
         self.output.put(&*buf);
 

@@ -69,7 +69,6 @@ impl Custom999Compressor {
                 code = (code + 1) % 2_usize.pow(len_code as u32);
 
                 let mut tmp = (0..len_code)
-                    .into_iter()
                     .map(|_| {
                         bit_list.push(false);
                         let val = code % 2;
@@ -138,7 +137,7 @@ impl Custom999Decompressor {
                 }
             }
             let mut n: usize = (1 << outnbit) - 1;
-            n += (flags as usize >> (outnbit + 1)) & n;
+            n += (flags >> (outnbit + 1)) & n;
 
             // ??? unused
             //let mut current_flag = compressed_cur.position() - nbits / 8;
