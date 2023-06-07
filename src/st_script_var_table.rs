@@ -45,7 +45,7 @@ pub enum ScriptVariableType {
 #[packed_struct(endian = "lsb")]
 pub struct ScriptVariableDefinitionData {
     #[packed_field(size_bytes = "2", ty = "enum")]
-    pub typ: ScriptVariableType,
+    pub r#type: ScriptVariableType,
     pub unk1: u16,
     pub memoffset: u16,
     pub bitshift: u16,
@@ -69,8 +69,8 @@ impl ScriptVariableDefinition {
     // <editor-fold desc="Proxy getters for ScriptVariableDefinitionData" defaultstate="collapsed">
     #[getter]
     #[cfg(feature = "python")]
-    pub fn typ(&self) -> ScriptVariableType {
-        self.data.typ
+    pub fn r#type(&self) -> ScriptVariableType {
+        self.data.r#type
     }
 
     #[getter]
@@ -133,10 +133,16 @@ pub struct ScriptVariableTables {
 #[pymethods]
 impl ScriptVariableTables {
     #[new]
-    pub fn new(mem: StBytes, global_start: usize, local_start: usize) -> PyResult<Self> {
+    pub fn new(mem: StBytes, global_start: usize, local_start: usize, subtract_from_name_addrs: u32) -> PyResult<Self> {
         static_assert_size!(<ScriptVariableDefinitionData as PackedStruct>::ByteArray, DEFINITION_STRUCT_SIZE as usize);
 
-        let load_name = |addr: u32| CString::new(&mem.as_ref()[(addr as usize)..]).map_err(|_| ());
+        let load_name = |addr: u32| {
+            let slice = &mem.as_ref()[((addr - subtract_from_name_addrs) as usize)..];
+            let nul_range_end = slice.iter()
+                .position(|&c| c == b'\0')
+                .unwrap_or(slice.len());
+            CString::new(&slice[0..nul_range_end]).map_err(|_| ())
+        };
 
         Ok(Self {
             globals: mem.as_ref()[global_start..(global_start + (COUNT_GLOBAL_VARS * DEFINITION_STRUCT_SIZE) as usize)].chunks(DEFINITION_STRUCT_SIZE as usize).enumerate()
