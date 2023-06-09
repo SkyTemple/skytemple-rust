@@ -38,5 +38,5 @@ class ScriptVariableTables:
     globals: Sequence[ScriptVariableDefinition]
     locals: Sequence[ScriptVariableDefinition]
 
-    def __init__(self, arm9: memoryview, global_start: u32, local_start: u32, subtract_from_name_addrs: u32):
+    def __init__(self, arm9: bytes, global_start: u32, local_start: u32, subtract_from_name_addrs: u32):
         ...
