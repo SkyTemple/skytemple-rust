@@ -253,8 +253,7 @@ impl TiledImage {
     {
         let number_chunks = img_width * img_height / tile_dim / tile_dim;
         Self::tiled_to_native(
-            (0..number_chunks)
-                .map(|i| TilemapEntry(i, false, false, 0)),
+            (0..number_chunks).map(|i| TilemapEntry(i, false, false, 0)),
             tiledata,
             paldata,
             tile_dim,

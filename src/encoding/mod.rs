@@ -69,7 +69,8 @@ where
         E: Encoding,
     {
         Ok(self
-            .get_fixed_string_or_null(enc, len, trap)?.unwrap_or_default())
+            .get_fixed_string_or_null(enc, len, trap)?
+            .unwrap_or_default())
     }
 
     fn get_fixed_string_or_null<E>(

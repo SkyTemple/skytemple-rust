@@ -16,11 +16,11 @@
  * You should have received a copy of the GNU General Public License
  * along with SkyTemple.  If not, see <https://www.gnu.org/licenses/>.
  */
-use std::ffi::CString;
 use crate::bytes::StBytes;
+use crate::err::convert_packing_err;
 use crate::python::*;
 use packed_struct::prelude::*;
-use crate::err::convert_packing_err;
+use std::ffi::CString;
 
 pub const COUNT_GLOBAL_VARS: u32 = 115;
 pub const COUNT_LOCAL_VARS: u32 = 4;
@@ -51,7 +51,7 @@ pub struct ScriptVariableDefinitionData {
     pub bitshift: u16,
     pub nbvalues: u16,
     pub default: i16,
-    name_ptr: u32 // char*
+    name_ptr: u32, // char*
 }
 
 #[pyclass(module = "skytemple_rust.st_script_var_table")]
@@ -110,12 +110,22 @@ impl ScriptVariableDefinition {
 }
 
 impl ScriptVariableDefinition {
-    fn new<F>(id: usize, mem: &[u8], name_reader: F) -> PyResult<Self> where F: Fn(u32) -> Result<CString, ()> {
+    fn new<F>(id: usize, mem: &[u8], name_reader: F) -> PyResult<Self>
+    where
+        F: Fn(u32) -> Result<CString, ()>,
+    {
         let data = ScriptVariableDefinitionData::unpack(mem.try_into().unwrap())
             .map_err(convert_packing_err)?;
         Ok(Self {
             id,
-            name: name_reader(data.name_ptr).map_err(|_| exceptions::PyValueError::new_err("Failed reading game variable name as string.".to_string()))?.to_string_lossy().to_string(),
+            name: name_reader(data.name_ptr)
+                .map_err(|_| {
+                    exceptions::PyValueError::new_err(
+                        "Failed reading game variable name as string.".to_string(),
+                    )
+                })?
+                .to_string_lossy()
+                .to_string(),
             data,
         })
     }
@@ -133,39 +143,65 @@ pub struct ScriptVariableTables {
 #[pymethods]
 impl ScriptVariableTables {
     #[new]
-    pub fn new(mem: StBytes, global_start: usize, local_start: usize, subtract_from_name_addrs: u32) -> PyResult<Self> {
-        static_assert_size!(<ScriptVariableDefinitionData as PackedStruct>::ByteArray, DEFINITION_STRUCT_SIZE as usize);
+    pub fn new(
+        mem: StBytes,
+        global_start: usize,
+        local_start: usize,
+        subtract_from_name_addrs: u32,
+    ) -> PyResult<Self> {
+        static_assert_size!(
+            <ScriptVariableDefinitionData as PackedStruct>::ByteArray,
+            DEFINITION_STRUCT_SIZE as usize
+        );
 
         let load_name = |addr: u32| {
             let slice = &mem.as_ref()[((addr - subtract_from_name_addrs) as usize)..];
-            let nul_range_end = slice.iter()
+            let nul_range_end = slice
+                .iter()
                 .position(|&c| c == b'\0')
                 .unwrap_or(slice.len());
             CString::new(&slice[0..nul_range_end]).map_err(|_| ())
         };
 
         Ok(Self {
-            globals: mem.as_ref()[global_start..(global_start + (COUNT_GLOBAL_VARS * DEFINITION_STRUCT_SIZE) as usize)].chunks(DEFINITION_STRUCT_SIZE as usize).enumerate()
+            globals: mem.as_ref()[global_start
+                ..(global_start + (COUNT_GLOBAL_VARS * DEFINITION_STRUCT_SIZE) as usize)]
+                .chunks(DEFINITION_STRUCT_SIZE as usize)
+                .enumerate()
                 .map(|(i, gmem)| ScriptVariableDefinition::new(i, gmem, load_name))
                 .collect::<PyResult<Vec<_>>>()?,
-            locals: mem.as_ref()[local_start..(local_start + (COUNT_LOCAL_VARS * DEFINITION_STRUCT_SIZE) as usize)].chunks(DEFINITION_STRUCT_SIZE as usize).enumerate()
+            locals: mem.as_ref()
+                [local_start..(local_start + (COUNT_LOCAL_VARS * DEFINITION_STRUCT_SIZE) as usize)]
+                .chunks(DEFINITION_STRUCT_SIZE as usize)
+                .enumerate()
                 .map(|(i, lmem)| ScriptVariableDefinition::new(i + 0x400, lmem, load_name))
-                .collect::<PyResult<Vec<_>>>()?
+                .collect::<PyResult<Vec<_>>>()?,
         })
     }
 }
 
 impl ScriptVariableTables {
-    pub fn new_with_name_reader<F>(global_mem: StBytes, local_mem: StBytes, name_reader: &F) -> PyResult<Self>
-    where F: Fn(u32) -> Result<CString, ()>
+    pub fn new_with_name_reader<F>(
+        global_mem: StBytes,
+        local_mem: StBytes,
+        name_reader: &F,
+    ) -> PyResult<Self>
+    where
+        F: Fn(u32) -> Result<CString, ()>,
     {
         Ok(Self {
-            globals: global_mem.as_ref().chunks(DEFINITION_STRUCT_SIZE as usize).enumerate()
+            globals: global_mem
+                .as_ref()
+                .chunks(DEFINITION_STRUCT_SIZE as usize)
+                .enumerate()
                 .map(|(i, mem)| ScriptVariableDefinition::new(i, mem, name_reader))
                 .collect::<PyResult<Vec<_>>>()?,
-            locals: local_mem.as_ref().chunks(DEFINITION_STRUCT_SIZE as usize).enumerate()
+            locals: local_mem
+                .as_ref()
+                .chunks(DEFINITION_STRUCT_SIZE as usize)
+                .enumerate()
                 .map(|(i, mem)| ScriptVariableDefinition::new(i + 0x400, mem, name_reader))
-                .collect::<PyResult<Vec<_>>>()?
+                .collect::<PyResult<Vec<_>>>()?,
         })
     }
 }

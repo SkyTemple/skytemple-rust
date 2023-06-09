@@ -82,14 +82,14 @@ use crate::st_mappa_bin::create_st_mappa_bin_module;
 use crate::st_md::create_st_md_module;
 #[cfg(feature = "compression")]
 use crate::st_pkdpx::create_st_pkdpx_module;
+#[cfg(feature = "script_var_table")]
+use crate::st_script_var_table::create_st_script_var_table_module;
 #[cfg(feature = "sir0")]
 use crate::st_sir0::create_st_sir0_module;
 #[cfg(feature = "strings")]
 use crate::st_string::create_st_string_module;
 #[cfg(feature = "waza_p")]
 use crate::st_waza_p::create_st_waza_p_module;
-#[cfg(feature = "script_var_table")]
-use crate::st_script_var_table::create_st_script_var_table_module;
 
 #[pymodule]
 fn skytemple_rust(py: Python, module: &PyModule) -> PyResult<()> {
@@ -197,8 +197,5 @@ fn add_submodule(
 ) -> PyResult<()> {
     modules.set_item(name, module)?;
     parent.add_submodule(module)?;
-    parent.add(
-        &name.split('.').skip(1).collect::<String>(),
-        module,
-    )
+    parent.add(&name.split('.').skip(1).collect::<String>(), module)
 }
