@@ -86,7 +86,7 @@ impl RawEncoder for Pmd2Encoder {
                             );
                         } else {
                             output.write_byte(0x81);
-                            output.write_byte(sjindex as u8);
+                            output.write_byte(sjindex);
                         }
                     }
                 }

@@ -70,7 +70,7 @@ where
     {
         Ok(self
             .get_fixed_string_or_null(enc, len, trap)?
-            .unwrap_or_else(|| "".to_string()))
+            .unwrap_or_default())
     }
 
     fn get_fixed_string_or_null<E>(

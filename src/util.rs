@@ -40,7 +40,7 @@ where
     U: FromIterator<T>,
     T: Default,
 {
-    (0..size).into_iter().map(|_| Default::default()).collect()
+    (0..size).map(|_| Default::default()).collect()
 }
 
 #[allow(unused)]

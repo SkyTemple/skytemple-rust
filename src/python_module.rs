@@ -193,8 +193,5 @@ fn add_submodule(
 ) -> PyResult<()> {
     modules.set_item(name, module)?;
     parent.add_submodule(module)?;
-    parent.add(
-        &name.split('.').into_iter().skip(1).collect::<String>(),
-        module,
-    )
+    parent.add(&name.split('.').skip(1).collect::<String>(), module)
 }

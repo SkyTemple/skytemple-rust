@@ -200,7 +200,7 @@ impl From<&mut StBytes> for PyResult<SmdlTrack> {
         let preamble_err: PyResult<SmdlTrackPreamble> = source.into();
         let preamble = preamble_err?;
         let length = header.get_initial_length();
-        pyr_assert!(length <= cursor.remaining() as usize, TRACK_EOF_MESSAGE);
+        pyr_assert!(length <= cursor.remaining(), TRACK_EOF_MESSAGE);
 
         let mut events = Vec::with_capacity(100);
         while (cursor.position() as usize) < length {

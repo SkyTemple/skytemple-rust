@@ -121,15 +121,14 @@ impl Bpa {
         }
 
         let etr = (self.number_of_frames * self.number_of_tiles) as usize;
-        let width = self.number_of_frames as usize * BPA_TILE_DIM as usize;
-        let height =
-            ((etr as f32 / self.number_of_frames as f32).ceil()) as usize * BPA_TILE_DIM as usize;
+        let width = self.number_of_frames as usize * BPA_TILE_DIM;
+        let height = ((etr as f32 / self.number_of_frames as f32).ceil()) as usize * BPA_TILE_DIM;
 
         TiledImage::tiled_to_native(
             dummy_chunks.into_iter(),
             PixelGenerator::tiled4bpp(&self.tiles[..]),
             palette.iter().copied(),
-            BPA_TILE_DIM as usize,
+            BPA_TILE_DIM,
             width,
             height,
             1,
@@ -148,9 +147,9 @@ impl Bpa {
             .collect::<Vec<TilemapEntry>>();
         let dummy_chunks_chunked = dummy_chunks.chunks(self.number_of_tiles as usize);
 
-        let width = width_in_tiles * BPA_TILE_DIM as usize;
-        let height = ((self.number_of_tiles as f32 / width_in_tiles as f32).ceil()) as usize
-            * BPA_TILE_DIM as usize;
+        let width = width_in_tiles * BPA_TILE_DIM;
+        let height =
+            ((self.number_of_tiles as f32 / width_in_tiles as f32).ceil()) as usize * BPA_TILE_DIM;
 
         let mut images = Vec::with_capacity(self.number_of_frames as usize);
         for chunk in dummy_chunks_chunked {
@@ -158,7 +157,7 @@ impl Bpa {
                 chunk.iter(),
                 PixelGenerator::tiled4bpp(&self.tiles[..]),
                 palette.iter().copied(),
-                BPA_TILE_DIM as usize,
+                BPA_TILE_DIM,
                 width,
                 height,
                 1,

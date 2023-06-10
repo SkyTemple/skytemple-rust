@@ -106,7 +106,7 @@ pub(crate) fn decode_sir0_pointer_offsets(
             // If we don't need to append, add the value of the current buffer to the offset sum this far,
             // and add that value to the output vector. Then clear the buffer.
             if relative {
-                offsetsum += buffer as u32;
+                offsetsum += buffer;
                 decoded.push(offsetsum);
             } else {
                 decoded.push(buffer);
