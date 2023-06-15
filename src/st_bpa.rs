@@ -148,7 +148,7 @@ impl Bpa {
         width_in_tiles: usize,
     ) -> PyResult<Vec<IndexedImage>> {
         if self.number_of_tiles < 1 {
-            return Ok(vec![])
+            return Ok(vec![]);
         }
         let dummy_chunks = (0..(self.number_of_tiles * self.number_of_frames))
             .map(|tile_idx| TilemapEntry(tile_idx as usize, false, false, 0))
