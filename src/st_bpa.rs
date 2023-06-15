@@ -103,7 +103,12 @@ impl Bpa {
     }
     /// Exports the BPA as an image, where each row of 8x8 tiles is the
     /// animation set for a single tile. The 16 color palette passed is used to color the image.
-    pub fn tiles_to_pil(&self, palette: StBytes) -> IndexedImage {
+    ///
+    /// Returns None if the BPA has no tiles.
+    pub fn tiles_to_pil(&self, palette: StBytes) -> Option<IndexedImage> {
+        if self.number_of_tiles < 1 {
+            return None;
+        }
         // Create a dummy tile map containing all the tiles.
         // The tiles in the BPA are stored so, that each tile of the each frame is next
         // to each other. So the second frame of the first tile is at self.number_of_images + 1.
@@ -124,7 +129,7 @@ impl Bpa {
         let width = self.number_of_frames as usize * BPA_TILE_DIM;
         let height = ((etr as f32 / self.number_of_frames as f32).ceil()) as usize * BPA_TILE_DIM;
 
-        TiledImage::tiled_to_native(
+        Some(TiledImage::tiled_to_native(
             dummy_chunks.into_iter(),
             PixelGenerator::tiled4bpp(&self.tiles[..]),
             palette.iter().copied(),
@@ -132,7 +137,7 @@ impl Bpa {
             width,
             height,
             1,
-        )
+        ))
     }
     #[args(width_in_tiles = "20")]
     /// Exports the BPA as an image, where each row of 8x8 tiles is the
@@ -142,6 +147,9 @@ impl Bpa {
         palette: Vec<u8>,
         width_in_tiles: usize,
     ) -> PyResult<Vec<IndexedImage>> {
+        if self.number_of_tiles < 1 {
+            return Ok(vec![]);
+        }
         let dummy_chunks = (0..(self.number_of_tiles * self.number_of_frames))
             .map(|tile_idx| TilemapEntry(tile_idx as usize, false, false, 0))
             .collect::<Vec<TilemapEntry>>();
