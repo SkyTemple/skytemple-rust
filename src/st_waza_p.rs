@@ -335,12 +335,13 @@ pub struct WazaMove {
     #[packed_field(size_bytes = "1")]
     pub uses_mouth: bool,
     #[pyo3(get, set)]
-    pub unk13: u8,
+    #[packed_field(size_bytes = "1")]
+    pub ai_frozen_check: bool,
     #[pyo3(get, set)]
     #[packed_field(size_bytes = "1")]
     pub ignores_taunted: bool,
     #[pyo3(get, set)]
-    pub unk15: u8,
+    pub range_check_text: u8,
     #[pyo3(get, set)]
     pub move_id: u16,
     #[pyo3(get, set)]
