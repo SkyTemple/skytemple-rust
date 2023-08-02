@@ -38,14 +38,14 @@ class MappaTrapList:
 
 class MappaMonster:
     level: u8
-    weight: u16
-    weight2: u16
+    main_spawn_weight: u16
+    monster_house_spawn_weight: u16
     md_index: u16
 
-    def __init__(self, level: u8, weight: u16, weight2: u16, md_index: u16):
+    def __init__(self, level: u8, main_spawn_weight: u16, monster_house_spawn_weight: u16, md_index: u16):
         self.level = level
-        self.weight = weight
-        self.weight2 = weight2
+        self.main_spawn_weight = main_spawn_weight
+        self.monster_house_spawn_weight = monster_house_spawn_weight
         self.md_index = md_index
 
     def __eq__(self, other: object) -> bool: ...

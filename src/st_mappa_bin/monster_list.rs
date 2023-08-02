@@ -72,9 +72,9 @@ impl From<Py<MappaMonsterList>> for StBytes {
 pub struct MappaMonster {
     level_raw: u16,
     #[pyo3(get, set)]
-    pub weight: u16,
+    pub main_spawn_weight: u16,
     #[pyo3(get, set)]
-    pub weight2: u16,
+    pub monster_house_spawn_weight: u16,
     #[pyo3(get, set)]
     pub md_index: u16,
 }
@@ -84,11 +84,16 @@ impl MappaMonster {
     const LEVEL_MULTIPLIER: u16 = 512;
 
     #[new]
-    pub fn new(level: u8, weight: u16, weight2: u16, md_index: u16) -> Self {
+    pub fn new(
+        level: u8,
+        main_spawn_weight: u16,
+        monster_house_spawn_weight: u16,
+        md_index: u16,
+    ) -> Self {
         Self {
             level_raw: (level as u16) * Self::LEVEL_MULTIPLIER,
-            weight,
-            weight2,
+            main_spawn_weight,
+            monster_house_spawn_weight,
             md_index,
         }
     }
