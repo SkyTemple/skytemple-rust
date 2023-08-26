@@ -39,6 +39,11 @@ impl Dbg {
     }
 
     #[allow(unused_variables)]
+    pub fn place_chunk(&mut self, x: usize, y: usize, chunk_index: u16) -> PyResult<IndexedImage> {
+        todo!()
+    }
+
+    #[allow(unused_variables)]
     pub fn to_pil(
         &self,
         dpc: InputDpc,
