@@ -320,23 +320,17 @@ impl From<Swdl> for StBytes {
 
         let data = wavi
             .into_iter()
-            .chain(
-                if let Some(prgi) = source.prgi {
-                    StBytes::from(prgi).0
-                } else {
-                    Bytes::new()
-                }
-                .into_iter(),
-            )
-            .chain(
-                if let Some(kgrp) = source.kgrp {
-                    StBytes::from(kgrp).0
-                } else {
-                    Bytes::new()
-                }
-                .into_iter(),
-            )
-            .chain(pcmd.into_iter())
+            .chain(if let Some(prgi) = source.prgi {
+                StBytes::from(prgi).0
+            } else {
+                Bytes::new()
+            })
+            .chain(if let Some(kgrp) = source.kgrp {
+                StBytes::from(kgrp).0
+            } else {
+                Bytes::new()
+            })
+            .chain(pcmd)
             .chain(
                 b"eod \x00\x00\x15\x04\x10\x00\x00\x00\x00\x00\x00\x00"
                     .iter()
@@ -355,7 +349,7 @@ impl From<Swdl> for StBytes {
             )
             .0
             .into_iter()
-            .chain(data.into_iter())
+            .chain(data)
             .collect()
     }
 }

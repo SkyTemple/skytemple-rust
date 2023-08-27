@@ -326,8 +326,8 @@ impl From<SmdlTrack> for StBytesMut {
             .header
             .to_bytes((preamble.len() + events.len()) as u32)
             .into_iter()
-            .chain(preamble.into_iter())
-            .chain(events.into_iter())
+            .chain(preamble)
+            .chain(events)
             .collect();
         if data.len() % 4 != 0 {
             data.extend(repeat(0x98).take(4 - data.len() % 4));

@@ -308,7 +308,7 @@ impl Sir0Writer {
         // Also add the two header pointers
         let pointer_offsets = [4, 8]
             .into_iter()
-            .chain(content_pointer_offsets.into_iter())
+            .chain(content_pointer_offsets)
             .collect::<Vec<u32>>();
 
         // Pointer offsets list
@@ -339,9 +339,9 @@ impl Sir0Writer {
         Ok(StBytes(
             header
                 .into_iter()
-                .chain(content.into_iter())
+                .chain(content)
                 .chain(Self::pad(len_content_padding))
-                .chain(pol.into_iter())
+                .chain(pol)
                 .chain(Self::pad(len_eof_padding))
                 .collect::<Bytes>(),
         ))

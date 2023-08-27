@@ -265,9 +265,9 @@ impl From<Smdl> for StBytes {
             .header
             .to_bytes((track_data_len + 144) as u32)
             .into_iter()
-            .chain(source.song.to_bytes(track_len as u8).into_iter())
-            .chain(track_data.into_iter())
-            .chain(StBytes::from(source.eoc).into_iter())
+            .chain(source.song.to_bytes(track_len as u8))
+            .chain(track_data)
+            .chain(StBytes::from(source.eoc))
             .collect();
         debug_assert_eq!(track_data_len + 144, res.len());
         res

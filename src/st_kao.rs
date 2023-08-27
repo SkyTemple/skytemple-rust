@@ -86,7 +86,7 @@ impl KaoImage {
             .0
             .clone()
             .into_iter()
-            .chain(self.compressed_img_data.0.clone().into_iter())
+            .chain(self.compressed_img_data.0.clone())
     }
 
     fn bitmap_to_kao(source: IndexedImage) -> PyResult<(StBytesMut, StBytesMut)> {
