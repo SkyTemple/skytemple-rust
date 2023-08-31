@@ -110,11 +110,23 @@ pub mod input {
     use crate::python::*;
     use crate::st_dpl::Dpl;
 
-    pub trait DplProvider: ToPyObject {}
+    pub trait DplProvider: ToPyObject {
+        fn set_palettes(&mut self, value: Vec<Vec<u8>>, py: Python) -> PyResult<()>;
+    }
 
-    impl DplProvider for Py<Dpl> {}
+    impl DplProvider for Py<Dpl> {
+        fn set_palettes(&mut self, value: Vec<Vec<u8>>, py: Python) -> PyResult<()> {
+            self.borrow_mut(py).palettes = value;
+            Ok(())
+        }
+    }
 
-    impl DplProvider for PyObject {}
+    impl DplProvider for PyObject {
+        fn set_palettes(&mut self, value: Vec<Vec<u8>>, py: Python) -> PyResult<()> {
+            let self_ref = self.as_ref(py);
+            self_ref.setattr("palettes", value)
+        }
+    }
 
     pub struct InputDpl(pub Box<dyn DplProvider>);
 
@@ -145,9 +157,16 @@ pub mod input {
 pub mod input {
     use crate::st_dpl::Dpl;
 
-    pub trait DplProvider {}
+    pub trait DplProvider {
+        fn set_palettes(&mut self, value: Vec<Vec<u8>>, py: Python) -> PyResult<()>;
+    }
 
-    impl DplProvider for Dpl {}
+    impl DplProvider for Dpl {
+        fn set_palettes(&mut self, value: Vec<Vec<u8>>, py: Python) -> PyResult<()> {
+            self.palettes = value;
+            Ok(())
+        }
+    }
 
     pub struct InputDpl(pub(crate) Dpl);
 

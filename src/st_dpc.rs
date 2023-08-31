@@ -262,14 +262,106 @@ pub(crate) fn create_st_dpc_module(py: Python) -> PyResult<(&str, &PyModule)> {
 // DPCs as inputs (for compatibility of including other DPC implementations from Python)
 #[cfg(feature = "python")]
 pub mod input {
+    use crate::image::tilemap_entry::InputTilemapEntry;
+    use crate::image::{In256ColIndexedImage, InIndexedImage, IndexedImage};
     use crate::python::*;
     use crate::st_dpc::Dpc;
+    use crate::st_dpci::input::InputDpci;
+    use pyo3::types::{PyList, PyTuple};
 
-    pub trait DpcProvider: ToPyObject {}
+    pub trait DpcProvider: ToPyObject {
+        fn do_chunks_to_pil(
+            &self,
+            dpci: InputDpci,
+            palettes: Vec<Vec<u8>>,
+            width_in_mtiles: usize,
+            py: Python,
+        ) -> PyResult<IndexedImage>;
 
-    impl DpcProvider for Py<Dpc> {}
+        fn do_import_tile_mappings(
+            &mut self,
+            tile_mappings: Vec<Vec<InputTilemapEntry>>,
+            contains_null_chunk: bool,
+            correct_tile_ids: bool,
+            py: Python,
+        ) -> PyResult<()>;
+    }
 
-    impl DpcProvider for PyObject {}
+    impl DpcProvider for Py<Dpc> {
+        fn do_chunks_to_pil(
+            &self,
+            dpci: InputDpci,
+            palettes: Vec<Vec<u8>>,
+            width_in_mtiles: usize,
+            py: Python,
+        ) -> PyResult<IndexedImage> {
+            self.borrow(py)
+                .chunks_to_pil(dpci, palettes, width_in_mtiles, py)
+        }
+
+        fn do_import_tile_mappings(
+            &mut self,
+            tile_mappings: Vec<Vec<InputTilemapEntry>>,
+            contains_null_chunk: bool,
+            correct_tile_ids: bool,
+            py: Python,
+        ) -> PyResult<()> {
+            self.borrow_mut(py).import_tile_mappings(
+                tile_mappings,
+                contains_null_chunk,
+                correct_tile_ids,
+                py,
+            )
+        }
+    }
+
+    impl DpcProvider for PyObject {
+        fn do_chunks_to_pil(
+            &self,
+            dpci: InputDpci,
+            palettes: Vec<Vec<u8>>,
+            width_in_mtiles: usize,
+            py: Python,
+        ) -> PyResult<IndexedImage> {
+            let args = PyTuple::new(
+                py,
+                [
+                    dpci.into_py(py),
+                    palettes.into_py(py),
+                    width_in_mtiles.into_py(py),
+                ],
+            );
+            let img: In256ColIndexedImage = self
+                .call_method1(py, "chunks_to_pil", args)
+                .and_then(|v| v.extract(py))?;
+            img.extract(py)
+        }
+
+        fn do_import_tile_mappings(
+            &mut self,
+            tile_mappings: Vec<Vec<InputTilemapEntry>>,
+            contains_null_chunk: bool,
+            correct_tile_ids: bool,
+            py: Python,
+        ) -> PyResult<()> {
+            let args = PyTuple::new(
+                py,
+                [
+                    PyList::new(
+                        py,
+                        tile_mappings
+                            .into_iter()
+                            .map(|v| PyList::new(py, v.into_iter().map(|vv| vv.0.into_py(py)))),
+                    )
+                    .into_py(py),
+                    contains_null_chunk.into_py(py),
+                    correct_tile_ids.into_py(py),
+                ],
+            );
+            self.call_method1(py, "import_tile_mappings", args)
+                .map(|_| ())
+        }
+    }
 
     pub struct InputDpc(pub Box<dyn DpcProvider>);
 
@@ -300,9 +392,27 @@ pub mod input {
 pub mod input {
     use crate::st_dpc::Dpc;
 
-    pub trait DpcProvider {}
+    pub trait DpcProvider {
+        fn do_chunks_to_pil(
+            &self,
+            dpci: InputDpci,
+            palettes: Vec<Vec<u8>>,
+            width_in_mtiles: usize,
+            py: Python,
+        ) -> PyResult<IndexedImage>;
+    }
 
-    impl DpcProvider for Dpc {}
+    impl DpcProvider for Dpc {
+        fn do_chunks_to_pil(
+            &self,
+            dpci: InputDpci,
+            palettes: Vec<Vec<u8>>,
+            width_in_mtiles: usize,
+            py: Python,
+        ) -> PyResult<IndexedImage> {
+            self.chunks_to_pil(dpci, palettes, width_in_mtiles, py)
+        }
+    }
 
     pub struct InputDpc(pub(crate) Dpc);
 

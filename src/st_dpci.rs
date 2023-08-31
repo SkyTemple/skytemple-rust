@@ -134,20 +134,48 @@ pub mod input {
     use crate::bytes::StBytes;
     use crate::python::*;
     use crate::st_dpci::Dpci;
+    use pyo3::types::PyTuple;
 
     pub trait DpciProvider: ToPyObject {
         fn get_tiles(&self, py: Python) -> PyResult<Vec<StBytes>>;
+
+        fn do_import_tiles(
+            &mut self,
+            tiles: Vec<StBytes>,
+            contains_null_tile: bool,
+            py: Python,
+        ) -> PyResult<()>;
     }
 
     impl DpciProvider for Py<Dpci> {
         fn get_tiles(&self, py: Python) -> PyResult<Vec<StBytes>> {
             Ok(self.borrow(py).tiles.clone())
         }
+
+        fn do_import_tiles(
+            &mut self,
+            tiles: Vec<StBytes>,
+            contains_null_tile: bool,
+            py: Python,
+        ) -> PyResult<()> {
+            self.borrow_mut(py).import_tiles(tiles, contains_null_tile);
+            Ok(())
+        }
     }
 
     impl DpciProvider for PyObject {
         fn get_tiles(&self, py: Python) -> PyResult<Vec<StBytes>> {
             self.getattr(py, "tiles")?.extract(py)
+        }
+
+        fn do_import_tiles(
+            &mut self,
+            tiles: Vec<StBytes>,
+            contains_null_tile: bool,
+            py: Python,
+        ) -> PyResult<()> {
+            let args = PyTuple::new(py, [tiles.into_py(py), contains_null_tile.into_py(py)]);
+            self.call_method1(py, "import_tiles", args).map(|_| ())
         }
     }
 
@@ -182,11 +210,27 @@ pub mod input {
 
     pub trait DpciProvider: ToPyObject {
         fn get_tiles(&self, py: Python) -> PyResult<Vec<StBytes>>;
+
+        fn do_import_tiles(
+            &mut self,
+            tiles: Vec<StBytes>,
+            contains_null_tile: bool,
+            py: Python,
+        ) -> PyResult<()>;
     }
 
     impl DpciProvider for Dpci {
         fn get_tiles(&self, _py: Python) -> PyResult<Vec<StBytes>> {
             Ok(self.tiles.clone())
+        }
+
+        fn do_import_tiles(
+            &mut self,
+            tiles: Vec<StBytes>,
+            contains_null_tile: bool,
+            py: Python,
+        ) -> PyResult<()> {
+            Ok(self.import_tiles(tiles, contains_null_tile))
         }
     }
 
