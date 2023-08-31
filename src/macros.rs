@@ -33,9 +33,9 @@ macro_rules! pyr_assert {
             ));
         }
     }};
-    ($cond:expr, $msg:expr, $exc:ident) => {{
+    ($cond:expr, $msg:expr, $exc:path) => {{
         if !$cond {
-            return Err($exc::new_err(format!(
+            return Err(<$exc>::new_err(format!(
                 "{} | {} [{}:{}]",
                 $msg,
                 stringify!($cond),

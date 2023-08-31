@@ -23,7 +23,6 @@
 
 use crate::bytes::StBytes;
 use crate::gettext::gettext;
-use crate::python::exceptions::PyValueError;
 use crate::python::{exceptions, PyResult};
 use crate::rom_source::RomFileProvider;
 use bytes::{Buf, BufMut, Bytes, BytesMut};
@@ -90,7 +89,7 @@ impl<T: AsRef<[u8]>> GenericRomFs<T> {
         pyr_assert!(
             data.as_ref().len() >= 0x160,
             gettext(NOT_ENOUGH_DATA),
-            PyValueError
+            exceptions::PyValueError
         );
         if check_crc {
             let checksum = (&data.as_ref()[0x15E..]).get_u16_le();
@@ -99,14 +98,14 @@ impl<T: AsRef<[u8]>> GenericRomFs<T> {
             pyr_assert!(
                 crc == checksum,
                 gettext("ROM Header checksum does not match contents."),
-                PyValueError
+                exceptions::PyValueError
             );
         }
 
         Ok(Self {
             fs: FileSystem::new(Self::fnt(data.as_ref())?, Self::fat(data.as_ref())?).map_err(
                 |e| {
-                    PyValueError::new_err(gettext!(
+                    exceptions::PyValueError::new_err(gettext!(
                         "Error reading the filesystem from ROM: {}",
                         e.to_string()
                     ))
@@ -146,17 +145,17 @@ impl<T: AsRef<[u8]>> GenericRomFs<T> {
             .iter()
             .flat_map(|(_, dir)| &dir.files)
             .find(|f| f.id == file_id as u16)
-            .ok_or_else(|| PyValueError::new_err("The file does not exist."))?;
+            .ok_or_else(|| exceptions::PyValueError::new_err("The file does not exist."))?;
         assert_eq!(f_entry.id, file_id as u16);
         pyr_assert!(
             f_entry.alloc.end > f_entry.alloc.start,
             "The file is invalid.",
-            PyValueError
+            exceptions::PyValueError
         );
         pyr_assert!(
             (f_entry.alloc.end as usize) < self.data.as_ref().len(),
             "The file is invalid.",
-            PyValueError
+            exceptions::PyValueError
         );
         Ok(&self.data.as_ref()[(f_entry.alloc.start) as usize..(f_entry.alloc.end) as usize])
     }
@@ -180,11 +179,9 @@ impl<T: AsRef<[u8]>> GenericRomFs<T> {
             Ordering::Less => {
                 let offset = Header::FatLen as usize;
                 (&mut data[offset..offset + 4]).put_u32_le(fat.len() as u32);
-                (&mut data[fat_start..fat_start + fat.len()]).copy_from_slice(&fat[..]);
+                data[fat_start..fat_start + fat.len()].copy_from_slice(&fat[..]);
             }
-            Ordering::Equal => {
-                (&mut data[fat_start..fat_start + fat_len]).copy_from_slice(&fat[..])
-            }
+            Ordering::Equal => data[fat_start..fat_start + fat_len].copy_from_slice(&fat[..]),
             Ordering::Greater => {
                 return Err(exceptions::PyValueError::new_err(
                     "The FAT size increased. This is currently not supported.",
@@ -197,11 +194,9 @@ impl<T: AsRef<[u8]>> GenericRomFs<T> {
             Ordering::Less => {
                 let offset = Header::FntLen as usize;
                 (&mut data[offset..offset + 4]).put_u32_le(fnt.len() as u32);
-                (&mut data[fnt_start..fnt_start + fnt.len()]).copy_from_slice(&fnt[..]);
+                data[fnt_start..fnt_start + fnt.len()].copy_from_slice(&fnt[..]);
             }
-            Ordering::Equal => {
-                (&mut data[fnt_start..fnt_start + fnt_len]).copy_from_slice(&fnt[..])
-            }
+            Ordering::Equal => data[fnt_start..fnt_start + fnt_len].copy_from_slice(&fnt[..]),
             Ordering::Greater => {
                 return Err(exceptions::PyValueError::new_err(
                     "The FNT size increased. This is currently not supported.",
@@ -211,7 +206,7 @@ impl<T: AsRef<[u8]>> GenericRomFs<T> {
         pyr_assert!(
             fnt.len() == fnt_len,
             "The FNT size increased. This is currently not supported.",
-            PyValueError
+            exceptions::PyValueError
         );
         Ok(StBytes::from(data))
     }
@@ -234,7 +229,7 @@ impl<T: AsRef<[u8]>> GenericRomFs<T> {
         pyr_assert!(
             data.len() >= fat_start + fat_len,
             gettext(NOT_ENOUGH_DATA),
-            PyValueError
+            exceptions::PyValueError
         );
 
         Ok(&data[fat_start..fat_start + fat_len])
@@ -247,7 +242,7 @@ impl<T: AsRef<[u8]>> GenericRomFs<T> {
         pyr_assert!(
             data.len() >= fnt_start + fnt_len,
             gettext(NOT_ENOUGH_DATA),
-            PyValueError
+            exceptions::PyValueError
         );
 
         Ok(&data[fnt_start..fnt_start + fnt_len])
@@ -303,7 +298,7 @@ impl<T: AsRef<[u8]>> GenericRomFs<T> {
                             )
                             .unwrap();
                         assert!(str.len() < 127);
-                        once(str.len().to_u8().unwrap()).chain(str.into_iter())
+                        once(str.len().to_u8().unwrap()).chain(str)
                     })
                     .chain(sub_directories(&self.fs.dirs, d).into_iter().flat_map(|f| {
                         let str = ISO_8859_1
@@ -320,7 +315,7 @@ impl<T: AsRef<[u8]>> GenericRomFs<T> {
                             .unwrap();
                         assert!(str.len() < 127);
                         once(str.len().to_u8().unwrap() | 0x80)
-                            .chain(str.into_iter())
+                            .chain(str)
                             .chain(f.id().to_le_bytes())
                     }))
                     .chain(
@@ -375,7 +370,7 @@ impl<T: AsRef<[u8]>> RomFileProvider for GenericRomFs<T> {
         if let Some(file) = files.iter().find(|e| e.path == filename) {
             Ok(self.get_file_contents(file.id as usize)?.to_vec())
         } else {
-            Err(PyValueError::new_err("File not found."))
+            Err(exceptions::PyValueError::new_err("File not found."))
         }
     }
     fn list_files_in_folder(&self, filename: &str) -> PyResult<Vec<String>> {
@@ -402,7 +397,7 @@ impl<T: AsRef<[u8]>> GenericRomFs<T> {
                 return Ok(&dir.files);
             }
         }
-        Err(PyValueError::new_err("Directory not found."))
+        Err(exceptions::PyValueError::new_err("Directory not found."))
     }
 }
 
@@ -443,7 +438,7 @@ impl WritableRomFs {
             let file_id = file.id as usize;
             self.set_file_contents(file_id, content)
         } else {
-            Err(PyValueError::new_err("File not found."))
+            Err(exceptions::PyValueError::new_err("File not found."))
         }
     }
 
@@ -454,16 +449,16 @@ impl WritableRomFs {
             .iter_mut()
             .flat_map(|(_, dir)| &mut dir.files)
             .find(|f| f.id == file_id as u16)
-            .ok_or_else(|| PyValueError::new_err("The file does not exist."))?;
+            .ok_or_else(|| exceptions::PyValueError::new_err("The file does not exist."))?;
         pyr_assert!(
             f_entry.alloc.end > f_entry.alloc.start,
             "The file is invalid.",
-            PyValueError
+            exceptions::PyValueError
         );
         pyr_assert!(
             (f_entry.alloc.end as usize) < self.data.as_ref().len(),
             "The file is invalid.",
-            PyValueError
+            exceptions::PyValueError
         );
 
         let old_len = f_entry.alloc.end - f_entry.alloc.start;
@@ -491,7 +486,7 @@ impl WritableRomFs {
                     f.alloc.end += increased_size;
                 });
         } else {
-            (&mut self.data[(f_entry.alloc.start as usize)..(f_entry.alloc.end as usize)])
+            self.data[(f_entry.alloc.start as usize)..(f_entry.alloc.end as usize)]
                 .copy_from_slice(&content[..]);
         }
         Ok(())
