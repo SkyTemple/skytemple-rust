@@ -17,10 +17,10 @@
  * along with SkyTemple.  If not, see <https://www.gnu.org/licenses/>.
  */
 use crate::bytes::StBytes;
+use crate::gettext::gettext;
 use crate::python::*;
 use crate::st_sir0::{Sir0Error, Sir0Result, Sir0Serializable};
 use bytes::{Buf, BufMut, BytesMut};
-use gettextrs::gettext;
 use itertools::Itertools;
 
 pub const DPLA_COLORS_PER_PALETTE: usize = 16;

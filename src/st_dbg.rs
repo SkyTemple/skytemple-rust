@@ -17,6 +17,7 @@
  * along with SkyTemple.  If not, see <https://www.gnu.org/licenses/>.
  */
 use crate::bytes::StBytes;
+use crate::gettext::gettext;
 use crate::image::tiled::TiledImage;
 use crate::image::tilemap_entry::{InputTilemapEntry, TilemapEntry};
 use crate::image::{In256ColIndexedImage, InIndexedImage, IndexedImage, Raster};
@@ -28,7 +29,6 @@ use crate::st_dpci::DPCI_TILE_DIM;
 use crate::st_dpl::input::InputDpl;
 use crate::st_dpl::{DPL_MAX_PAL, DPL_PAL_LEN};
 use bytes::{Buf, BufMut, BytesMut};
-use gettextrs::gettext;
 use itertools::Itertools;
 
 #[cfg(not(feature = "python"))]

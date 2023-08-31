@@ -17,6 +17,7 @@
  * along with SkyTemple.  If not, see <https://www.gnu.org/licenses/>.
  */
 use crate::bytes::StBytes;
+use crate::gettext::gettext;
 use crate::image::tiled::TiledImage;
 use crate::image::tilemap_entry::{InputTilemapEntry, ProvidesTilemapEntry, TilemapEntry};
 use crate::image::{In256ColIndexedImage, InIndexedImage, IndexedImage, PixelGenerator};
@@ -25,7 +26,6 @@ use crate::st_dpci::input::InputDpci;
 use crate::st_dpci::DPCI_TILE_DIM;
 use crate::st_dpl::DPL_MAX_PAL;
 use bytes::{Buf, BufMut, BytesMut};
-use gettextrs::gettext;
 use itertools::Itertools;
 use std::iter::once;
 
