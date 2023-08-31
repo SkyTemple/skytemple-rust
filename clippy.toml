@@ -1,0 +1,6 @@
+disallowed-methods = [
+    { path = "bytes::buf::buf_impl::Buf::get_u16", reason = "the game uses little-endian for almost everything, you probably want to use get_u16_le" },
+    { path = "bytes::buf::buf_impl::Buf::get_u32", reason = "the game uses little-endian for almost everything, you probably want to use get_u32_le" },
+    { path = "bytes::buf::buf_mut::BufMut:put_u16", reason = "the game uses little-endian for almost everything, you probably want to use put_u16_le" },
+    { path = "bytes::buf::buf_mut::BufMut:put_u32", reason = "the game uses little-endian for almost everything, you probably want to use put_u32_le" },
+]

@@ -22,7 +22,8 @@ use std::cell::{Ref, RefCell, RefMut};
 use std::error::Error;
 use std::fmt::{Debug, Display, Formatter};
 use std::io;
-use std::ops::{Deref, DerefMut};
+use std::num::TryFromIntError;
+use std::ops::Deref;
 use std::sync::Arc;
 
 pub(crate) type PyResult<T> = Result<T, PyErr>;
@@ -60,6 +61,16 @@ impl Display for PyErr {
 
 impl From<io::Error> for PyErr {
     fn from(err: io::Error) -> Self {
+        let value = err.to_string();
+        Self {
+            type_name: "FromRust".to_string(),
+            value,
+        }
+    }
+}
+
+impl From<TryFromIntError> for PyErr {
+    fn from(err: TryFromIntError) -> Self {
         let value = err.to_string();
         Self {
             type_name: "FromRust".to_string(),
