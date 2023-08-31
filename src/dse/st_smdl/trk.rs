@@ -222,11 +222,12 @@ impl From<&mut StBytes> for PyResult<SmdlTrack> {
                     Some(cursor.get_u8() as u32)
                 } else if number_params == 2 {
                     pyr_assert!(cursor.remaining() >= 2, TRACK_EOF_MESSAGE);
+                    #[allow(clippy::disallowed_methods)]
                     Some(cursor.get_u16() as u32) // big endian?? really??
                 } else if number_params == 3 {
                     pyr_assert!(cursor.remaining() >= 3, TRACK_EOF_MESSAGE);
+                    #[allow(clippy::disallowed_methods)] // big endian?? really??
                     Some(((cursor.get_u16() as u32) << 8) + cursor.get_u8() as u32)
-                // big endian?? really??
                 } else {
                     None
                 };
