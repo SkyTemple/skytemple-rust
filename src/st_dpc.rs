@@ -137,7 +137,7 @@ impl Dpc {
         img: In256ColIndexedImage,
         force_import: bool,
         py: Python,
-    ) -> PyResult<(StBytes, Vec<Vec<u8>>)> {
+    ) -> PyResult<(Vec<StBytes>, Vec<Vec<u8>>)> {
         let image = img.extract(py)?;
         let w = image.0 .1;
         let h = image.0 .2;
@@ -163,7 +163,10 @@ impl Dpc {
             .collect::<PyResult<Vec<Vec<Py<TilemapEntry>>>>>()?;
         self.re_fill_chunks(py)?;
         Ok((
-            tiles.into_iter().flatten().collect(),
+            tiles
+                .into_iter()
+                .map(|x| StBytes::from(x.0))
+                .collect::<Vec<StBytes>>(),
             palettes
                 .0
                 .into_iter()
