@@ -131,14 +131,25 @@ pub(crate) fn create_st_dpci_module(py: Python) -> PyResult<(&str, &PyModule)> {
 // DPCIs as inputs (for compatibility of including other DPCI implementations from Python)
 #[cfg(feature = "python")]
 pub mod input {
+    use crate::bytes::StBytes;
     use crate::python::*;
     use crate::st_dpci::Dpci;
 
-    pub trait DpciProvider: ToPyObject {}
+    pub trait DpciProvider: ToPyObject {
+        fn get_tiles(&self, py: Python) -> PyResult<Vec<StBytes>>;
+    }
 
-    impl DpciProvider for Py<Dpci> {}
+    impl DpciProvider for Py<Dpci> {
+        fn get_tiles(&self, py: Python) -> PyResult<Vec<StBytes>> {
+            Ok(self.borrow(py).tiles.clone())
+        }
+    }
 
-    impl DpciProvider for PyObject {}
+    impl DpciProvider for PyObject {
+        fn get_tiles(&self, py: Python) -> PyResult<Vec<StBytes>> {
+            self.getattr(py, "tiles")?.extract(py)
+        }
+    }
 
     pub struct InputDpci(pub Box<dyn DpciProvider>);
 
@@ -169,9 +180,15 @@ pub mod input {
 pub mod input {
     use crate::st_dpci::Dpci;
 
-    pub trait DpciProvider {}
+    pub trait DpciProvider: ToPyObject {
+        fn get_tiles(&self, py: Python) -> PyResult<Vec<StBytes>>;
+    }
 
-    impl DpciProvider for Dpci {}
+    impl DpciProvider for Dpci {
+        fn get_tiles(&self, _py: Python) -> PyResult<Vec<StBytes>> {
+            Ok(self.tiles.clone())
+        }
+    }
 
     pub struct InputDpci(pub(crate) Dpci);
 
