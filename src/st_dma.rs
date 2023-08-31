@@ -19,6 +19,7 @@
 use crate::bytes::StBytes;
 use crate::python::*;
 use num_derive::FromPrimitive;
+#[cfg(feature = "python")]
 use num_traits::FromPrimitive;
 
 #[repr(u8)]

@@ -31,6 +31,13 @@ use bytes::{Buf, BufMut, BytesMut};
 use gettextrs::gettext;
 use itertools::Itertools;
 
+#[cfg(not(feature = "python"))]
+use crate::st_dpc::input::DpcProvider;
+#[cfg(not(feature = "python"))]
+use crate::st_dpci::input::DpciProvider;
+#[cfg(not(feature = "python"))]
+use crate::st_dpl::input::DplProvider;
+
 const DBG_TILING_DIM: usize = 3;
 const DBG_CHUNK_WIDTH: usize = 24;
 const DBG_WIDTH_AND_HEIGHT: usize = 32;

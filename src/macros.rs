@@ -16,6 +16,7 @@
  * You should have received a copy of the GNU General Public License
  * along with SkyTemple.  If not, see <https://www.gnu.org/licenses/>.
  */
+#![cfg_attr(not(feature = "python"), allow(unused_macros))]
 
 macro_rules! pyr_assert {
     ($cond:expr $(,)?) => {{

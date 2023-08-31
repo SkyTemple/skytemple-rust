@@ -206,9 +206,12 @@ pub mod input {
 
 #[cfg(not(feature = "python"))]
 pub mod input {
+    use crate::bytes::StBytes;
+    use crate::no_python::Python;
     use crate::st_dpci::Dpci;
+    use crate::PyResult;
 
-    pub trait DpciProvider: ToPyObject {
+    pub trait DpciProvider {
         fn get_tiles(&self, py: Python) -> PyResult<Vec<StBytes>>;
 
         fn do_import_tiles(
@@ -228,9 +231,10 @@ pub mod input {
             &mut self,
             tiles: Vec<StBytes>,
             contains_null_tile: bool,
-            py: Python,
+            _py: Python,
         ) -> PyResult<()> {
-            Ok(self.import_tiles(tiles, contains_null_tile))
+            self.import_tiles(tiles, contains_null_tile);
+            Ok(())
         }
     }
 

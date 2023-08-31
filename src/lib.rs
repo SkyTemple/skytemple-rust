@@ -22,6 +22,7 @@
 // Seems to be a "bug" with Pyo3 atm:
 #![allow(clippy::borrow_deref_ref)]
 
+#[cfg_attr(not(feature = "python"), allow(unused_imports))]
 #[macro_use]
 extern crate skytemple_rust_macros;
 

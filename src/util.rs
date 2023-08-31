@@ -185,6 +185,7 @@ where
     }
 }
 
+#[allow(dead_code)]
 pub fn pad(data: &mut BytesMut, padlen: usize, padwith: u8) {
     let lenp = data.len() % padlen;
     if lenp != 0 {

@@ -155,14 +155,16 @@ pub mod input {
 
 #[cfg(not(feature = "python"))]
 pub mod input {
+    use crate::no_python::Python;
     use crate::st_dpl::Dpl;
+    use crate::PyResult;
 
     pub trait DplProvider {
         fn set_palettes(&mut self, value: Vec<Vec<u8>>, py: Python) -> PyResult<()>;
     }
 
     impl DplProvider for Dpl {
-        fn set_palettes(&mut self, value: Vec<Vec<u8>>, py: Python) -> PyResult<()> {
+        fn set_palettes(&mut self, value: Vec<Vec<u8>>, _py: Python) -> PyResult<()> {
             self.palettes = value;
             Ok(())
         }

@@ -29,6 +29,9 @@ use gettextrs::gettext;
 use itertools::Itertools;
 use std::iter::once;
 
+#[cfg(not(feature = "python"))]
+use crate::st_dpci::input::DpciProvider;
+
 pub const DPC_TILING_DIM: usize = 3;
 pub const DPC_TILING_DIM_SQUARED: usize = DPC_TILING_DIM * DPC_TILING_DIM;
 
@@ -390,7 +393,12 @@ pub mod input {
 
 #[cfg(not(feature = "python"))]
 pub mod input {
+    use crate::image::tilemap_entry::InputTilemapEntry;
+    use crate::image::IndexedImage;
+    use crate::no_python::Python;
     use crate::st_dpc::Dpc;
+    use crate::st_dpci::input::InputDpci;
+    use crate::PyResult;
 
     pub trait DpcProvider {
         fn do_chunks_to_pil(
@@ -400,6 +408,14 @@ pub mod input {
             width_in_mtiles: usize,
             py: Python,
         ) -> PyResult<IndexedImage>;
+
+        fn do_import_tile_mappings(
+            &mut self,
+            tile_mappings: Vec<Vec<InputTilemapEntry>>,
+            contains_null_chunk: bool,
+            correct_tile_ids: bool,
+            py: Python,
+        ) -> PyResult<()>;
     }
 
     impl DpcProvider for Dpc {
@@ -411,6 +427,16 @@ pub mod input {
             py: Python,
         ) -> PyResult<IndexedImage> {
             self.chunks_to_pil(dpci, palettes, width_in_mtiles, py)
+        }
+
+        fn do_import_tile_mappings(
+            &mut self,
+            tile_mappings: Vec<Vec<InputTilemapEntry>>,
+            contains_null_chunk: bool,
+            correct_tile_ids: bool,
+            py: Python,
+        ) -> PyResult<()> {
+            self.import_tile_mappings(tile_mappings, contains_null_chunk, correct_tile_ids, py)
         }
     }
 
