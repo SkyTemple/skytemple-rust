@@ -276,12 +276,15 @@ impl Bma {
     /// slots being None.
     #[allow(clippy::too_many_arguments)]
     #[allow(unused_variables)]
-    #[args(
-        include_collision = "true",
-        include_unknown_data_block = "true",
-        pal_ani = "true",
-        single_frame = "false"
-    )]
+    #[pyo3(signature = (
+        bpc,
+        bpl,
+        bpas,
+        include_collision = true,
+        include_unknown_data_block = true,
+        pal_ani = true,
+        single_frame = false
+    ))]
     pub fn to_pil(
         &self,
         mut bpc: InputBpc,
@@ -424,12 +427,14 @@ impl Bma {
     #[allow(clippy::too_many_arguments)]
     #[allow(clippy::option_map_unit_fn)]
     #[allow(unused_variables)]
-    #[args(
-        lower_img = "None",
-        upper_img = "None",
-        force_import = "true",
-        how_many_palettes_lower_layer = "16"
-    )]
+    #[pyo3(signature = (
+        bpc,
+        bpl,
+        lower_img = None,
+        upper_img = None,
+        force_import = true,
+        how_many_palettes_lower_layer = 16
+    ))]
     pub fn from_pil(
         &mut self,
         mut bpc: InputBpc,

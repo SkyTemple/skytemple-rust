@@ -65,10 +65,7 @@ pub(crate) fn lcm(a: usize, b: usize) -> usize {
 
 /// Smart pointer to lazily build data from StBytes.
 /// Can fail converting from StBytes/T and into T.
-pub enum Lazy<T>
-where
-    T: AsStBytes + TryFrom<StBytes>,
-{
+pub enum Lazy<T> {
     Source(StBytes),
     Instance(T),
 }
@@ -99,7 +96,7 @@ where
 
 impl<T, E> PartialEq for Lazy<T>
 where
-    T: AsStBytes + TryFrom<StBytes, Error = E> + PartialEq,
+    T: AsStBytes + TryFrom<StBytes, Error = E>,
     E: Into<PyErr>,
 {
     fn eq(&self, other: &Self) -> bool {
@@ -109,7 +106,7 @@ where
 
 impl<T, E> Eq for Lazy<T>
 where
-    T: AsStBytes + TryFrom<StBytes, Error = E> + Eq,
+    T: AsStBytes + TryFrom<StBytes, Error = E>,
     E: Into<PyErr>,
 {
 }

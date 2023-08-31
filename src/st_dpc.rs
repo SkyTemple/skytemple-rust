@@ -74,7 +74,7 @@ impl Dpc {
         Ok(())
     }
 
-    #[args(width_in_mtiles = "16")]
+    #[pyo3(signature = (dpci, palettes, width_in_mtiles = 16))]
     /// Convert all chunks of the DPC to one big image.
     /// The chunks are all placed next to each other.
     /// The resulting image has one large palette with all palettes merged together.
@@ -122,7 +122,7 @@ impl Dpc {
         ))
     }
 
-    #[args(force_import = "true")]
+    #[pyo3(signature = (img, force_import = true))]
     #[allow(unused_variables)]
     /// Imports chunks. Format same as for chunks_to_pil.
     /// Replaces tile mappings and returns the new tiles for storing them in a DPCI and the palettes
@@ -178,7 +178,7 @@ impl Dpc {
         ))
     }
 
-    #[args(contains_null_chunk = "false", correct_tile_ids = "true")]
+    #[pyo3(signature = (tile_mappings, contains_null_chunk = false, correct_tile_ids = true))]
     #[allow(unused_variables)]
     /// Replace the tile mappings of the specified layer.
     /// If contains_null_tile is False, the null chunk is added to the list, at the beginning.

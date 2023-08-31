@@ -233,7 +233,7 @@ impl Bpc {
     /// Does NOT export BPA tiles. Chunks that reference BPA tiles are replaced with empty tiles.
     /// The mapping to BPA tiles has to be done programmatically using set_tile or set_chunk.
     #[cfg(feature = "python")]
-    #[args(width_in_mtiles = "20")]
+    #[pyo3(signature = (layer_id, palettes, width_in_mtiles = 20))]
     #[pyo3(name = "chunks_to_pil")]
     pub fn _chunks_to_pil(
         &self,
@@ -268,7 +268,7 @@ impl Bpc {
     /// If single_palette is not None, all palettes are exported using the palette no. stored in single_palette.
     //
     /// The first tile is a NULL tile. It is always empty, even when re-imported.
-    #[args(width_in_mtiles = "20", single_palette = "None")]
+    #[pyo3(signature = (layer_id, palettes, width_in_tiles = 20, single_palette = None))]
     pub fn tiles_to_pil(
         &self,
         layer_id: usize,
@@ -319,7 +319,7 @@ impl Bpc {
     ///
     /// The list of bpas must be the one contained in the bg_list. It needs to contain 8 slots, with empty
     /// slots being None.
-    #[args(width_in_mtiles = "20")]
+    #[pyo3(signature = (layer_id, palettes, bpas, width_in_mtiles = 20))]
     pub fn chunks_animated_to_pil(
         &mut self,
         layer_id: usize,
@@ -387,7 +387,7 @@ impl Bpc {
     ///
     /// Returns the palettes stored in the image for further processing (eg. replacing the BPL palettes).
     #[allow(unused_variables)]
-    #[args(force_import = "true")]
+    #[pyo3(signature = (layer_id, image, force_import = true))]
     pub fn pil_to_chunks(
         &mut self,
         layer_id: usize,
@@ -456,7 +456,7 @@ impl Bpc {
 
     /// Replace the tiles of the specified layer.
     /// If contains_null_tile is False, the null tile is added to the list, at the beginning.
-    #[args(contains_null_tile = "false")]
+    #[pyo3(signature = (layer, tiles, contains_null_tile = false))]
     pub fn import_tiles(
         &mut self,
         layer: usize,
@@ -479,7 +479,7 @@ impl Bpc {
     ///
     /// If correct_tile_ids is True, then the tile id of tile_mappings is also increased by one. Use this,
     /// if you previously used import_tiles with contains_null_tile=false
-    #[args(contains_null_chunk = "false", correct_tile_ids = "true")]
+    #[pyo3(signature = (layer, tile_mappings, contains_null_chunk = false, correct_tile_ids = true))]
     pub fn import_tile_mappings(
         &mut self,
         layer: usize,

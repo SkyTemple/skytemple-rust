@@ -192,11 +192,8 @@ impl MappaFloor {
         self.unk_items2 = Lazy::Instance(value);
         Ok(())
     }
-}
 
-#[cfg(feature = "python")]
-#[pyproto]
-impl pyo3::PyObjectProtocol for MappaFloor {
+    #[cfg(feature = "python")]
     fn __richcmp__(&self, other: PyRef<Self>, op: pyo3::basic::CompareOp) -> Py<PyAny> {
         let py = other.py();
         match op {

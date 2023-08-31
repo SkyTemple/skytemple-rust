@@ -25,10 +25,6 @@ use crate::python::*;
 use crate::st_at_common::{CommonAt, COMMON_AT_MUST_COMPRESS_3};
 use arr_macro::arr;
 use bytes::{Buf, BufMut};
-#[cfg(feature = "python")]
-use pyo3::iter::IterNextOutput;
-#[cfg(feature = "python")]
-use pyo3::PyIterProtocol;
 use std::collections::hash_map::Entry;
 use std::collections::HashMap;
 use std::io::Cursor;
@@ -382,12 +378,9 @@ impl Kao {
             i_inner: -1,
         })
     }
-}
 
-#[pyproto]
-#[cfg(feature = "python")]
-/// Iterates over all KaoImages.
-impl PyIterProtocol for Kao {
+    #[cfg(feature = "python")]
+    /// Iterates over all KaoImages.
     #[allow(clippy::unnecessary_to_owned)]
     fn __iter__(slf: PyRef<Self>) -> PyResult<Py<KaoIterator>> {
         let mut reference = Box::new(
@@ -436,18 +429,18 @@ impl Iterator for KaoIterator {
     }
 }
 
-#[pyproto]
+#[pymethods]
 #[cfg(feature = "python")]
-impl PyIterProtocol for KaoIterator {
+impl KaoIterator {
     fn __iter__(slf: PyRef<Self>) -> PyRef<Self> {
         slf
     }
     fn __next__(
         mut slf: PyRefMut<Self>,
-    ) -> IterNextOutput<(u32, u32, Option<Py<KaoImage>>), &'static str> {
+    ) -> pyo3::iter::IterNextOutput<(u32, u32, Option<Py<KaoImage>>), &'static str> {
         match slf.next() {
-            Some(x) => IterNextOutput::Yield(x),
-            None => IterNextOutput::Return(""),
+            Some(x) => pyo3::iter::IterNextOutput::Yield(x),
+            None => pyo3::iter::IterNextOutput::Return(""),
         }
     }
 }

@@ -182,7 +182,7 @@ impl Sir0 {
     const HEADER_LEN: u32 = 16;
 
     #[new]
-    #[args(data_pointer = "None")]
+    #[pyo3(signature = (content, pointer_offsets, data_pointer = None))]
     pub fn new(content: StBytes, pointer_offsets: Vec<u32>, data_pointer: Option<u32>) -> Self {
         Self {
             data_pointer: data_pointer.unwrap_or_default(),

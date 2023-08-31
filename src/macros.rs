@@ -33,9 +33,9 @@ macro_rules! pyr_assert {
             ));
         }
     }};
-    ($cond:expr, $msg:expr, $exc:ident) => {{
+    ($cond:expr, $msg:expr, $exc:path) => {{
         if !$cond {
-            return Err($exc::new_err(format!(
+            return Err(<$exc>::new_err(format!(
                 "{} | {} [{}:{}]",
                 $msg,
                 stringify!($cond),
@@ -271,7 +271,7 @@ macro_rules! __do_impl_pylist {
                 pub fn extend(&mut self, _value: PyObject) -> PyResult<()> {
                     Err(exceptions::PyNotImplementedError::new_err("Not supported."))
                 }
-                #[args(idx = "0")]
+                #[pyo3(signature = (idx = 0))]
                 pub fn pop(&mut self, idx: isize) -> PyResult<$itemty> {
                     if idx == 0 {
                         if !self.0.is_empty() {
@@ -288,6 +288,14 @@ macro_rules! __do_impl_pylist {
                 pub fn __iadd__(&mut self, value: PyObject) -> PyResult<()> {
                     self.extend(value)
                 }
+                fn __richcmp__(&self, other: PyRef<Self>, op: ::pyo3::basic::CompareOp) -> Py<PyAny> {
+                    let py = other.py();
+                    match op {
+                        ::pyo3::basic::CompareOp::Eq => (self == other.deref()).into_py(py),
+                        ::pyo3::basic::CompareOp::Ne => (self != other.deref()).into_py(py),
+                        _ => py.NotImplemented(),
+                    }
+                }
                 $($implDetails)*
             }
 
@@ -300,19 +308,6 @@ macro_rules! __do_impl_pylist {
             impl FromIterator<$itemty> for $name {
                 fn from_iter<T: IntoIterator<Item = $itemty>>(iter: T) -> Self {
                     Self(Vec::from_iter(iter))
-                }
-            }
-
-            #[cfg(feature = "python")]
-            #[pyproto]
-            impl ::pyo3::PyObjectProtocol for $name {
-                fn __richcmp__(&self, other: PyRef<Self>, op: ::pyo3::basic::CompareOp) -> Py<PyAny> {
-                    let py = other.py();
-                    match op {
-                        ::pyo3::basic::CompareOp::Eq => (self == other.deref()).into_py(py),
-                        ::pyo3::basic::CompareOp::Ne => (self != other.deref()).into_py(py),
-                        _ => py.NotImplemented(),
-                    }
                 }
             }
 

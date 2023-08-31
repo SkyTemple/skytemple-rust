@@ -341,7 +341,7 @@ impl GenericNrlCompressionContainer {
     }
     #[cfg(feature = "python")]
     #[classmethod]
-    #[args(byte_offset = 0)]
+    #[pyo3(signature = (data, byte_offset = 0))]
     #[pyo3(name = "cont_size")]
     fn _cont_size(_cls: &PyType, data: crate::bytes::StBytes, byte_offset: usize) -> u16 {
         Self::cont_size(data.0, byte_offset)

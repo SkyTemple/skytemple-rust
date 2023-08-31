@@ -79,8 +79,8 @@ pub struct ItemPEntry {
 }
 
 #[cfg(feature = "python")]
-#[pyproto]
-impl pyo3::PyObjectProtocol for ItemPEntry {
+#[pymethods]
+impl ItemPEntry {
     fn __richcmp__(&self, other: PyRef<Self>, op: pyo3::basic::CompareOp) -> Py<PyAny> {
         let py = other.py();
         match op {

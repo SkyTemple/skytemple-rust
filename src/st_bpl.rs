@@ -67,7 +67,7 @@ pub struct Bpl {
     pub number_palettes: u16,
     #[pyo3(get, set)]
     pub has_palette_animation: bool,
-    #[pyo3(get, set)]
+    #[pyo3(get)]
     pub palettes: Vec<Vec<u8>>,
     #[pyo3(get, set)]
     pub animation_specs: Vec<Py<BplAnimationSpec>>,
@@ -157,6 +157,14 @@ impl Bpl {
             animation_palette,
         })
     }
+
+    #[cfg(feature = "python")]
+    #[setter(palettes)]
+    fn set_palettes_attr(&mut self, value: Vec<Vec<u8>>) -> PyResult<()> {
+        self.palettes = value;
+        Ok(())
+    }
+
     /// Replace all palettes with the ones passed in.
     /// Animated palette is not changed, but the number of spec entries is adjusted.
     pub fn import_palettes(&mut self, palettes: Vec<Vec<u8>>, py: Python) -> PyResult<()> {

@@ -29,14 +29,12 @@ pub fn pyclass(_: TokenStream, item: TokenStream) -> TokenStream {
     let mut class = parse_macro_input!(item as syn::ItemStruct);
 
     match &mut class.fields {
-        syn::Fields::Named(fields) => fields
-            .named
-            .iter_mut()
-            .for_each(|field| {field.attrs = vec![];}),
-        syn::Fields::Unnamed(fields) => fields
-            .unnamed
-            .iter_mut()
-            .for_each(|field| {field.attrs = vec![];}),
+        syn::Fields::Named(fields) => fields.named.iter_mut().for_each(|field| {
+            field.attrs = vec![];
+        }),
+        syn::Fields::Unnamed(fields) => fields.unnamed.iter_mut().for_each(|field| {
+            field.attrs = vec![];
+        }),
         syn::Fields::Unit => {}
     };
 
@@ -76,11 +74,5 @@ pub fn new(_: TokenStream, item: TokenStream) -> TokenStream {
 /// pyo3 for Python/PyO3-less environments.
 #[proc_macro_attribute]
 pub fn pyo3(_: TokenStream, item: TokenStream) -> TokenStream {
-    item
-}
-
-/// args for Python/PyO3-less environments.
-#[proc_macro_attribute]
-pub fn args(_: TokenStream, item: TokenStream) -> TokenStream {
     item
 }

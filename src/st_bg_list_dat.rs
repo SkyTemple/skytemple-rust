@@ -1,5 +1,3 @@
-// this is fixed by upgrading pyo3.
-#![allow(clippy::needless_option_as_deref)]
 /*
  * Copyright 2021-2022 Capypara and the SkyTemple Contributors
  *
@@ -149,7 +147,7 @@ impl BgListEntry {
     }
     #[cfg(feature = "python")]
     #[pyo3(name = "get_bpc")]
-    #[args(bpc_tiling_width = "3", bpc_tiling_height = "3")]
+    #[pyo3(signature = (rom_or_directory_root, bpc_tiling_width = 3, bpc_tiling_height = 3))]
     pub fn _get_bpc(
         &self,
         rom_or_directory_root: RomSource<&PyAny>,
@@ -183,7 +181,7 @@ impl BgListEntry {
 #[pyclass(module = "skytemple_rust.st_bg_list_dat")]
 #[derive(Clone)]
 pub struct BgList {
-    #[pyo3(get, set)]
+    #[pyo3(get)]
     level: Vec<Py<BgListEntry>>,
 }
 
@@ -248,6 +246,13 @@ impl BgList {
                 })
                 .collect::<PyResult<Vec<Py<BgListEntry>>>>()?,
         })
+    }
+
+    #[cfg(feature = "python")]
+    #[setter(level)]
+    fn set_level_attr(&mut self, value: Vec<Py<BgListEntry>>) -> PyResult<()> {
+        self.level = value;
+        Ok(())
     }
 
     /// Count all occurrences of this BMA in the list.

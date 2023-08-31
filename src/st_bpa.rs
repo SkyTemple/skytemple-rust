@@ -139,7 +139,7 @@ impl Bpa {
             1,
         ))
     }
-    #[args(width_in_tiles = "20")]
+    #[pyo3(signature = (palette, width_in_tiles = 20))]
     /// Exports the BPA as an image, where each row of 8x8 tiles is the
     /// animation set for a single tile. The 16 color palette passed is used to color the image.
     pub fn tiles_to_pil_separate(

@@ -88,13 +88,13 @@ impl Bgp {
         })
     }
 
-    #[args(ignore_flip_bits = "false")]
-    #[allow(unused_variables)]
     /// Convert all tiles of the BGP to one big image.
     /// The resulting image has one large palette with 256 colors.
     /// The ignore_flip_bits is not used.
     ///
     /// The image returned will have the size 256x192.
+    #[pyo3(signature = (ignore_flip_bits = false))]
+    #[allow(unused_variables)]
     pub fn to_pil(&self, ignore_flip_bits: bool, py: Python) -> PyResult<IndexedImage> {
         Ok(TiledImage::tiled_to_native(
             self.tilemap
@@ -110,8 +110,6 @@ impl Bgp {
         ))
     }
 
-    #[args(force_import = "false")]
-    #[allow(unused_variables)]
     /// Modify the image data in the BGP by importing the passed image.
     /// The passed image will be split into separate tiles and the tile's palette index
     /// is determined by the first pixel value of each tile in the image. The image
@@ -121,6 +119,8 @@ impl Bgp {
     /// 0 of the palette (transparent). The "force_import" parameter is ignored.
     ///
     /// The image must have the size 256x192.
+    #[pyo3(signature = (pil, force_import = false))]
+    #[allow(unused_variables)]
     pub fn from_pil(
         &mut self,
         pil: In256ColIndexedImage,

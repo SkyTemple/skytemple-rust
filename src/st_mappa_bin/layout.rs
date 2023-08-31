@@ -79,11 +79,8 @@ impl MappaFloorTerrainSettings {
             unk7,
         }
     }
-}
 
-#[cfg(feature = "python")]
-#[pyproto]
-impl pyo3::PyObjectProtocol for MappaFloorTerrainSettings {
+    #[cfg(feature = "python")]
     fn __richcmp__(&self, other: PyRef<Self>, op: pyo3::basic::CompareOp) -> Py<PyAny> {
         let py = other.py();
         match op {
@@ -293,11 +290,8 @@ impl MappaFloorLayout {
             .map_err(|_| exceptions::PyValueError::new_err("Coin amount too big."))?;
         Ok(())
     }
-}
 
-#[cfg(feature = "python")]
-#[pyproto]
-impl pyo3::PyObjectProtocol for MappaFloorLayout {
+    #[cfg(feature = "python")]
     fn __richcmp__(&self, other: PyRef<Self>, op: pyo3::basic::CompareOp) -> Py<PyAny> {
         let py = other.py();
         match op {
