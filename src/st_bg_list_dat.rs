@@ -1,5 +1,3 @@
-// this is fixed by upgrading pyo3.
-#![allow(clippy::needless_option_as_deref)]
 /*
  * Copyright 2021-2022 Capypara and the SkyTemple Contributors
  *
