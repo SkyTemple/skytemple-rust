@@ -108,11 +108,8 @@ impl MappaMonster {
     pub fn set_level(&mut self, level: u8) {
         self.level_raw = (level as u16) * Self::LEVEL_MULTIPLIER;
     }
-}
 
-#[cfg(feature = "python")]
-#[pyproto]
-impl pyo3::PyObjectProtocol for MappaMonster {
+    #[cfg(feature = "python")]
     fn __richcmp__(&self, other: PyRef<Self>, op: pyo3::basic::CompareOp) -> Py<PyAny> {
         let py = other.py();
         match op {

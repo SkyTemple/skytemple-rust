@@ -98,7 +98,7 @@ impl Dbg {
         Ok(fimg)
     }
 
-    #[args(force_import = "false")]
+    #[pyo3(signature = (dpc, dpci, dpl, img, force_import = false))]
     #[allow(unused_variables)]
     /// Import an entire background from an image.
     /// Changes all tiles, tile mappings and chunks in the DPC/DPCI and re-writes the mappings of the DBG.
@@ -204,11 +204,8 @@ impl Dbg {
         dpl.0.set_palettes(palettes, py)?;
         Ok(())
     }
-}
 
-#[cfg(feature = "python")]
-#[pyproto]
-impl pyo3::PyObjectProtocol for Dbg {
+    #[cfg(feature = "python")]
     fn __richcmp__(&self, other: PyRef<Self>, op: pyo3::basic::CompareOp) -> Py<PyAny> {
         let py = other.py();
         match op {

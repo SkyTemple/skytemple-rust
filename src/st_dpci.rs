@@ -49,7 +49,7 @@ impl Dpci {
     /// palettes is a list of 16 16 color palettes.
     /// The tiles are exported with the first palette in the list of palettes.
     /// The result image contains a palette that consists of all palettes merged together.
-    #[args(width_in_mtiles = "20", palette_index = "0")]
+    #[pyo3(signature = (palettes, width_in_tiles = 20, palette_index = 0))]
     pub fn tiles_to_pil(
         &self,
         palettes: Vec<Vec<u8>>,
@@ -83,7 +83,7 @@ impl Dpci {
 
     /// Replace the tiles.
     /// If contains_null_tile is false, the null tile is added to the list, at the beginning.
-    #[args(contains_null_tile = "false")]
+    #[pyo3(signature = (tiles, contains_null_tile = false))]
     pub fn import_tiles(&mut self, mut tiles: Vec<StBytes>, contains_null_tile: bool) {
         if !contains_null_tile {
             tiles.insert(0, vec![0; DPCI_TILE_DIM * DPCI_TILE_DIM / 2].into());

@@ -28,7 +28,7 @@ pub struct TilemapEntry(pub usize, pub bool, pub bool, pub u8); // idx, flip_x, 
 #[pymethods]
 impl TilemapEntry {
     #[new]
-    #[args(ignore_too_large = "false")]
+    #[pyo3(signature = (idx, flip_x, flip_y, pal_idx, ignore_too_large = false))]
     #[allow(unused_variables)]
     pub fn new(
         idx: usize,

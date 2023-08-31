@@ -286,6 +286,16 @@ impl MappaBin {
     pub fn _sir0_unwrap(_cls: &PyType, content_data: StBytes, data_pointer: u32) -> PyResult<Self> {
         Ok(Self::sir0_unwrap(content_data, data_pointer)?)
     }
+
+    #[cfg(feature = "python")]
+    fn __richcmp__(&self, other: PyRef<Self>, op: pyo3::basic::CompareOp) -> Py<PyAny> {
+        let py = other.py();
+        match op {
+            pyo3::basic::CompareOp::Eq => (self == other.deref()).into_py(py),
+            pyo3::basic::CompareOp::Ne => (self != other.deref()).into_py(py),
+            _ => py.NotImplemented(),
+        }
+    }
 }
 
 impl Sir0Serializable for MappaBin {
@@ -322,19 +332,6 @@ impl PartialEq for MappaBin {
                 }
                 true
             })
-        }
-    }
-}
-
-#[cfg(feature = "python")]
-#[pyproto]
-impl pyo3::PyObjectProtocol for MappaBin {
-    fn __richcmp__(&self, other: PyRef<Self>, op: pyo3::basic::CompareOp) -> Py<PyAny> {
-        let py = other.py();
-        match op {
-            pyo3::basic::CompareOp::Eq => (self == other.deref()).into_py(py),
-            pyo3::basic::CompareOp::Ne => (self != other.deref()).into_py(py),
-            _ => py.NotImplemented(),
         }
     }
 }

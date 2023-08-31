@@ -56,11 +56,8 @@ impl LevelUpMove {
     pub fn new(move_id: u16, level_id: u16) -> Self {
         Self { move_id, level_id }
     }
-}
 
-#[cfg(feature = "python")]
-#[pyproto]
-impl pyo3::PyObjectProtocol for LevelUpMove {
+    #[cfg(feature = "python")]
     fn __richcmp__(&self, other: PyRef<Self>, op: pyo3::basic::CompareOp) -> Py<PyAny> {
         let py = other.py();
         match op {
@@ -166,6 +163,16 @@ impl MoveLearnset {
             }
         }
     }
+
+    #[cfg(feature = "python")]
+    fn __richcmp__(&self, other: PyRef<Self>, op: pyo3::basic::CompareOp) -> Py<PyAny> {
+        let py = other.py();
+        match op {
+            pyo3::basic::CompareOp::Eq => (self == other.deref()).into_py(py),
+            pyo3::basic::CompareOp::Ne => (self != other.deref()).into_py(py),
+            _ => py.NotImplemented(),
+        }
+    }
 }
 
 impl PartialEq for MoveLearnset {
@@ -179,19 +186,6 @@ impl PartialEq for MoveLearnset {
 }
 
 impl Eq for MoveLearnset {}
-
-#[cfg(feature = "python")]
-#[pyproto]
-impl pyo3::PyObjectProtocol for MoveLearnset {
-    fn __richcmp__(&self, other: PyRef<Self>, op: pyo3::basic::CompareOp) -> Py<PyAny> {
-        let py = other.py();
-        match op {
-            pyo3::basic::CompareOp::Eq => (self == other.deref()).into_py(py),
-            pyo3::basic::CompareOp::Ne => (self != other.deref()).into_py(py),
-            _ => py.NotImplemented(),
-        }
-    }
-}
 
 #[derive(Clone, Copy, PackedStruct, Debug, PartialEq, Eq)]
 #[packed_struct(endian = "msb")]
@@ -222,6 +216,16 @@ impl WazaMoveRangeSettings {
     pub fn __int__(&self) -> u16 {
         self.into()
     }
+
+    #[cfg(feature = "python")]
+    fn __richcmp__(&self, other: PyRef<Self>, op: pyo3::basic::CompareOp) -> Py<PyAny> {
+        let py = other.py();
+        match op {
+            pyo3::basic::CompareOp::Eq => (self == other.deref()).into_py(py),
+            pyo3::basic::CompareOp::Ne => (self != other.deref()).into_py(py),
+            _ => py.NotImplemented(),
+        }
+    }
 }
 
 impl From<&WazaMoveRangeSettings> for u16 {
@@ -233,19 +237,6 @@ impl From<&WazaMoveRangeSettings> for u16 {
 impl From<WazaMoveRangeSettings> for u16 {
     fn from(v: WazaMoveRangeSettings) -> Self {
         u16::from_le_bytes(<WazaMoveRangeSettings as PackedStruct>::pack(&v).unwrap())
-    }
-}
-
-#[cfg(feature = "python")]
-#[pyproto]
-impl pyo3::PyObjectProtocol for WazaMoveRangeSettings {
-    fn __richcmp__(&self, other: PyRef<Self>, op: pyo3::basic::CompareOp) -> Py<PyAny> {
-        let py = other.py();
-        match op {
-            pyo3::basic::CompareOp::Eq => (self == other.deref()).into_py(py),
-            pyo3::basic::CompareOp::Ne => (self != other.deref()).into_py(py),
-            _ => py.NotImplemented(),
-        }
     }
 }
 
@@ -373,19 +364,8 @@ impl WazaMove {
     pub fn to_bytes(slf: Py<Self>) -> StBytes {
         slf.into()
     }
-}
 
-impl From<Py<WazaMove>> for StBytes {
-    fn from(v: Py<WazaMove>) -> Self {
-        Python::with_gil(|py| {
-            StBytes::from(&<WazaMove as PackedStruct>::pack(v.borrow(py).deref()).unwrap()[..])
-        })
-    }
-}
-
-#[cfg(feature = "python")]
-#[pyproto]
-impl pyo3::PyObjectProtocol for WazaMove {
+    #[cfg(feature = "python")]
     fn __richcmp__(&self, other: PyRef<Self>, op: pyo3::basic::CompareOp) -> Py<PyAny> {
         let py = other.py();
         match op {
@@ -393,6 +373,14 @@ impl pyo3::PyObjectProtocol for WazaMove {
             pyo3::basic::CompareOp::Ne => (self != other.deref()).into_py(py),
             _ => py.NotImplemented(),
         }
+    }
+}
+
+impl From<Py<WazaMove>> for StBytes {
+    fn from(v: Py<WazaMove>) -> Self {
+        Python::with_gil(|py| {
+            StBytes::from(&<WazaMove as PackedStruct>::pack(v.borrow(py).deref()).unwrap()[..])
+        })
     }
 }
 
@@ -555,6 +543,16 @@ impl WazaP {
     pub fn _sir0_unwrap(_cls: &PyType, content_data: StBytes, data_pointer: u32) -> PyResult<Self> {
         Ok(Self::sir0_unwrap(content_data, data_pointer)?)
     }
+
+    #[cfg(feature = "python")]
+    fn __richcmp__(&self, other: PyRef<Self>, op: pyo3::basic::CompareOp) -> Py<PyAny> {
+        let py = other.py();
+        match op {
+            pyo3::basic::CompareOp::Eq => (self == other.deref()).into_py(py),
+            pyo3::basic::CompareOp::Ne => (self != other.deref()).into_py(py),
+            _ => py.NotImplemented(),
+        }
+    }
 }
 
 impl PartialEq for WazaP {
@@ -669,19 +667,6 @@ impl Sir0Serializable for WazaP {
     fn sir0_unwrap(content_data: StBytes, data_pointer: u32) -> Sir0Result<Self> {
         Python::with_gil(|py| Self::new(content_data, data_pointer, py))
             .map_err(|e| Sir0Error::UnwrapFailed(anyhow::Error::from(e)))
-    }
-}
-
-#[cfg(feature = "python")]
-#[pyproto]
-impl pyo3::PyObjectProtocol for WazaP {
-    fn __richcmp__(&self, other: PyRef<Self>, op: pyo3::basic::CompareOp) -> Py<PyAny> {
-        let py = other.py();
-        match op {
-            pyo3::basic::CompareOp::Eq => (self == other.deref()).into_py(py),
-            pyo3::basic::CompareOp::Ne => (self != other.deref()).into_py(py),
-            _ => py.NotImplemented(),
-        }
     }
 }
 

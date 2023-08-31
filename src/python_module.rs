@@ -96,7 +96,7 @@ fn skytemple_rust(py: Python, module: &PyModule) -> PyResult<()> {
     pyo3_log::init();
     info!("Loading skytemple_rust...");
     let sys = py.import("sys")?;
-    let modules: &PyDict = sys.getattr("modules")?.cast_as()?;
+    let modules: &PyDict = sys.getattr("modules")?.downcast()?;
     #[cfg(feature = "sir0")]
     add_submodule(module, create_st_sir0_module(py)?, modules)?;
     #[cfg(feature = "with_pmd_wan")]

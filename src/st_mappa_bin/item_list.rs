@@ -61,11 +61,8 @@ impl MappaItemList {
     pub fn to_bytes(slf: Py<Self>) -> StBytes {
         slf.into()
     }
-}
 
-#[cfg(feature = "python")]
-#[pyproto]
-impl pyo3::PyObjectProtocol for MappaItemList {
+    #[cfg(feature = "python")]
     fn __richcmp__(&self, other: PyRef<Self>, op: pyo3::basic::CompareOp) -> Py<PyAny> {
         let py = other.py();
         match op {
