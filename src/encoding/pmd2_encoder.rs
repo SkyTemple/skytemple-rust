@@ -67,7 +67,7 @@ impl RawEncoder for Pmd2Encoder {
                     output.write_byte(ch as u8);
                 }
                 '♂' => output.write_byte(0xBD),
-                '♀' => output.write_byte(0xBD),
+                '♀' => output.write_byte(0xBE),
                 _ => {
                     // Is either ANSI
                     let index = windows_1252::backward(ch as u32);
