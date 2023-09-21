@@ -269,7 +269,7 @@ impl MappaFloorLayout {
             darkness_level,
             _max_coin_amount_raw: (max_coin_amount / 5)
                 .try_into()
-                .map_err(|_| exceptions::PyValueError::new_err("Coin amount too big."))?,
+                .map_err(|_| create_value_user_error("Coin amount too big."))?,
             kecleon_shop_item_positions,
             empty_monster_house_chance,
             unk_hidden_stairs,
@@ -286,8 +286,8 @@ impl MappaFloorLayout {
 
     #[setter]
     pub fn set_max_coin_amount(&mut self, value: u16) -> PyResult<()> {
-        self._max_coin_amount_raw = u8::try_from(value / 5)
-            .map_err(|_| exceptions::PyValueError::new_err("Coin amount too big."))?;
+        self._max_coin_amount_raw =
+            u8::try_from(value / 5).map_err(|_| create_value_user_error("Coin amount too big."))?;
         Ok(())
     }
 
