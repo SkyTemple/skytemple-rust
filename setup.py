@@ -1,4 +1,4 @@
-__version__ = '1.6.0b1'
+__version__ = '1.6.0rc1'
 
 from setuptools import setup
 from setuptools_rust import Binding, RustExtension
@@ -28,7 +28,7 @@ setup(
     long_description_content_type='text/x-rst',
     url='https://github.com/SkyTemple/skytemple-rust/',
     classifiers=[
-        'Development Status :: 3 - Alpha',
+        'Development Status :: 4 - Beta',
         'Programming Language :: Python',
         'Programming Language :: Rust',
         'License :: OSI Approved :: MIT License',
