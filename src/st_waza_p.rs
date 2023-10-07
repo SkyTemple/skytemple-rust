@@ -427,13 +427,13 @@ impl WazaP {
 
         let mut learnset_slice =
             data.slice(move_learnset_pointer as usize..waza_content_pointer as usize);
-        let mut learnsets = Vec::with_capacity(1000);
+        let mut learnsets = Vec::with_capacity(100);
         loop {
             if learnset_slice.remaining() < Self::LEARNSET_TOCE_BYTELEN {
                 break;
             }
             let mut list_pointers = learnset_slice.copy_to_bytes(Self::LEARNSET_TOCE_BYTELEN);
-            let mut level_up = Vec::with_capacity(100);
+            let mut level_up = vec![];
             let mut tm_hm = vec![];
             let mut egg = vec![];
 
@@ -479,6 +479,7 @@ impl WazaP {
                 },
             )?);
         }
+        learnsets.shrink_to_fit();
         Ok(Self {
             moves: Py::new(py, WazaMoveList(moves))?,
             learnsets: Py::new(py, MoveLearnsetList(learnsets))?,
