@@ -2,11 +2,14 @@ use crate::bytes::{StBytes, StBytesMut};
 use crate::python::PyErr;
 use crate::python::*;
 use bytes::{Buf, BufMut, Bytes, BytesMut};
+use std::cmp::min;
 use std::convert::TryFrom;
+use std::mem::size_of;
 use std::vec;
 use thiserror::Error;
 
 pub type Sir0Result<T> = Result<T, Sir0Error>;
+const SIR0_DECODE_MAX_INITIAL_CAPACITY: usize = 1048576 / size_of::<u32>();
 
 #[derive(Error, Debug)]
 pub enum Sir0Error {
@@ -80,7 +83,11 @@ pub(crate) fn decode_sir0_pointer_offsets(
     pointer_offset_list_pointer: u32,
     relative: bool,
 ) -> Vec<u32> {
-    let mut decoded: Vec<u32> = Vec::with_capacity(data.len());
+    let mut decoded: Vec<u32> = Vec::with_capacity(min(
+        data.len()
+            .saturating_sub(pointer_offset_list_pointer as usize),
+        SIR0_DECODE_MAX_INITIAL_CAPACITY,
+    ));
     // This is used to sum up all offsets and obtain the offset relative to the file, and not the last offset
     let mut offsetsum = 0;
     // temp buffer to assemble longer offsets
@@ -114,6 +121,7 @@ pub(crate) fn decode_sir0_pointer_offsets(
             buffer = 0;
         }
     }
+    decoded.shrink_to_fit();
     decoded
 }
 
