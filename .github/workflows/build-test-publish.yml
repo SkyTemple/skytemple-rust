@@ -45,7 +45,7 @@ jobs:
       - name: Build wheels
         run: python -m cibuildwheel --output-dir dist
         env:
-          CIBW_BUILD: "${{ matrix.pythonver }}-*"
+          CIBW_BUILD: "${{ matrix.pythonver }}-manylinux*"
           CIBW_BEFORE_ALL: "curl https://sh.rustup.rs -sSf | sh -s -- --default-toolchain stable -y"
           CIBW_ENVIRONMENT: 'PATH="$PATH:$HOME/.cargo/bin"'
           CIBW_ARCHS: ${{ matrix.arch }}
