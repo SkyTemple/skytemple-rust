@@ -28,7 +28,7 @@ jobs:
       max-parallel: 5
       matrix:
         pythonver: [ "cp39", "cp310", "cp311", "cp312" ]
-        arch: ["x86_64", "aarch64"]
+        arch: ["x86_64"]#, "aarch64"]  # aarch64 build takes AGES so we skip it for now
     steps:
       # For tags we assume the version in setup.py is correct!
       - name: Checkout
