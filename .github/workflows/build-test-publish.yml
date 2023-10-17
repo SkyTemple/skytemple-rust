@@ -82,7 +82,7 @@ jobs:
         with:
           toolchain: stable
           override: true
-          target: "${{ matrix.os == 'windows-2019' && 'i686-pc-windows-msvc' || ( matrix.arch == 'aarch64' && 'aarch64-apple-darwin' || 'x86_64-apple-darwin') }}"
+          target: "${{ matrix.os == 'windows-2019' && 'i686-pc-windows-msvc' || ( matrix.arch == 'arm64' && 'aarch64-apple-darwin' || 'x86_64-apple-darwin') }}"
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
@@ -103,7 +103,6 @@ jobs:
       - name: Build wheels
         run: python -m cibuildwheel --output-dir dist
         env:
-          CIBW_BUILD_LINUX: "${{ matrix.pythonver }}-manylinux*"
           CIBW_BEFORE_ALL_LINUX: "curl https://sh.rustup.rs -sSf | sh -s -- --default-toolchain stable -y"
           CIBW_ENVIRONMENT_LINUX: 'PATH="$PATH:$HOME/.cargo/bin"'
           CIBW_ARCHS: ${{ matrix.arch }}
