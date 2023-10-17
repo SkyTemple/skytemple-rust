@@ -67,10 +67,16 @@ jobs:
       matrix:
         os: [ macos-11, windows-2019 ]
         python-version: [ '3.9', '3.10', '3.11', '3.12' ]
-        arch: [ 'x64', 'x86' ]
+        arch: [ 'x86_64', 'AMD64', 'x86', 'arm64' ]
         exclude:
           - os: macos-11
             arch: 'x86'
+          - os: windows-2019
+            arch: 'arm64'
+          - os: macos-11
+            arch: 'AMD64'
+          - os: windows-2019
+            arch: 'x86_64'
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -88,17 +94,11 @@ jobs:
         with:
           toolchain: stable
           override: true
-          target: "${{ matrix.os == 'windows-2019' && 'i686-pc-windows-msvc' || 'x86_64-apple-darwin' }}"
+          target: "${{ matrix.os == 'windows-2019' && 'i686-pc-windows-msvc' || ( matrix.arch == 'aarch64' && 'aarch64-apple-darwin' || 'x86_64-apple-darwin') }}"
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
           python-version: ${{ matrix.python-version }}
-          architecture: ${{ matrix.arch }}
-      - name: Upgrade pip, install dev dependencies
-        run: |
-          python -m pip install --upgrade pip wheel
-          python -m pip install -r dev-requirements.txt
-          python -m pip install -r requirements.txt
       - name: Download GNU Tar
         uses: suisei-cn/actions-download-file@v1
         if: "matrix.os == 'windows-2019'"
@@ -110,13 +110,16 @@ jobs:
         shell: powershell
         run:
           echo "C:\tarout" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
-      - name: Build Python wheels
-        run: |
-          python setup.py bdist_wheel
+      - name: Install cibuildwheel
+        run: python -m pip install cibuildwheel
+      - name: Build wheels
+        run: python -m cibuildwheel --output-dir dist
+        env:
+          CIBW_ARCHS: ${{ matrix.arch }}
       - name: Upload wheels
         uses: actions/upload-artifact@v3
         with:
-          name: wheels-${{ matrix.os }}-py${{ matrix.python-version }}-${{ matrix.arch }}
+          name: wheels-${{ matrix.os }}
           path: dist/*.whl
   deploy:
     if: startsWith(github.ref, 'refs/tags/')
