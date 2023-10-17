@@ -46,15 +46,31 @@ jobs:
         uses: actions/checkout@v4
         with:
           submodules: 'recursive'
+
       - name: Rewrite version for dev if not tag
         if: "!startsWith(github.ref, 'refs/tags/')"
         shell: bash
         run: |
-          perl -i -pe "s/__version__\s*=\s*'(.*?)(\.rc.*|\.a.*|\.post.*)?'/__version__='\1.dev0+${GITHUB_SHA::8}'/" setup.py
-      - name: Note version
+          perl -i -pe "s/version\s*=\s*\"(.*?)(\.rc.*|\.a.*|\.post.*)?\"/version=\"\1.dev0+${GITHUB_SHA::8}\"/" pyproject.toml
+      - name: Note version (Linux)
+        if: matrix.os == 'ubuntu-latest'
         shell: bash
         run: |
-          echo "PACKAGE_VERSION=$(python3 -- ./setup.py --version)" >> $GITHUB_ENV
+          echo "PACKAGE_VERSION=$(tomlq '.project.version' pyproject.toml -r)" >> $GITHUB_ENV
+      - name: Note version (Windows)
+        if: matrix.os == 'windows-2019'
+        run: |
+          pipx install yq
+          $env:PACKAGE_VERSION = tomlq.exe '.project.version' pyproject.toml -r
+          echo "PACKAGE_VERSION=$env:PACKAGE_VERSION" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+      - name: Note version (MacOS)
+        if: matrix.os == 'macos-11'
+        run: |
+          python3 -m venv .yq-venv
+          . .yq-venv/bin/activate
+          pip install yq
+          echo "PACKAGE_VERSION=$(tomlq '.project.version' pyproject.toml -r)" >> $GITHUB_ENV
+
       - name: Set up QEMU
         if: runner.os == 'Linux'
         uses: docker/setup-qemu-action@v3
