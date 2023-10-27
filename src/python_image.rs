@@ -116,7 +116,7 @@ fn pil_simple_quant(
             pil_img = pil_img.getattr(py, "convert")?.call1(py, args)?;
         }
         transparency_map =
-            PyIterator::from_object(py, &pil_img.getattr(py, "getdata")?.call0(py)?)?
+            PyIterator::from_object(pil_img.getattr(py, "getdata")?.call0(py)?.as_ref(py))?
                 .map(|x| Ok(x?.extract::<&PyTuple>()?.get_item(3)?.extract::<usize>()? == 0))
                 .collect::<PyResult<Vec<bool>>>()?;
     } else {
@@ -125,7 +125,7 @@ fn pil_simple_quant(
             pil_img = pil_img.getattr(py, "convert")?.call1(py, args)?;
         }
         transparency_map =
-            PyIterator::from_object(py, &pil_img.getattr(py, "getdata")?.call0(py)?)?
+            PyIterator::from_object(pil_img.getattr(py, "getdata")?.call0(py)?.as_ref(py))?
                 .map(|_| false)
                 .collect();
     }
@@ -146,7 +146,7 @@ fn pil_simple_quant(
         [[Ok(0), Ok(0), Ok(0)]
             .into_iter()
             .chain(
-                PyIterator::from_object(py, &pil_img.getattr(py, "getpalette")?.call0(py)?)?
+                PyIterator::from_object(pil_img.getattr(py, "getpalette")?.call0(py)?.as_ref(py))?
                     .take(762)
                     .map(|x| x?.extract::<u8>()),
             )
