@@ -3,4 +3,4 @@ recursive-include src *
 recursive-include skytemple_rust *.pyi
 recursive-include skytemple_rust_macros *
 recursive-include skytemple_rust_macros_no_py *
-include skytemple/py.typed
+include skytemple_rust/py.typed
