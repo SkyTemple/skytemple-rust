@@ -1,6 +1,6 @@
 [package]
 name = "skytemple_rust"
-version = "1.6.0"
+version = "1.6.1"
 authors = ["Marco 'Capypara' Köpcke <hello@capypara.de>"]
 edition = "2021"
 repository = "https://github.com/SkyTemple/skytemple-rust"

@@ -28,6 +28,7 @@ use bytes::{Buf, BufMut};
 use std::collections::hash_map::Entry;
 use std::collections::HashMap;
 use std::io::Cursor;
+use std::iter::repeat;
 use std::mem::swap;
 use std::vec;
 
@@ -102,7 +103,7 @@ impl KaoImage {
 
     /// Tries to reorder the palette to have a more favorable data
     /// configuration for the PX algorithm
-    fn reorder_palette(in_img: StBytesMut, in_pal: StBytesMut) -> (StBytesMut, StBytesMut) {
+    fn reorder_palette(in_img: StBytesMut, mut in_pal: StBytesMut) -> (StBytesMut, StBytesMut) {
         let mut pairs: HashMap<(u8, u8), usize> = HashMap::with_capacity(in_img.len());
         for x in 0..in_img.len() - 1 {
             let l = [
@@ -170,6 +171,10 @@ impl KaoImage {
             if !new_order.contains(&x) {
                 new_order.push(x);
             }
+        }
+        let in_pal_len = in_pal.len();
+        if in_pal_len < 256 {
+            in_pal.extend(repeat(0).take(256 - in_pal_len))
         }
         (
             in_img
