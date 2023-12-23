@@ -1,8 +1,8 @@
 use crate::bytes::StBytesMut;
+use crate::gettext::gettext;
 use crate::image::InIndexedImage;
 use crate::image::IndexedImage;
 use crate::python::create_value_user_error;
-use gettextrs::gettext;
 /// This crate converts our image models from/into PIL images for Python.
 /*
  * Copyright 2021-2022 Capypara and the SkyTemple Contributors
