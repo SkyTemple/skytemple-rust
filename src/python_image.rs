@@ -1,6 +1,8 @@
 use crate::bytes::StBytesMut;
 use crate::image::InIndexedImage;
 use crate::image::IndexedImage;
+use crate::python::create_value_user_error;
+use gettextrs::gettext;
 /// This crate converts our image models from/into PIL images for Python.
 /*
  * Copyright 2021-2022 Capypara and the SkyTemple Contributors
@@ -23,7 +25,7 @@ use crate::image::IndexedImage;
 use log::error;
 use pyo3::prelude::*;
 use pyo3::types::{PyBytes, PyIterator, PyTuple};
-use pyo3::{exceptions, IntoPy, PyObject, Python};
+use pyo3::{IntoPy, PyObject, Python};
 
 pub fn in_from_py<'py, T>(
     img: T,
@@ -47,9 +49,10 @@ where
     } else {
         // Otherwise we don't support checking further..., input image must be indexed
         // TODO: Maybe support in the future via (automatic) Tilequant?
-        return Err(exceptions::PyValueError::new_err(
-            "Expected an indexed image.",
-        ));
+        return Err(create_value_user_error(gettext!(
+            "The image you provided is not an indexed image (it has no palette). Please convert it to an indexed image (with a maximum of {} colors) and try again.",
+            T::MAX_COLORS
+        )));
     }
     let args = PyTuple::new(py, ["raw", "P"]);
     let bytes: Vec<u8> = iimg.getattr(py, "tobytes")?.call1(py, args)?.extract(py)?;
