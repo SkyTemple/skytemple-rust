@@ -22,8 +22,10 @@ use crate::python::*;
 use crate::st_sir0::{Sir0Error, Sir0Result, Sir0Serializable};
 use bytes::{Buf, BufMut, BytesMut};
 use itertools::Itertools;
+use log::warn;
 
 pub const DPLA_COLORS_PER_PALETTE: usize = 16;
+pub const DPLA_MAX_COLORS: usize = 32;
 
 #[pyclass(module = "skytemple_rust.st_dpla")]
 #[derive(Clone)]
@@ -38,13 +40,20 @@ pub struct Dpla {
 impl Dpla {
     #[new]
     pub fn new(data: StBytes, pointer_to_pointers: u32) -> PyResult<Self> {
-        let toc_pointers: Vec<_> = ((pointer_to_pointers as usize)..data.len())
+        let mut toc_pointers: Vec<_> = ((pointer_to_pointers as usize)..data.len())
             .step_by(4)
             .map(|i| data[i..i + 4].as_ref().get_u32_le())
             .collect();
+
+        if toc_pointers.len() > DPLA_MAX_COLORS {
+            warn!("DPLA contained more than 32 potential colors. All additional entries were discarded.");
+            toc_pointers.truncate(DPLA_MAX_COLORS);
+        }
+
         //  A list of colors stored in this file. The colors are lists of RGB values: [R, G, B, R, G, B...]
         let mut colors: Vec<Vec<u8>> = Vec::with_capacity(toc_pointers.len());
         let mut durations_per_frame_for_colors: Vec<u16> = Vec::with_capacity(toc_pointers.len());
+
         for pnt in toc_pointers {
             let mut slice = &data[(pnt as usize)..];
             // 0x0         2           uint16      (NbColors) The amount of colors in this entry.
