@@ -55,7 +55,7 @@ paste = "1.0"
 arr_macro = { version = "0.2", optional = true }
 encoding = "0.2"
 encoding-index-singlebyte = { version = "1", optional = true }
-time = { version = "0.3.29", optional = true }
+time = { version = "0.3.34", optional = true }
 pmd_wan = { version = "5.1.1", optional = true }
 anyhow = { version = "1", optional = true }
 thiserror = "1"
