@@ -73,18 +73,16 @@ jobs:
         with:
           platforms: all
       - name: Setup Rust
-        uses: actions-rs/toolchain@v1
+        uses: dtolnay/rust-toolchain@stable
         if: runner.os != 'Linux'
         with:
-          toolchain: stable
-          override: true
           target: "${{ matrix.os == 'windows-2019' && 'i686-pc-windows-msvc' || ( matrix.arch == 'arm64' && 'aarch64-apple-darwin' || 'x86_64-apple-darwin') }}"
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
+          python-version: "3.12"
       - name: Download GNU Tar
-        uses: suisei-cn/actions-download-file@v1
+        uses: suisei-cn/actions-download-file@v1.6.0
         if: "matrix.os == 'windows-2019'"
         with:
           url: https://skytemple.org/build_deps/tar.exe
@@ -105,7 +103,7 @@ jobs:
       - name: Upload wheels
         uses: actions/upload-artifact@v4
         with:
-          name: wheels
+          name: wheels-${{ matrix.os }}-${{ matrix.arch }}
           path: dist/*.whl
 
   deploy:
@@ -116,10 +114,10 @@ jobs:
     steps:
       - name: Download wheels
         uses: actions/download-artifact@v4
-      - name: Set up Python 3.11
+      - name: Set up Python 3.12
         uses: actions/setup-python@v5
         with:
-          python-version: 3.11
+          python-version: 3.12
       - name: Upgrade pip
         run: |
           python -m pip install --upgrade pip
@@ -129,4 +127,4 @@ jobs:
           TWINE_USERNAME: ${{ secrets.PYPI_USERNAME }}
           TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
         run: |
-          twine upload wheels/*.whl
+          twine upload wheels*/*.whl
