@@ -1,4 +1,4 @@
-on: [push]
+on: [ push ]
 
 name: Build Pure Rust
 
@@ -47,11 +47,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions-rs/toolchain@v1
-        with:
-          toolchain: stable
-          override: true
-      - uses: actions-rs/cargo@v1
-        with:
-          command: build
-          args: --release --no-default-features --features=${{ matrix.features }}
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Build
+        run: cargo build --release --no-default-features --features=${{ matrix.features }}
