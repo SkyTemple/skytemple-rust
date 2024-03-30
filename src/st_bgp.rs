@@ -138,6 +138,7 @@ impl Bgp {
             true,
         )?;
         let tiles_len = tiles.len();
+        let tilemap_len = tilemap.len();
         if tiles_len >= 0x3FF {
             return Err(exceptions::PyValueError::new_err(
                 "Error when importing: max tile count reached.",
@@ -165,7 +166,7 @@ impl Bgp {
             .chain(
                 repeat_with(|| Py::new(py, TilemapEntry::default())).take(max(
                     0isize,
-                    BGP_TOTAL_NUMBER_TILES_ACTUALLY as isize - tiles_len as isize,
+                    BGP_TOTAL_NUMBER_TILES_ACTUALLY as isize - tilemap_len as isize,
                 )
                     as usize),
             )
