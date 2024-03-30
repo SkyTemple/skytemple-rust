@@ -44,8 +44,7 @@ struct MdPropertiesState {
 
 impl MdPropertiesState {
     pub fn instance(py: Python) -> PyResult<Py<Self>> {
-        let inst_mutex = &MD_PROPERTIES_STATE_INSTANCE;
-        let mut inst_locked = inst_mutex.lock().unwrap();
+        let mut inst_locked = MD_PROPERTIES_STATE_INSTANCE.lock().unwrap();
         if inst_locked.is_none() {
             *inst_locked = Some(Py::new(
                 py,

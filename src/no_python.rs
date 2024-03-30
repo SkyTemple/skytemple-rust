@@ -18,13 +18,12 @@
  */
 /** Definitions of a Pyo3 types without Python or Pyo3 */
 pub use skytemple_rust_macros::*;
-use std::cell::{Ref, RefCell, RefMut};
 use std::error::Error;
 use std::fmt::{Debug, Display, Formatter};
 use std::io;
 use std::num::TryFromIntError;
-use std::ops::Deref;
-use std::sync::Arc;
+use std::ops::{Deref, DerefMut};
+use std::sync::{Arc, Mutex};
 
 pub(crate) type PyResult<T> = Result<T, PyErr>;
 
@@ -97,21 +96,21 @@ impl PyBytes {
 pub type PyRef<'a, T> = &'a T;
 pub type PyRefMut<'a, T> = &'a mut T;
 
-/// This would normally be a reference to an object on the Python heap. Without Python it's
-/// basically an Arc<RefCell<T>>.
+/// This would normally be a reference to an object on the Python heap. Without Python, it's
+/// basically an Arc<Mutex<T>>.
 /// If not using Python, extract always clones, clone clones the inner Arc,
 /// and borrow and borrow_mut return normal Rust references to T instead.
 #[derive(Clone)]
-pub struct Py<T>(Arc<RefCell<T>>);
+pub struct Py<T>(Arc<Mutex<T>>);
 impl<T> Py<T> {
     pub fn new(_: Python, obj: T) -> PyResult<Self> {
-        Ok(Self(Arc::new(RefCell::new(obj))))
+        Ok(Self(Arc::new(Mutex::new(obj))))
     }
-    pub fn borrow(&self, _: Python) -> Ref<T> {
-        self.0.borrow()
+    pub fn borrow(&self, _: Python) -> impl Deref<Target = T> + '_ {
+        self.0.lock().unwrap()
     }
-    pub fn borrow_mut(&mut self, _: Python) -> RefMut<T> {
-        self.0.borrow_mut()
+    pub fn borrow_mut(&mut self, _: Python) -> impl DerefMut<Target = T> + '_ {
+        self.0.lock().unwrap()
     }
 }
 
@@ -120,7 +119,7 @@ where
     T: Clone,
 {
     pub fn extract(&self, _: Python) -> PyResult<T> {
-        Ok(T::clone(self.0.borrow().deref()))
+        Ok(T::clone(self.0.lock().unwrap().deref()))
     }
 }
 
@@ -129,7 +128,7 @@ where
     T: PyWrapable,
 {
     pub fn from(obj: T) -> Self {
-        Self(Arc::new(RefCell::new(obj)))
+        Self(Arc::new(Mutex::new(obj)))
     }
 }
 
@@ -138,7 +137,7 @@ where
     T: PartialEq,
 {
     fn eq(&self, other: &Self) -> bool {
-        self.0 == other.0
+        self.0.lock().unwrap().deref() == other.0.lock().unwrap().deref()
     }
 }
 
