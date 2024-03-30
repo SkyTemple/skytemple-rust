@@ -26,7 +26,6 @@ use crate::image::{
 use crate::python::*;
 use crate::util::init_default_vec;
 use log::warn;
-use std::fmt::Debug;
 use std::vec::IntoIter;
 
 // ---
@@ -275,7 +274,7 @@ impl TiledImage {
     where
         I: Iterator<Item = T>,
         J: Iterator<Item = u8> + Clone,
-        T: ProvidesTilemapEntry + Debug,
+        T: ProvidesTilemapEntry,
         P: Iterator<Item = u8>,
     {
         let img_width_in_tiles = img_width / tile_dim;
@@ -288,7 +287,7 @@ impl TiledImage {
             let tile_x: usize = (chunk_x * chunk_dim) + (i % chunk_dim);
             let tile_y: usize = (chunk_y * chunk_dim) + ((i / chunk_dim) % chunk_dim);
             let chunk_iter: J = if tiledata.len() <= chunk_spec.idx() {
-                warn!("TiledImage: TileMappingEntry {:?} contains invalid tile reference. Replaced with 0.", chunk_spec);
+                warn!("TiledImage: TileMappingEntry contains invalid tile reference. Replaced with 0.");
                 tiledata[0].0.clone()
             } else {
                 tiledata[chunk_spec.idx()].0.clone()

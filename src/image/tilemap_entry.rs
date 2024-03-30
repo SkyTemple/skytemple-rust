@@ -18,7 +18,7 @@
  */
 
 use crate::python::*;
-use std::cell::Ref;
+use std::ops::Deref;
 
 #[derive(PartialEq, Eq, Debug, Clone, Default)]
 #[pyclass(module = "skytemple_rust")]
@@ -197,70 +197,25 @@ impl ProvidesTilemapEntry for TilemapEntry {
     }
 }
 
-impl ProvidesTilemapEntry for &TilemapEntry {
+impl<T: Deref<Target = P>, P: ProvidesTilemapEntry> ProvidesTilemapEntry for T {
     fn idx(&self) -> usize {
-        self.0
+        self.deref().idx()
     }
 
     fn flip_x(&self) -> bool {
-        self.1
+        self.deref().flip_x()
     }
 
     fn flip_y(&self) -> bool {
-        self.2
+        self.deref().flip_y()
     }
 
     fn pal_idx(&self) -> u8 {
-        self.3
+        self.deref().pal_idx()
     }
 
     fn to_int(&self) -> usize {
-        TilemapEntry::_to_int(self)
-    }
-}
-
-impl<'a> ProvidesTilemapEntry for Ref<'a, TilemapEntry> {
-    fn idx(&self) -> usize {
-        self.0
-    }
-
-    fn flip_x(&self) -> bool {
-        self.1
-    }
-
-    fn flip_y(&self) -> bool {
-        self.2
-    }
-
-    fn pal_idx(&self) -> u8 {
-        self.3
-    }
-
-    fn to_int(&self) -> usize {
-        TilemapEntry::_to_int(self)
-    }
-}
-
-#[cfg(feature = "python")]
-impl<'py> ProvidesTilemapEntry for PyRef<'py, TilemapEntry> {
-    fn idx(&self) -> usize {
-        self.0
-    }
-
-    fn flip_x(&self) -> bool {
-        self.1
-    }
-
-    fn flip_y(&self) -> bool {
-        self.2
-    }
-
-    fn pal_idx(&self) -> u8 {
-        self.3
-    }
-
-    fn to_int(&self) -> usize {
-        TilemapEntry::_to_int(self)
+        self.deref().to_int()
     }
 }
 
