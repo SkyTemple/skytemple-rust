@@ -31,7 +31,7 @@ use std::vec;
 
 const DEFAULT_NUM_ENTITIES: u32 = 600;
 const DEFAULT_MAX_POSSIBLE: u32 = 554;
-static mut MD_PROPERTIES_STATE_INSTANCE: Mutex<Option<Py<MdPropertiesState>>> = Mutex::new(None);
+static MD_PROPERTIES_STATE_INSTANCE: Mutex<Option<Py<MdPropertiesState>>> = Mutex::new(None);
 
 #[pyclass(module = "skytemple_rust.st_md")]
 #[derive(Clone)]
@@ -44,8 +44,8 @@ struct MdPropertiesState {
 
 impl MdPropertiesState {
     pub fn instance(py: Python) -> PyResult<Py<Self>> {
-        let inst_mutex = unsafe { &mut MD_PROPERTIES_STATE_INSTANCE };
-        let inst_locked = inst_mutex.get_mut().unwrap();
+        let inst_mutex = &MD_PROPERTIES_STATE_INSTANCE;
+        let mut inst_locked = inst_mutex.lock().unwrap();
         if inst_locked.is_none() {
             *inst_locked = Some(Py::new(
                 py,
@@ -1271,7 +1271,7 @@ impl Md {
         self.entries
             .get(index)
             .ok_or_else(|| exceptions::PyIndexError::new_err("Index for Md out of range."))
-            .map(Clone::clone)
+            .cloned()
     }
 
     pub fn get_by_entity_id(&self, index: usize, py: Python) -> PyResult<Vec<(u32, Py<MdEntry>)>> {
