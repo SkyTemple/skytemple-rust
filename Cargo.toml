@@ -44,8 +44,8 @@ romfs = ["nitro_fs", "memmap2", "strings"]
 [dependencies]
 skytemple_rust_macros = { path = "skytemple_rust_macros" }
 skytemple_rust_macros_no_py = { path = "skytemple_rust_macros_no_py" }
-pyo3 = { version = "0.20", features = ["extension-module"], optional = true }
-pyo3-log = { version = "0.9", optional = true }
+pyo3 = { version = "0.21", features = ["extension-module", "gil-refs"], optional = true }
+pyo3-log = { version = "0.10", optional = true }
 itertools = "0.13"
 log = "0.4"
 bytes = "1"

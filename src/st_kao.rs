@@ -440,13 +440,8 @@ impl KaoIterator {
     fn __iter__(slf: PyRef<Self>) -> PyRef<Self> {
         slf
     }
-    fn __next__(
-        mut slf: PyRefMut<Self>,
-    ) -> pyo3::iter::IterNextOutput<(u32, u32, Option<Py<KaoImage>>), &'static str> {
-        match slf.next() {
-            Some(x) => pyo3::iter::IterNextOutput::Yield(x),
-            None => pyo3::iter::IterNextOutput::Return(""),
-        }
+    fn __next__(mut slf: PyRefMut<Self>) -> Option<(u32, u32, Option<Py<KaoImage>>)> {
+        slf.next()
     }
 }
 

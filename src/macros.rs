@@ -68,7 +68,7 @@ macro_rules! impl_pylist {
                                 "__eq__",
                                 ::pyo3::types::PyTuple::new(py, [value.clone()]),
                             )
-                            .and_then(|x| x.is_true(py))
+                            .and_then(|x| x.is_truthy(py))
                             .unwrap_or_default()
                         }) {
                             Ok(idx)
@@ -89,7 +89,7 @@ macro_rules! impl_pylist {
                                     "__eq__",
                                     ::pyo3::types::PyTuple::new(py, [value.clone()]),
                                 )
-                                .and_then(|x| x.is_true(py))
+                                .and_then(|x| x.is_truthy(py))
                                 .unwrap_or_default()
                             })
                             .count()
@@ -105,7 +105,7 @@ macro_rules! impl_pylist {
                                 "__eq__",
                                 ::pyo3::types::PyTuple::new(py, [value.clone()]),
                             )
-                            .and_then(|x| x.is_true(py))
+                            .and_then(|x| x.is_truthy(py))
                             .unwrap_or_default()
                         }) {
                             self.0.remove(idx);
