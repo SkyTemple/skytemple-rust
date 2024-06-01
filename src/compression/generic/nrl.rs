@@ -141,8 +141,6 @@ where
     }
 }
 
-///
-
 pub(crate) fn compression_step<T, U, S>(decompressed_data: &mut T, compressed_data: &mut U)
 where
     T: NrlCompRead<S>,

@@ -267,8 +267,7 @@ checksum = "e6d5a32815ae3f33302d95fdcb2ce17862f8c65363dcfd29360480ba1001fc9c"
 [[package]]
 name = "gettext-rs"
 version = "0.7.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e49ea8a8fad198aaa1f9655a2524b64b70eb06b2f3ff37da407566c93054f364"
+source = "git+https://github.com/theCapypara/gettext-rs.git?branch=update-gettext-22.5#623a47cc184c1b3bc552dea67bc25ad50c878011"
 dependencies = [
  "gettext-sys",
  "locale_config",
@@ -276,9 +275,8 @@ dependencies = [
 
 [[package]]
 name = "gettext-sys"
-version = "0.21.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c63ce2e00f56a206778276704bbe38564c8695249fdc8f354b4ef71c57c3839d"
+version = "0.22.5"
+source = "git+https://github.com/theCapypara/gettext-rs.git?branch=update-gettext-22.5#623a47cc184c1b3bc552dea67bc25ad50c878011"
 dependencies = [
  "cc",
  "temp-dir",

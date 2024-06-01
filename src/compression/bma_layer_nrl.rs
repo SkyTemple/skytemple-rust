@@ -25,8 +25,6 @@ use crate::python::*;
 use bytes::{Buf, BufMut, Bytes, BytesMut};
 use std::io::Cursor;
 
-///
-
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 struct TwoU16([u8; 4]);
 
@@ -49,8 +47,6 @@ impl NullablePrimitive for TwoU16 {
     }
 }
 
-///
-
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 struct Pair24([u8; 3]);
 
@@ -72,8 +68,6 @@ impl NullablePrimitive for Pair24 {
         Self([0, 0, 0])
     }
 }
-
-///
 
 impl From<Pair24> for TwoU16 {
     /// Writes the two u16 integers to the output as 2 16 bit integers
@@ -125,8 +119,6 @@ impl From<TwoU16> for Pair24 {
         out
     }
 }
-
-///
 
 struct CompWrite(BytesMut);
 #[derive(Clone)]
@@ -197,8 +189,6 @@ where
         self.0.get_u8()
     }
 }
-
-///
 
 pub struct BmaLayerNrlCompressor;
 

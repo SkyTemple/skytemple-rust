@@ -65,4 +65,4 @@ packed_struct = { version = "0.10", optional = true }
 
 # gettext-rs is not supported under Windows (native)
 [target.'cfg( not(target_env = "msvc") )'.dependencies]
-gettext-rs = "0.7"
+gettext-rs = { git = "https://github.com/theCapypara/gettext-rs.git", branch = "update-gettext-22.5" }
