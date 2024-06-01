@@ -28,8 +28,6 @@ jobs:
           - "dungeon_graphics,python"
           - "strings"
           - "strings,python"
-          - "dse"
-          - "dse,python"
           - "mappa_bin"
           - "mappa_bin,python"
           - "md"
@@ -42,7 +40,7 @@ jobs:
           - "sir0"
           - "script_var_table"
           - "script_var_table,python"
-          - "strings,map_bg,kao,python,python,with_pmd_wan,dse,dungeon_graphics,misc_graphics,romfs,sir0"
+          - "strings,map_bg,kao,python,python,with_pmd_wan,dungeon_graphics,misc_graphics,romfs,sir0"
     name: Build
     runs-on: ubuntu-latest
     steps:

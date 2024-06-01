@@ -51,8 +51,6 @@ pub(crate) mod util;
 
 #[cfg(feature = "compression")]
 pub mod compression;
-#[cfg(feature = "dse")]
-pub mod dse;
 #[cfg(feature = "compression")]
 pub mod st_at3px;
 #[cfg(feature = "compression")]
