@@ -205,7 +205,7 @@ impl KaoImage {
 
     #[classmethod]
     #[pyo3(name = "create_from_raw")]
-    fn _create_from_raw(_cls: &PyType, cimg: &[u8], pal: &[u8]) -> PyResult<Self> {
+    fn _create_from_raw(_cls: &Bound<'_, PyType>, cimg: &[u8], pal: &[u8]) -> PyResult<Self> {
         Self::create_from_raw(cimg, pal)
     }
     /// Returns the portrait as a PIL image with a 16-color color palette.
@@ -280,7 +280,7 @@ impl Kao {
     }
     /// Creates a new empty KAO with the specified number of entries.
     #[classmethod]
-    pub fn create_new(_cls: &PyType, number_entries: usize) -> Self {
+    pub fn create_new(_cls: &Bound<'_, PyType>, number_entries: usize) -> Self {
         Self {
             portraits: vec![arr![None; 40]; number_entries],
         }
@@ -471,9 +471,9 @@ impl KaoWriter {
     }
 }
 
-pub(crate) fn create_st_kao_module(py: Python) -> PyResult<(&str, &PyModule)> {
+pub(crate) fn create_st_kao_module(py: Python) -> PyResult<(&str, Bound<'_, PyModule>)> {
     let name: &'static str = "skytemple_rust.st_kao";
-    let m = PyModule::new(py, name)?;
+    let m = PyModule::new_bound(py, name)?;
     m.add_class::<KaoImage>()?;
     m.add_class::<Kao>()?;
     m.add_class::<KaoWriter>()?;

@@ -1015,9 +1015,9 @@ impl BpcWriter {
     }
 }
 
-pub(crate) fn create_st_bpc_module(py: Python) -> PyResult<(&str, &PyModule)> {
+pub(crate) fn create_st_bpc_module(py: Python) -> PyResult<(&str, Bound<'_, PyModule>)> {
     let name: &'static str = "skytemple_rust.st_bpc";
-    let m = PyModule::new(py, name)?;
+    let m = PyModule::new_bound(py, name)?;
     m.add_class::<BpcLayer>()?;
     m.add_class::<Bpc>()?;
     m.add_class::<BpcWriter>()?;
@@ -1137,7 +1137,7 @@ pub mod input {
         ) -> PyResult<Vec<IndexedImage>> {
             // This is obviously very inefficient. You should not mix Rust models with Python models because of this.
             // This is mostly just to support the Mocks in the unit tests in skytemple-files.
-            let args = PyTuple::new(
+            let args = PyTuple::new_bound(
                 py,
                 [
                     layer_id.into_py(py),
@@ -1170,7 +1170,7 @@ pub mod input {
             contains_null_tile: bool,
             py: Python,
         ) -> PyResult<()> {
-            let args = PyTuple::new(
+            let args = PyTuple::new_bound(
                 py,
                 [
                     layer.into_py(py),
@@ -1190,11 +1190,12 @@ pub mod input {
             correct_tile_ids: bool,
             py: Python,
         ) -> PyResult<()> {
-            let args = PyTuple::new(
+            let args = PyTuple::new_bound(
                 py,
                 [
                     layer.into_py(py),
-                    PyList::new(py, tile_mappings.into_iter().map(|v| v.0.into_py(py))).into_py(py),
+                    PyList::new_bound(py, tile_mappings.into_iter().map(|v| v.0.into_py(py)))
+                        .into_py(py),
                     contains_null_chunk.into_py(py),
                     correct_tile_ids.into_py(py),
                 ],

@@ -243,20 +243,26 @@ impl BpcTilemapCompressionContainer {
     #[classmethod]
     #[pyo3(signature = (data, byte_offset = 0))]
     #[pyo3(name = "cont_size")]
-    fn _cont_size(_cls: &PyType, data: crate::bytes::StBytes, byte_offset: usize) -> u16 {
+    fn _cont_size(
+        _cls: &Bound<'_, PyType>,
+        data: crate::bytes::StBytes,
+        byte_offset: usize,
+    ) -> u16 {
         Self::cont_size(data.0, byte_offset)
     }
 
     #[classmethod]
     #[pyo3(name = "compress")]
-    fn _compress(_cls: &PyType, data: &[u8]) -> PyResult<Self> {
+    fn _compress(_cls: &Bound<'_, PyType>, data: &[u8]) -> PyResult<Self> {
         Self::compress(data)
     }
 }
 
-pub(crate) fn create_st_bpc_tilemap_compression_module(py: Python) -> PyResult<(&str, &PyModule)> {
+pub(crate) fn create_st_bpc_tilemap_compression_module(
+    py: Python,
+) -> PyResult<(&str, Bound<'_, PyModule>)> {
     let name: &'static str = "skytemple_rust._st_bpc_tilemap_compression";
-    let m = PyModule::new(py, name)?;
+    let m = PyModule::new_bound(py, name)?;
     m.add_class::<BpcTilemapCompressionContainer>()?;
 
     Ok((name, m))

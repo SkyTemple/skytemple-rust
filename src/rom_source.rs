@@ -41,7 +41,7 @@ pub trait RomFileProvider {
 
 impl RomFileProvider for &PyAny {
     fn get_file_by_name(&self, filename: &str) -> PyResult<Vec<u8>> {
-        let args = PyTuple::new(self.py(), [filename]);
+        let args = PyTuple::new_bound(self.py(), [filename]);
         self.call_method1("getFileByName", args)?.extract()
     }
     fn list_files_in_folder(&self, _filename: &str) -> PyResult<Vec<String>> {

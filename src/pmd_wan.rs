@@ -479,9 +479,9 @@ pub fn encode_image_to_static_wan_file(py: Python, image: PyObject) -> PyResult<
     }
 }
 
-pub(crate) fn create_pmd_wan_module(py: Python) -> PyResult<(&str, &PyModule)> {
+pub(crate) fn create_pmd_wan_module(py: Python) -> PyResult<(&str, Bound<'_, PyModule>)> {
     let name: &'static str = "skytemple_rust.pmd_wan";
-    let m = PyModule::new(py, name)?;
+    let m = PyModule::new_bound(py, name)?;
     m.add_class::<WanImage>()?;
     m.add_class::<FragmentBytesStore>()?;
     m.add_class::<FragmentBytes>()?;
@@ -496,7 +496,10 @@ pub(crate) fn create_pmd_wan_module(py: Python) -> PyResult<(&str, &PyModule)> {
     m.add_class::<AnimationFrame>()?;
     m.add_class::<Palette>()?;
     m.add_class::<SpriteType>()?;
-    m.add_function(wrap_pyfunction!(encode_image_to_static_wan_file, m)?)?;
+    m.add_function(wrap_pyfunction!(
+        encode_image_to_static_wan_file,
+        m.clone()
+    )?)?;
 
     Ok((name, m))
 }

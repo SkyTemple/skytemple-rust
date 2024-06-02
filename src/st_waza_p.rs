@@ -531,7 +531,11 @@ impl WazaP {
 
     #[classmethod]
     #[pyo3(name = "sir0_unwrap")]
-    pub fn _sir0_unwrap(_cls: &PyType, content_data: StBytes, data_pointer: u32) -> PyResult<Self> {
+    pub fn _sir0_unwrap(
+        _cls: &Bound<'_, PyType>,
+        content_data: StBytes,
+        data_pointer: u32,
+    ) -> PyResult<Self> {
         Ok(Self::sir0_unwrap(content_data, data_pointer)?)
     }
 
@@ -680,9 +684,9 @@ impl WazaPWriter {
     }
 }
 
-pub(crate) fn create_st_waza_p_module(py: Python) -> PyResult<(&str, &PyModule)> {
+pub(crate) fn create_st_waza_p_module(py: Python) -> PyResult<(&str, Bound<'_, PyModule>)> {
     let name: &'static str = "skytemple_rust.st_waza_p";
-    let m = PyModule::new(py, name)?;
+    let m = PyModule::new_bound(py, name)?;
     m.add_class::<LevelUpMove>()?;
     m.add_class::<LevelUpMoveList>()?;
     m.add_class::<U32List>()?;

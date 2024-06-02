@@ -228,7 +228,11 @@ impl Dpla {
 
     #[classmethod]
     #[pyo3(name = "sir0_unwrap")]
-    pub fn _sir0_unwrap(_cls: &PyType, content_data: StBytes, data_pointer: u32) -> PyResult<Self> {
+    pub fn _sir0_unwrap(
+        _cls: &Bound<'_, PyType>,
+        content_data: StBytes,
+        data_pointer: u32,
+    ) -> PyResult<Self> {
         Ok(Self::sir0_unwrap(content_data, data_pointer)?)
     }
 }
@@ -314,9 +318,9 @@ impl DplaWriter {
     }
 }
 
-pub(crate) fn create_st_dpla_module(py: Python) -> PyResult<(&str, &PyModule)> {
+pub(crate) fn create_st_dpla_module(py: Python) -> PyResult<(&str, Bound<'_, PyModule>)> {
     let name: &'static str = "skytemple_rust.st_dpla";
-    let m = PyModule::new(py, name)?;
+    let m = PyModule::new_bound(py, name)?;
     m.add_class::<Dpla>()?;
     m.add_class::<DplaWriter>()?;
 

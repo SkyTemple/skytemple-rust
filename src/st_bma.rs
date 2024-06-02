@@ -936,9 +936,9 @@ impl BmaWriter {
     }
 }
 
-pub(crate) fn create_st_bma_module(py: Python) -> PyResult<(&str, &PyModule)> {
+pub(crate) fn create_st_bma_module(py: Python) -> PyResult<(&str, Bound<'_, PyModule>)> {
     let name: &'static str = "skytemple_rust.st_bma";
-    let m = PyModule::new(py, name)?;
+    let m = PyModule::new_bound(py, name)?;
     m.add_class::<Bma>()?;
     m.add_class::<BmaWriter>()?;
 

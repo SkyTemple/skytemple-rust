@@ -200,7 +200,7 @@ impl Sir0 {
 
     #[classmethod]
     #[pyo3(name = "from_bin")]
-    pub fn _py_from_bin(_cls: &PyType, data: StBytes) -> PyResult<Self> {
+    pub fn _py_from_bin(_cls: &Bound<'_, PyType>, data: StBytes) -> PyResult<Self> {
         <Self as TryFrom<_>>::try_from(data).map_err(PyErr::from)
     }
 }
@@ -367,9 +367,9 @@ impl Sir0Writer {
     }
 }
 
-pub(crate) fn create_st_sir0_module(py: Python) -> PyResult<(&str, &PyModule)> {
+pub(crate) fn create_st_sir0_module(py: Python) -> PyResult<(&str, Bound<'_, PyModule>)> {
     let name: &'static str = "skytemple_rust.st_sir0";
-    let m = PyModule::new(py, name)?;
+    let m = PyModule::new_bound(py, name)?;
     m.add_class::<Sir0>()?;
     m.add_class::<Sir0Writer>()?;
 

@@ -91,7 +91,7 @@ impl Bpa {
     }
     /// Returns a new empty Bpa.
     #[classmethod]
-    pub fn new_empty(_cls: &PyType) -> PyResult<Self> {
+    pub fn new_empty(_cls: &Bound<'_, PyType>) -> PyResult<Self> {
         Ok(Self {
             number_of_tiles: 0,
             number_of_frames: 0,
@@ -334,9 +334,9 @@ impl BpaWriter {
     }
 }
 
-pub(crate) fn create_st_bpa_module(py: Python) -> PyResult<(&str, &PyModule)> {
+pub(crate) fn create_st_bpa_module(py: Python) -> PyResult<(&str, Bound<'_, PyModule>)> {
     let name: &'static str = "skytemple_rust.st_bpa";
-    let m = PyModule::new(py, name)?;
+    let m = PyModule::new_bound(py, name)?;
     m.add_class::<BpaFrameInfo>()?;
     m.add_class::<Bpa>()?;
     m.add_class::<BpaWriter>()?;
@@ -396,7 +396,7 @@ pub mod input {
         }
 
         fn provide_tiles_for_frame(&self, frame: u16, py: Python) -> PyResult<Vec<StBytes>> {
-            let args = PyTuple::new(py, [frame]);
+            let args = PyTuple::new_bound(py, [frame]);
             self.call_method1(py, "tiles_for_frame", args)?.extract(py)
         }
 

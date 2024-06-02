@@ -29,7 +29,7 @@ pub fn create_value_user_error<S: Into<String> + IntoPy<PyObject> + Send + Sync 
     msg: S,
 ) -> PyErr {
     let exc = exceptions::PyValueError::new_err(msg);
-    Python::with_gil(|py| exc.value(py).setattr(USER_ERROR_MARK, true).ok());
+    Python::with_gil(|py| exc.value_bound(py).setattr(USER_ERROR_MARK, true).ok());
     exc
 }
 

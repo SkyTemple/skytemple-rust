@@ -88,11 +88,12 @@ use crate::st_string::create_st_string_module;
 use crate::st_waza_p::create_st_waza_p_module;
 
 #[pymodule]
-fn skytemple_rust(py: Python, module: &PyModule) -> PyResult<()> {
+fn skytemple_rust(py: Python, module: &Bound<'_, PyModule>) -> PyResult<()> {
     pyo3_log::init();
     info!("Loading skytemple_rust...");
-    let sys = py.import("sys")?;
-    let modules: &PyDict = sys.getattr("modules")?.downcast()?;
+    let sys = py.import_bound("sys")?;
+    let modules_raw = sys.getattr("modules")?;
+    let modules: &Bound<'_, PyDict> = modules_raw.downcast()?;
     #[cfg(feature = "sir0")]
     add_submodule(module, create_st_sir0_module(py)?, modules)?;
     #[cfg(feature = "with_pmd_wan")]
@@ -183,11 +184,11 @@ fn skytemple_rust(py: Python, module: &PyModule) -> PyResult<()> {
 
 #[inline]
 fn add_submodule(
-    parent: &PyModule,
-    (name, module): (&str, &PyModule),
-    modules: &PyDict,
+    parent: &Bound<'_, PyModule>,
+    (name, module): (&str, Bound<'_, PyModule>),
+    modules: &Bound<'_, PyDict>,
 ) -> PyResult<()> {
-    modules.set_item(name, module)?;
-    parent.add_submodule(module)?;
-    parent.add(&name.split('.').skip(1).collect::<String>(), module)
+    modules.set_item(name, &module)?;
+    parent.add_submodule(&module)?;
+    parent.add(&*name.split('.').skip(1).collect::<String>(), module)
 }

@@ -73,7 +73,7 @@ macro_rules! impl_pylist {
                             x.call_method1(
                                 py,
                                 "__eq__",
-                                ::pyo3::types::PyTuple::new(py, [value.clone()]),
+                                ::pyo3::types::PyTuple::new_bound(py, [value.clone()]),
                             )
                             .and_then(|x| x.is_truthy(py))
                             .unwrap_or_default()
@@ -94,7 +94,7 @@ macro_rules! impl_pylist {
                                 x.call_method1(
                                     py,
                                     "__eq__",
-                                    ::pyo3::types::PyTuple::new(py, [value.clone()]),
+                                    ::pyo3::types::PyTuple::new_bound(py, [value.clone()]),
                                 )
                                 .and_then(|x| x.is_truthy(py))
                                 .unwrap_or_default()
@@ -110,7 +110,7 @@ macro_rules! impl_pylist {
                             x.call_method1(
                                 py,
                                 "__eq__",
-                                ::pyo3::types::PyTuple::new(py, [value.clone()]),
+                                ::pyo3::types::PyTuple::new_bound(py, [value.clone()]),
                             )
                             .and_then(|x| x.is_truthy(py))
                             .unwrap_or_default()
@@ -207,9 +207,9 @@ macro_rules! __do_impl_pylist {
                 pub fn __getitem__(&self, idx: $crate::python::SliceOrInt, py: Python) -> PyResult<PyObject> {
                     match idx {
                         $crate::python::SliceOrInt::Slice(sl) => {
-                            let pylist = ::pyo3::types::PyList::new(py, self.0.iter().cloned());
+                            let pylist = ::pyo3::types::PyList::new_bound(py, self.0.iter().cloned());
                             pylist
-                                .call_method1("__getitem__", ::pyo3::types::PyTuple::new(py, [sl]))
+                                .call_method1("__getitem__", ::pyo3::types::PyTuple::new_bound(py, [sl]))
                                 .map(|v| v.into_py(py))
                         }
                         $crate::python::SliceOrInt::Int(idx) => {
@@ -224,8 +224,8 @@ macro_rules! __do_impl_pylist {
                 pub fn __setitem__(&mut self, idx: $crate::python::SliceOrInt, o: PyObject, py: Python) -> PyResult<()> {
                     match idx {
                         $crate::python::SliceOrInt::Slice(sl) => {
-                            let pylist = ::pyo3::types::PyList::new(py, self.0.iter().cloned());
-                            pylist.call_method1("__setitem__", ::pyo3::types::PyTuple::new(py, [sl.into_py(py), o]))?;
+                            let pylist = ::pyo3::types::PyList::new_bound(py, self.0.iter().cloned());
+                            pylist.call_method1("__setitem__", ::pyo3::types::PyTuple::new_bound(py, [sl.into_py(py), o]))?;
                             self.0 = pylist
                                 .into_iter()
                                 .map(|o| o.extract())
@@ -245,8 +245,8 @@ macro_rules! __do_impl_pylist {
                 pub fn __delitem__(&mut self, idx: $crate::python::SliceOrInt, py: Python) -> PyResult<()> {
                     match idx {
                         $crate::python::SliceOrInt::Slice(sl) => {
-                            let pylist = ::pyo3::types::PyList::new(py, self.0.iter().cloned());
-                            pylist.call_method1("__delitem__", ::pyo3::types::PyTuple::new(py, [sl]))?;
+                            let pylist = ::pyo3::types::PyList::new_bound(py, self.0.iter().cloned());
+                            pylist.call_method1("__delitem__", ::pyo3::types::PyTuple::new_bound(py, [sl]))?;
                             self.0 = pylist
                                 .into_iter()
                                 .map(|o| o.extract())

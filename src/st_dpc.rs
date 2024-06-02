@@ -251,9 +251,9 @@ impl DpcWriter {
     }
 }
 
-pub(crate) fn create_st_dpc_module(py: Python) -> PyResult<(&str, &PyModule)> {
+pub(crate) fn create_st_dpc_module(py: Python) -> PyResult<(&str, Bound<'_, PyModule>)> {
     let name: &'static str = "skytemple_rust.st_dpc";
-    let m = PyModule::new(py, name)?;
+    let m = PyModule::new_bound(py, name)?;
     m.add_class::<Dpc>()?;
     m.add_class::<DpcWriter>()?;
 
@@ -326,7 +326,7 @@ pub mod input {
             width_in_mtiles: usize,
             py: Python,
         ) -> PyResult<IndexedImage> {
-            let args = PyTuple::new(
+            let args = PyTuple::new_bound(
                 py,
                 [
                     dpci.into_py(py),
@@ -347,14 +347,14 @@ pub mod input {
             correct_tile_ids: bool,
             py: Python,
         ) -> PyResult<()> {
-            let args = PyTuple::new(
+            let args = PyTuple::new_bound(
                 py,
                 [
-                    PyList::new(
+                    PyList::new_bound(
                         py,
-                        tile_mappings
-                            .into_iter()
-                            .map(|v| PyList::new(py, v.into_iter().map(|vv| vv.0.into_py(py)))),
+                        tile_mappings.into_iter().map(|v| {
+                            PyList::new_bound(py, v.into_iter().map(|vv| vv.0.into_py(py)))
+                        }),
                     )
                     .into_py(py),
                     contains_null_chunk.into_py(py),

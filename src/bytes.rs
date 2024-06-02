@@ -34,7 +34,7 @@ pub struct StBytes(pub(crate) Bytes);
 
 impl IntoPy<PyObject> for StBytes {
     fn into_py(self, py: Python) -> PyObject {
-        PyBytes::new(py, &self.0).into()
+        PyBytes::new_bound(py, &self.0).into()
     }
 }
 
@@ -131,7 +131,7 @@ impl AsRef<[u8]> for StBytes {
 
 impl IntoPy<PyObject> for StBytesMut {
     fn into_py(self, py: Python) -> PyObject {
-        PyBytes::new(py, &self.0).into()
+        PyBytes::new_bound(py, &self.0).into()
     }
 }
 

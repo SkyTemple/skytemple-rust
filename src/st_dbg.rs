@@ -230,9 +230,9 @@ impl DbgWriter {
     }
 }
 
-pub(crate) fn create_st_dbg_module(py: Python) -> PyResult<(&str, &PyModule)> {
+pub(crate) fn create_st_dbg_module(py: Python) -> PyResult<(&str, Bound<'_, PyModule>)> {
     let name: &'static str = "skytemple_rust.st_dbg";
-    let m = PyModule::new(py, name)?;
+    let m = PyModule::new_bound(py, name)?;
     m.add_class::<Dbg>()?;
     m.add_class::<DbgWriter>()?;
 

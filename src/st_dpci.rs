@@ -116,9 +116,9 @@ impl DpciWriter {
     }
 }
 
-pub(crate) fn create_st_dpci_module(py: Python) -> PyResult<(&str, &PyModule)> {
+pub(crate) fn create_st_dpci_module(py: Python) -> PyResult<(&str, Bound<'_, PyModule>)> {
     let name: &'static str = "skytemple_rust.st_dpci";
-    let m = PyModule::new(py, name)?;
+    let m = PyModule::new_bound(py, name)?;
     m.add_class::<Dpci>()?;
     m.add_class::<DpciWriter>()?;
 
@@ -173,7 +173,7 @@ pub mod input {
             contains_null_tile: bool,
             py: Python,
         ) -> PyResult<()> {
-            let args = PyTuple::new(py, [tiles.into_py(py), contains_null_tile.into_py(py)]);
+            let args = PyTuple::new_bound(py, [tiles.into_py(py), contains_null_tile.into_py(py)]);
             self.call_method1(py, "import_tiles", args).map(|_| ())
         }
     }

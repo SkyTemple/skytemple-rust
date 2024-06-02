@@ -92,9 +92,9 @@ impl DplWriter {
     }
 }
 
-pub(crate) fn create_st_dpl_module(py: Python) -> PyResult<(&str, &PyModule)> {
+pub(crate) fn create_st_dpl_module(py: Python) -> PyResult<(&str, Bound<'_, PyModule>)> {
     let name: &'static str = "skytemple_rust.st_dpl";
-    let m = PyModule::new(py, name)?;
+    let m = PyModule::new_bound(py, name)?;
     m.add_class::<Dpl>()?;
     m.add_class::<DplWriter>()?;
 
@@ -122,7 +122,7 @@ pub mod input {
 
     impl DplProvider for PyObject {
         fn set_palettes(&mut self, value: Vec<Vec<u8>>, py: Python) -> PyResult<()> {
-            let self_ref = self.as_ref(py);
+            let self_ref = self.bind(py);
             self_ref.setattr("palettes", value)
         }
     }

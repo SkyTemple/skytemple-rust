@@ -50,7 +50,7 @@ impl MappaItemList {
     #[classmethod]
 
     pub fn from_bytes(
-        _cls: &PyType,
+        _cls: &Bound<'_, PyType>,
         mut bytes: StBytes,
         pointer: usize,
     ) -> PyResult<Py<MappaItemList>> {

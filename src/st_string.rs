@@ -60,9 +60,9 @@ impl StPmd2StringEncoder {
     }
 }
 
-pub(crate) fn create_st_string_module(py: Python) -> PyResult<(&str, &PyModule)> {
+pub(crate) fn create_st_string_module(py: Python) -> PyResult<(&str, Bound<'_, PyModule>)> {
     let name: &'static str = "skytemple_rust.st_string";
-    let m = PyModule::new(py, name)?;
+    let m = PyModule::new_bound(py, name)?;
     m.add_class::<StPmd2String>()?;
     m.add_class::<StPmd2StringEncoder>()?;
 

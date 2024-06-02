@@ -41,7 +41,7 @@ impl TilemapEntry {
         Self(idx, flip_x, flip_y, pal_idx)
     }
     #[classmethod]
-    pub fn from_int(_cls: &PyType, i: usize) -> Self {
+    pub fn from_int(_cls: &Bound<'_, PyType>, i: usize) -> Self {
         Self::from(i)
     }
     pub fn to_int(&self) -> usize {

@@ -64,7 +64,7 @@ impl MdPropertiesState {
 impl MdPropertiesState {
     #[classmethod]
     #[pyo3(name = "instance")]
-    pub fn _instance(_cls: &PyType, py: Python) -> PyResult<Py<Self>> {
+    pub fn _instance(_cls: &Bound<'_, PyType>, py: Python) -> PyResult<Py<Self>> {
         Self::instance(py)
     }
 }
@@ -512,7 +512,7 @@ pub struct MdEntry {
 #[pymethods]
 impl MdEntry {
     #[classmethod]
-    pub fn new_empty(_cls: &PyType, entid: u16) -> Self {
+    pub fn new_empty(_cls: &Bound<'_, PyType>, entid: u16) -> Self {
         Self {
             md_index: 0,
             data: MdEntryData {
@@ -1364,9 +1364,9 @@ impl MdWriter {
     }
 }
 
-pub(crate) fn create_st_md_module(py: Python) -> PyResult<(&str, &PyModule)> {
+pub(crate) fn create_st_md_module(py: Python) -> PyResult<(&str, Bound<'_, PyModule>)> {
     let name: &'static str = "skytemple_rust.st_md";
-    let m = PyModule::new(py, name)?;
+    let m = PyModule::new_bound(py, name)?;
     m.add_class::<MdPropertiesState>()?;
     m.add_class::<MdEntry>()?;
     m.add_class::<MdIterator>()?;

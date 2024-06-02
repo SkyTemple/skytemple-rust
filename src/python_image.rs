@@ -54,7 +54,7 @@ where
             T::MAX_COLORS
         )));
     }
-    let args = PyTuple::new(py, ["raw", "P"]);
+    let args = PyTuple::new_bound(py, ["raw", "P"]);
     let bytes: Vec<u8> = iimg.getattr(py, "tobytes")?.call1(py, args)?.extract(py)?;
     let pal: Vec<u8> = iimg
         .getattr(py, "palette")?
@@ -69,12 +69,12 @@ where
 }
 
 pub fn out_to_py(img: IndexedImage, py: Python) -> PyResult<PyObject> {
-    let bytes: &PyBytes = PyBytes::new(py, &img.0 .0);
-    let args = PyTuple::new(
+    let bytes = PyBytes::new_bound(py, &img.0 .0);
+    let args = PyTuple::new_bound(
         py,
         [
             "P".into_py(py),
-            PyTuple::new(py, [img.0 .1, img.0 .2]).into_py(py),
+            PyTuple::new_bound(py, [img.0 .1, img.0 .2]).into_py(py),
             bytes.into_py(py),
             "raw".into_py(py),
             "P".into_py(py),
@@ -82,10 +82,10 @@ pub fn out_to_py(img: IndexedImage, py: Python) -> PyResult<PyObject> {
             1.into_py(py),
         ],
     );
-    let out_img = PyModule::import(py, "PIL.Image")?
+    let out_img = PyModule::import_bound(py, "PIL.Image")?
         .getattr("frombuffer")?
         .call1(args)?;
-    let args = PyTuple::new(py, [img.1.into_py(py)]);
+    let args = PyTuple::new_bound(py, [img.1.into_py(py)]);
     out_img.getattr("putpalette")?.call1(args)?;
     Ok(out_img.to_object(py))
 }
@@ -115,24 +115,24 @@ fn pil_simple_quant(
     let transparency_map: Vec<bool>;
     if can_have_transparency {
         if pil_img.getattr(py, "mode")?.extract::<&str>(py)? != "RGBA" {
-            args = PyTuple::new(py, ["RGBA"]);
+            args = PyTuple::new_bound(py, ["RGBA"]);
             pil_img = pil_img.getattr(py, "convert")?.call1(py, args)?;
         }
         transparency_map =
-            PyIterator::from_object(pil_img.getattr(py, "getdata")?.call0(py)?.as_ref(py))?
+            PyIterator::from_bound_object(pil_img.getattr(py, "getdata")?.call0(py)?.bind(py))?
                 .map(|x| Ok(x?.extract::<&PyTuple>()?.get_item(3)?.extract::<usize>()? == 0))
                 .collect::<PyResult<Vec<bool>>>()?;
     } else {
         if pil_img.getattr(py, "mode")?.extract::<&str>(py)? != "RGB" {
-            args = PyTuple::new(py, ["RGB"]);
+            args = PyTuple::new_bound(py, ["RGB"]);
             pil_img = pil_img.getattr(py, "convert")?.call1(py, args)?;
         }
         transparency_map =
-            PyIterator::from_object(pil_img.getattr(py, "getdata")?.call0(py)?.as_ref(py))?
+            PyIterator::from_bound_object(pil_img.getattr(py, "getdata")?.call0(py)?.bind(py))?
                 .map(|_| false)
                 .collect();
     }
-    let args = PyTuple::new(
+    let args = PyTuple::new_bound(
         py,
         [
             15.into_py(py),
@@ -144,14 +144,16 @@ fn pil_simple_quant(
     );
     pil_img = pil_img.getattr(py, "quantize")?.call1(py, args)?;
     // Get the original palette and add the transparent color
-    let args = PyTuple::new(
+    let args = PyTuple::new_bound(
         py,
         [[Ok(0), Ok(0), Ok(0)]
             .into_iter()
             .chain(
-                PyIterator::from_object(pil_img.getattr(py, "getpalette")?.call0(py)?.as_ref(py))?
-                    .take(762)
-                    .map(|x| x?.extract::<u8>()),
+                PyIterator::from_bound_object(
+                    pil_img.getattr(py, "getpalette")?.call0(py)?.bind(py),
+                )?
+                .take(762)
+                .map(|x| x?.extract::<u8>()),
             )
             .collect::<PyResult<Vec<u8>>>()?
             .into_py(py)],
@@ -163,14 +165,17 @@ fn pil_simple_quant(
     for j in 0..(pil_img.getattr(py, "height")?.extract(py)?) {
         for i in 0..(pil_img.getattr(py, "width")?.extract(py)?) {
             if transparency_map[k] {
-                let args = PyTuple::new(py, [PyTuple::new(py, [i, j]).into_py(py), 0.into_py(py)]);
+                let args = PyTuple::new_bound(
+                    py,
+                    [PyTuple::new_bound(py, [i, j]).into_py(py), 0.into_py(py)],
+                );
                 pixels.getattr(py, "__setitem__")?.call1(py, args)?;
             } else {
-                let inner_args = PyTuple::new(py, [PyTuple::new(py, [i, j])]);
-                let args = PyTuple::new(
+                let inner_args = PyTuple::new_bound(py, [PyTuple::new_bound(py, [i, j])]);
+                let args = PyTuple::new_bound(
                     py,
                     [
-                        PyTuple::new(py, [i, j]).into_py(py),
+                        PyTuple::new_bound(py, [i, j]).into_py(py),
                         (pixels
                             .getattr(py, "__getitem__")?
                             .call1(py, inner_args)?

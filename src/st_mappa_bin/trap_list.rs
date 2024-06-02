@@ -86,7 +86,7 @@ impl From<Py<MappaTrapList>> for StBytes {
 #[pymethods]
 impl MappaTrapList {
     #[new]
-    pub fn _new(weights: &PyAny) -> PyResult<Self> {
+    pub fn _new(weights: &Bound<'_, PyAny>) -> PyResult<Self> {
         // weights: Union[List[u16], Dict[_MappaTrapType, u16]]
         if let Ok(dw) = weights.downcast::<pyo3::types::PyDict>() {
             let weights_c = dw
