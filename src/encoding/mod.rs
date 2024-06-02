@@ -21,9 +21,10 @@
 pub mod pmd2_encoder;
 
 use crate::err::convert_encoding_err;
-use crate::python::{exceptions, PyResult};
 use bytes::{Buf, BufMut, Bytes};
 use encoding::{DecoderTrap, EncoderTrap, Encoding};
+use pyo3::exceptions::PyValueError;
+use pyo3::PyResult;
 use std::cmp::Ordering;
 use std::io::Cursor;
 
@@ -124,7 +125,7 @@ where
         match target.len().cmp(&len) {
             Ordering::Less => target.resize(len, 0),
             Ordering::Greater => {
-                return Err(exceptions::PyValueError::new_err(format!(
+                return Err(PyValueError::new_err(format!(
                     "The string '{}' does not fit into {} bytes.",
                     string, len
                 )))

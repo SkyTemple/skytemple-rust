@@ -17,10 +17,11 @@
  * along with SkyTemple.  If not, see <https://www.gnu.org/licenses/>.
  */
 use crate::bytes::StBytes;
-use crate::python::*;
 use crate::st_mappa_bin::MappaTrapType;
 use bytes::Buf;
 use packed_struct::prelude::*;
+use pyo3::exceptions::{PyTypeError, PyValueError};
+use pyo3::prelude::*;
 use std::collections::BTreeMap;
 use std::ops::Deref;
 
@@ -42,7 +43,7 @@ impl TryFrom<StBytes> for Py<MappaTrapList> {
 
     fn try_from(mut value: StBytes) -> Result<Self, Self::Error> {
         if value.len() < 50 {
-            Err(exceptions::PyValueError::new_err("Trap list malformed."))
+            Err(PyValueError::new_err("Trap list malformed."))
         } else {
             Python::with_gil(|py| {
                 Py::new(
@@ -84,7 +85,6 @@ impl From<Py<MappaTrapList>> for StBytes {
 
 #[pymethods]
 impl MappaTrapList {
-    #[cfg(feature = "python")]
     #[new]
     pub fn _new(weights: &PyAny) -> PyResult<Self> {
         // weights: Union[List[u16], Dict[_MappaTrapType, u16]]
@@ -97,13 +97,13 @@ impl MappaTrapList {
                             return Ok((kk, vv));
                         }
                     }
-                    Err(exceptions::PyValueError::new_err(
+                    Err(PyValueError::new_err(
                         "Invalid key(s) or value(s) for trap dict.",
                     ))
                 })
                 .collect::<PyResult<BTreeMap<MappaTrapType, u16>>>()?;
             if weights_c.len() != 25 {
-                Err(exceptions::PyValueError::new_err(
+                Err(PyValueError::new_err(
                     "MappaTrapList constructor needs a weight value for all of the 25 traps.",
                 ))
             } else {
@@ -111,7 +111,7 @@ impl MappaTrapList {
             }
         } else if let Ok(dl) = weights.downcast::<pyo3::types::PyList>() {
             if dl.len() != 25 {
-                Err(exceptions::PyValueError::new_err(
+                Err(PyValueError::new_err(
                     "MappaTrapList constructor needs a weight value for all of the 25 traps.",
                 ))
             } else {
@@ -122,22 +122,19 @@ impl MappaTrapList {
                             if let Ok(vv) = v.extract::<u16>() {
                                 Ok((MappaTrapType::from_primitive(i as u8).unwrap(), vv))
                             } else {
-                                Err(exceptions::PyValueError::new_err(
-                                    "Invalid value(s) for trap list.",
-                                ))
+                                Err(PyValueError::new_err("Invalid value(s) for trap list."))
                             }
                         })
                         .collect::<PyResult<BTreeMap<MappaTrapType, u16>>>()?,
                 ))
             }
         } else {
-            Err(exceptions::PyTypeError::new_err(
+            Err(PyTypeError::new_err(
                 "The weights must be a list or dict of probabilities.",
             ))
         }
     }
 
-    #[cfg(feature = "python")]
     fn __richcmp__(&self, other: PyRef<Self>, op: pyo3::basic::CompareOp) -> Py<PyAny> {
         let py = other.py();
         match op {

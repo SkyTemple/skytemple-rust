@@ -18,10 +18,11 @@
  */
 use crate::bytes::StBytes;
 use crate::err::convert_packing_err;
-use crate::python::*;
+use crate::python::create_value_user_error;
 use crate::st_mappa_bin::{MappaFloorDarknessLevel, MappaFloorStructureType, MappaFloorWeather};
 use packed_struct::prelude::*;
 use packed_struct::PackingResult;
+use pyo3::prelude::*;
 use std::ops::Deref;
 
 #[pyclass(module = "skytemple_rust.st_mappa_bin")]
@@ -80,7 +81,6 @@ impl MappaFloorTerrainSettings {
         }
     }
 
-    #[cfg(feature = "python")]
     fn __richcmp__(&self, other: PyRef<Self>, op: pyo3::basic::CompareOp) -> Py<PyAny> {
         let py = other.py();
         match op {
@@ -93,8 +93,7 @@ impl MappaFloorTerrainSettings {
 
 /// MappaFloorTerrainSettings but on the Python heap
 /// (packable wrapper around Py<MappaFloorTerrainSettings>
-#[cfg_attr(feature = "python", derive(FromPyObject))]
-#[derive(Clone, Debug)]
+#[derive(FromPyObject, Clone, Debug)]
 #[pyo3(transparent)]
 #[repr(transparent)]
 pub struct PyMappaFloorTerrainSettings(Py<MappaFloorTerrainSettings>);
@@ -121,7 +120,6 @@ impl PackedStruct for PyMappaFloorTerrainSettings {
     }
 }
 
-#[cfg(feature = "python")]
 impl IntoPy<PyObject> for PyMappaFloorTerrainSettings {
     fn into_py(self, py: Python) -> PyObject {
         self.0.into_py(py)
@@ -291,7 +289,6 @@ impl MappaFloorLayout {
         Ok(())
     }
 
-    #[cfg(feature = "python")]
     fn __richcmp__(&self, other: PyRef<Self>, op: pyo3::basic::CompareOp) -> Py<PyAny> {
         let py = other.py();
         match op {

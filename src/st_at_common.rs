@@ -17,13 +17,14 @@
  * along with SkyTemple.  If not, see <https://www.gnu.org/licenses/>.
  */
 use crate::bytes::StBytesMut;
-use crate::python::*;
 use crate::st_at3px::At3px;
 use crate::st_at4pn::At4pn;
 use crate::st_at4px::At4px;
 use crate::st_atupx::Atupx;
 use crate::st_pkdpx::Pkdpx;
 use bytes::Buf;
+use pyo3::exceptions::PyValueError;
+use pyo3::prelude::*;
 use std::env;
 
 pub enum CommonAtType {
@@ -128,9 +129,7 @@ impl CommonAt {
         }
         match meta.0 {
             Some(x) => Ok(x),
-            None => Err(exceptions::PyValueError::new_err(
-                "No usable compression algorithm.",
-            )),
+            None => Err(PyValueError::new_err("No usable compression algorithm.")),
         }
     }
     fn compress_try(in_bytes: PyResult<StBytesMut>, meta: &mut CommonAtCompressor) {
@@ -158,13 +157,10 @@ impl CommonAt {
         if Atupx::matches(compressed_data) {
             return Atupx::new(compressed_data)?.decompress();
         }
-        Err(exceptions::PyValueError::new_err(
-            "Unknown compression container",
-        ))
+        Err(PyValueError::new_err("Unknown compression container"))
     }
 }
 
-#[cfg(feature = "python")]
 pub(crate) fn create_st_at_common_module(py: Python) -> PyResult<(&str, &PyModule)> {
     let name: &'static str = "skytemple_rust.st_at_common";
     let m = PyModule::new(py, name)?;

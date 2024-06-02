@@ -16,8 +16,8 @@
  * You should have received a copy of the GNU General Public License
  * along with SkyTemple.  If not, see <https://www.gnu.org/licenses/>.
  */
-use crate::python::*;
-#[cfg(feature = "python")]
+use pyo3::prelude::*;
+
 use pyo3::types::PyTuple;
 
 pub enum RomSource<T: RomFileProvider + Sized> {
@@ -25,7 +25,6 @@ pub enum RomSource<T: RomFileProvider + Sized> {
     Rom(T),
 }
 
-#[cfg(feature = "python")]
 impl<'source> FromPyObject<'source> for RomSource<&'source PyAny> {
     fn extract(ob: &'source PyAny) -> PyResult<Self> {
         Ok(match ob.extract::<String>().ok() {
@@ -40,7 +39,6 @@ pub trait RomFileProvider {
     fn list_files_in_folder(&self, filename: &str) -> PyResult<Vec<String>>;
 }
 
-#[cfg(feature = "python")]
 impl RomFileProvider for &PyAny {
     fn get_file_by_name(&self, filename: &str) -> PyResult<Vec<u8>> {
         let args = PyTuple::new(self.py(), [filename]);

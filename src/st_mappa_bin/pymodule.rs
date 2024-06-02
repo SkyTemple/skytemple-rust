@@ -17,14 +17,12 @@
  * along with SkyTemple.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-use crate::python::{PyModule, Python};
 use crate::st_mappa_bin::{
     MappaBin, MappaBinWriter, MappaFloor, MappaFloorLayout, MappaFloorTerrainSettings,
     MappaItemList, MappaMonster, MappaMonsterList, MappaMonsterListIterator, MappaTrapList,
 };
-use crate::PyResult;
+use pyo3::prelude::*;
 
-#[cfg(feature = "python")]
 pub(crate) fn create_st_mappa_bin_module(py: Python) -> PyResult<(&str, &PyModule)> {
     let name: &'static str = "skytemple_rust.st_mappa_bin";
     let m = PyModule::new(py, name)?;

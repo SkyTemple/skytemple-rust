@@ -19,7 +19,6 @@
 use crate::bytes::StBytes;
 use crate::encoding::{BufEncoding, BufMutEncoding};
 use crate::err::convert_io_err;
-use crate::python::*;
 use crate::rom_source::{RomFileProvider, RomSource};
 use crate::st_bma::Bma;
 use crate::st_bpa::Bpa;
@@ -28,6 +27,7 @@ use crate::st_bpl::Bpl;
 use bytes::BytesMut;
 use encoding::codec::ascii::ASCIIEncoding;
 use encoding::{DecoderTrap, EncoderTrap};
+use pyo3::prelude::*;
 use std::fs;
 use std::path::Path;
 
@@ -140,12 +140,12 @@ impl BgListEntry {
             bpa_names,
         }
     }
-    #[cfg(feature = "python")]
+
     #[pyo3(name = "get_bpl")]
     pub fn _get_bpl(&self, rom_or_directory_root: RomSource<&PyAny>, py: Python) -> PyResult<Bpl> {
         self.get_bpl(rom_or_directory_root, py)
     }
-    #[cfg(feature = "python")]
+
     #[pyo3(name = "get_bpc")]
     #[pyo3(signature = (rom_or_directory_root, bpc_tiling_width = 3, bpc_tiling_height = 3))]
     pub fn _get_bpc(
@@ -162,12 +162,12 @@ impl BgListEntry {
             py,
         )
     }
-    #[cfg(feature = "python")]
+
     #[pyo3(name = "get_bma")]
     pub fn _get_bma(&self, rom_or_directory_root: RomSource<&PyAny>) -> PyResult<Bma> {
         self.get_bma(rom_or_directory_root)
     }
-    #[cfg(feature = "python")]
+
     #[pyo3(name = "get_bpas")]
     pub fn _get_bpas(
         &self,
@@ -248,7 +248,6 @@ impl BgList {
         })
     }
 
-    #[cfg(feature = "python")]
     #[setter(level)]
     fn set_level_attr(&mut self, value: Vec<Py<BgListEntry>>) -> PyResult<()> {
         self.level = value;
@@ -342,7 +341,6 @@ impl BgListWriter {
     }
 }
 
-#[cfg(feature = "python")]
 pub(crate) fn create_st_bg_list_dat_module(py: Python) -> PyResult<(&str, &PyModule)> {
     let name: &'static str = "skytemple_rust.st_bg_list_dat";
     let m = PyModule::new(py, name)?;

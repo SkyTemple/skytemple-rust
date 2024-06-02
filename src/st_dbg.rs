@@ -21,7 +21,7 @@ use crate::gettext::gettext;
 use crate::image::tiled::TiledImage;
 use crate::image::tilemap_entry::{InputTilemapEntry, TilemapEntry};
 use crate::image::{In256ColIndexedImage, InIndexedImage, IndexedImage, Raster};
-use crate::python::*;
+use crate::python::create_value_user_error;
 use crate::st_dpc::input::InputDpc;
 use crate::st_dpc::DPC_TILING_DIM;
 use crate::st_dpci::input::InputDpci;
@@ -30,13 +30,7 @@ use crate::st_dpl::input::InputDpl;
 use crate::st_dpl::{DPL_MAX_PAL, DPL_PAL_LEN};
 use bytes::{Buf, BufMut, BytesMut};
 use itertools::Itertools;
-
-#[cfg(not(feature = "python"))]
-use crate::st_dpc::input::DpcProvider;
-#[cfg(not(feature = "python"))]
-use crate::st_dpci::input::DpciProvider;
-#[cfg(not(feature = "python"))]
-use crate::st_dpl::input::DplProvider;
+use pyo3::prelude::*;
 
 const DBG_TILING_DIM: usize = 3;
 const DBG_CHUNK_WIDTH: usize = 24;
@@ -205,7 +199,6 @@ impl Dbg {
         Ok(())
     }
 
-    #[cfg(feature = "python")]
     fn __richcmp__(&self, other: PyRef<Self>, op: pyo3::basic::CompareOp) -> Py<PyAny> {
         let py = other.py();
         match op {
@@ -237,7 +230,6 @@ impl DbgWriter {
     }
 }
 
-#[cfg(feature = "python")]
 pub(crate) fn create_st_dbg_module(py: Python) -> PyResult<(&str, &PyModule)> {
     let name: &'static str = "skytemple_rust.st_dbg";
     let m = PyModule::new(py, name)?;

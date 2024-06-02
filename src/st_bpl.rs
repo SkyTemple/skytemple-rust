@@ -17,8 +17,9 @@
  * along with SkyTemple.  If not, see <https://www.gnu.org/licenses/>.
  */
 use crate::bytes::StBytes;
-use crate::python::*;
 use bytes::{Buf, BufMut};
+use pyo3::exceptions::PyAssertionError;
+use pyo3::prelude::*;
 use std::cmp::Ordering;
 use std::iter::repeat;
 use std::mem::take;
@@ -158,7 +159,6 @@ impl Bpl {
         })
     }
 
-    #[cfg(feature = "python")]
     #[setter(palettes)]
     fn set_palettes_attr(&mut self, value: Vec<Vec<u8>>) -> PyResult<()> {
         self.palettes = value;
@@ -169,7 +169,7 @@ impl Bpl {
     /// Animated palette is not changed, but the number of spec entries is adjusted.
     pub fn import_palettes(&mut self, palettes: Vec<Vec<u8>>, py: Python) -> PyResult<()> {
         if palettes.len() > BPL_MAX_PAL as usize {
-            return Err(exceptions::PyAssertionError::new_err(format!(
+            return Err(PyAssertionError::new_err(format!(
                 "Number of palettes must be <= {}, is {}.",
                 BPL_MAX_PAL,
                 palettes.len()
@@ -311,7 +311,6 @@ impl BplWriter {
     }
 }
 
-#[cfg(feature = "python")]
 pub(crate) fn create_st_bpl_module(py: Python) -> PyResult<(&str, &PyModule)> {
     let name: &'static str = "skytemple_rust.st_bpl";
     let m = PyModule::new(py, name)?;
@@ -325,11 +324,11 @@ pub(crate) fn create_st_bpl_module(py: Python) -> PyResult<(&str, &PyModule)> {
 /////////////////////////
 /////////////////////////
 // BPLs as inputs (for compatibility of including other BPL implementations from Python)
-#[cfg(feature = "python")]
+
 pub mod input {
     use crate::bytes::StBytes;
-    use crate::python::*;
     use crate::st_bpl::Bpl;
+    use pyo3::prelude::*;
     use pyo3::types::PyTuple;
 
     pub trait BplProvider: ToPyObject {
@@ -427,61 +426,6 @@ pub mod input {
     impl From<InputBpl> for Bpl {
         fn from(obj: InputBpl) -> Self {
             Python::with_gil(|py| obj.0.to_object(py).extract(py).unwrap())
-        }
-    }
-}
-
-#[cfg(not(feature = "python"))]
-pub mod input {
-    use crate::bytes::StBytes;
-    use crate::python::{PyResult, Python};
-    use crate::st_bpl::Bpl;
-
-    pub trait BplProvider {
-        fn get_palettes(&self, py: Python) -> PyResult<Vec<StBytes>>;
-        fn get_has_palette_animation(&self, py: Python) -> PyResult<bool>;
-        fn get_animation_palette(&self, py: Python) -> PyResult<Vec<StBytes>>;
-        fn do_apply_palette_animations(&self, frame: u16, py: Python) -> PyResult<Vec<StBytes>>;
-        fn do_import_palettes(&mut self, palettes: Vec<Vec<u8>>, py: Python) -> PyResult<()>;
-    }
-
-    impl BplProvider for Bpl {
-        fn get_palettes(&self, _py: Python) -> PyResult<Vec<StBytes>> {
-            Ok(self.palettes.iter().cloned().map(|x| x.into()).collect())
-        }
-
-        fn get_has_palette_animation(&self, _py: Python) -> PyResult<bool> {
-            Ok(self.has_palette_animation)
-        }
-
-        fn get_animation_palette(&self, _py: Python) -> PyResult<Vec<StBytes>> {
-            Ok(self
-                .animation_palette
-                .iter()
-                .cloned()
-                .map(|x| x.into())
-                .collect())
-        }
-
-        fn do_apply_palette_animations(&self, frame: u16, py: Python) -> PyResult<Vec<StBytes>> {
-            Ok(self
-                .apply_palette_animations(frame, py)
-                .iter()
-                .cloned()
-                .map(|x| x.into())
-                .collect())
-        }
-
-        fn do_import_palettes(&mut self, palettes: Vec<Vec<u8>>, py: Python) -> PyResult<()> {
-            self.import_palettes(palettes, py)
-        }
-    }
-
-    pub struct InputBpl(pub(crate) Bpl);
-
-    impl From<InputBpl> for Bpl {
-        fn from(obj: InputBpl) -> Self {
-            obj.0
         }
     }
 }

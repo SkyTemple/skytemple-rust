@@ -18,16 +18,16 @@
  */
 use crate::bytes::StBytes;
 use crate::err::convert_packing_err;
-use crate::python::*;
 use packed_struct::prelude::*;
+use pyo3::exceptions::PyValueError;
+use pyo3::prelude::*;
 use std::ffi::CString;
 
 pub const COUNT_GLOBAL_VARS: u32 = 115;
 pub const COUNT_LOCAL_VARS: u32 = 4;
 pub const DEFINITION_STRUCT_SIZE: u32 = 16;
 
-#[derive(PrimitiveEnum_u16, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug)]
-#[cfg_attr(feature = "python", derive(EnumToPy_u16))]
+#[derive(PrimitiveEnum_u16, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug, EnumToPy_u16)]
 pub enum ScriptVariableType {
     None = 0,
     Bit = 1,
@@ -68,37 +68,37 @@ pub struct ScriptVariableDefinition {
 impl ScriptVariableDefinition {
     // <editor-fold desc="Proxy getters for ScriptVariableDefinitionData" defaultstate="collapsed">
     #[getter]
-    #[cfg(feature = "python")]
+
     pub fn r#type(&self) -> ScriptVariableType {
         self.data.r#type
     }
 
     #[getter]
-    #[cfg(feature = "python")]
+
     pub fn unk1(&self) -> u16 {
         self.data.unk1
     }
 
     #[getter]
-    #[cfg(feature = "python")]
+
     pub fn memoffset(&self) -> u16 {
         self.data.memoffset
     }
 
     #[getter]
-    #[cfg(feature = "python")]
+
     pub fn bitshift(&self) -> u16 {
         self.data.bitshift
     }
 
     #[getter]
-    #[cfg(feature = "python")]
+
     pub fn nbvalues(&self) -> u16 {
         self.data.nbvalues
     }
 
     #[getter]
-    #[cfg(feature = "python")]
+
     pub fn default(&self) -> i16 {
         self.data.default
     }
@@ -120,7 +120,7 @@ impl ScriptVariableDefinition {
             id,
             name: name_reader(data.name_ptr)
                 .map_err(|_| {
-                    exceptions::PyValueError::new_err(
+                    PyValueError::new_err(
                         "Failed reading game variable name as string.".to_string(),
                     )
                 })?
@@ -206,7 +206,6 @@ impl ScriptVariableTables {
     }
 }
 
-#[cfg(feature = "python")]
 pub(crate) fn create_st_script_var_table_module(py: Python) -> PyResult<(&str, &PyModule)> {
     let name: &'static str = "skytemple_rust.st_script_var_table";
     let m = PyModule::new(py, name)?;

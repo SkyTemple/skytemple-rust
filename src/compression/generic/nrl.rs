@@ -18,6 +18,7 @@
  */
 
 use bytes::{Buf, BufMut, Bytes, BytesMut};
+use pyo3::exceptions::PyValueError;
 use std::io::Cursor;
 
 // Operations are encoded in command bytes (CMD):
@@ -270,7 +271,8 @@ where
 }
 
 // "Private" container for compressed data for use with tests written in Python (skytemple-files):
-use crate::python::*;
+use pyo3::prelude::*;
+use pyo3::types::PyType;
 
 #[pyclass(module = "skytemple_rust._st_generic_nrl_compression")]
 #[derive(Clone)]
@@ -317,7 +319,7 @@ impl GenericNrlCompressionContainer {
 
         while decompressed_data.len() < self.length_decompressed as usize {
             if !NrlCompRead::nrl_has_remaining(&compressed_data) {
-                return Err(exceptions::PyValueError::new_err(format!(
+                return Err(PyValueError::new_err(format!(
                     "Generic NRL Decompressor: End result length unexpected. \
                     Should be {}, is {}.",
                     self.length_decompressed,
@@ -337,14 +339,14 @@ impl GenericNrlCompressionContainer {
         res.put(self.compressed_data.clone());
         res.into()
     }
-    #[cfg(feature = "python")]
+
     #[classmethod]
     #[pyo3(signature = (data, byte_offset = 0))]
     #[pyo3(name = "cont_size")]
     fn _cont_size(_cls: &PyType, data: crate::bytes::StBytes, byte_offset: usize) -> u16 {
         Self::cont_size(data.0, byte_offset)
     }
-    #[cfg(feature = "python")]
+
     #[classmethod]
     #[pyo3(name = "compress")]
     fn _compress(_cls: &PyType, data: &[u8]) -> PyResult<Self> {
@@ -352,7 +354,6 @@ impl GenericNrlCompressionContainer {
     }
 }
 
-#[cfg(feature = "python")]
 pub(crate) fn create_st_generic_nrl_compression_module(py: Python) -> PyResult<(&str, &PyModule)> {
     let name: &'static str = "skytemple_rust._st_generic_nrl_compression";
     let m = PyModule::new(py, name)?;

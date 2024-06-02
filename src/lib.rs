@@ -21,9 +21,6 @@
 #[macro_use]
 extern crate skytemple_rust_macros;
 
-#[cfg(not(feature = "python"))]
-#[macro_use]
-extern crate skytemple_rust_macros_no_py;
 extern crate core;
 
 #[macro_use]
@@ -38,13 +35,11 @@ pub mod encoding;
 pub(crate) mod err;
 #[cfg(feature = "image")]
 pub mod image;
-#[cfg(not(feature = "python"))]
-pub mod no_python;
 pub mod python;
-#[cfg(feature = "python")]
+
 #[cfg(feature = "image")]
 mod python_image;
-#[cfg(feature = "python")]
+
 mod python_module;
 pub mod rom_source;
 pub(crate) mod util;
@@ -108,5 +103,3 @@ pub mod st_waza_p;
 pub mod pmd_wan;
 #[cfg(feature = "romfs")]
 pub mod romfs;
-
-pub type PyResult<T> = crate::python::PyResult<T>;

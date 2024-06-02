@@ -17,8 +17,8 @@
  * along with SkyTemple.  If not, see <https://www.gnu.org/licenses/>.
  */
 use crate::bytes::StBytes;
-use crate::python::*;
 use bytes::{Buf, BufMut};
+use pyo3::prelude::*;
 
 /// Length of a palette in colors.
 pub const DPL_PAL_LEN: usize = 16;
@@ -92,7 +92,6 @@ impl DplWriter {
     }
 }
 
-#[cfg(feature = "python")]
 pub(crate) fn create_st_dpl_module(py: Python) -> PyResult<(&str, &PyModule)> {
     let name: &'static str = "skytemple_rust.st_dpl";
     let m = PyModule::new(py, name)?;
@@ -105,10 +104,10 @@ pub(crate) fn create_st_dpl_module(py: Python) -> PyResult<(&str, &PyModule)> {
 /////////////////////////
 /////////////////////////
 // DPLs as inputs (for compatibility of including other DPL implementations from Python)
-#[cfg(feature = "python")]
+
 pub mod input {
-    use crate::python::*;
     use crate::st_dpl::Dpl;
+    use pyo3::prelude::*;
 
     pub trait DplProvider: ToPyObject {
         fn set_palettes(&mut self, value: Vec<Vec<u8>>, py: Python) -> PyResult<()>;
@@ -149,32 +148,6 @@ pub mod input {
     impl From<InputDpl> for Dpl {
         fn from(obj: InputDpl) -> Self {
             Python::with_gil(|py| obj.0.to_object(py).extract(py).unwrap())
-        }
-    }
-}
-
-#[cfg(not(feature = "python"))]
-pub mod input {
-    use crate::no_python::Python;
-    use crate::st_dpl::Dpl;
-    use crate::PyResult;
-
-    pub trait DplProvider {
-        fn set_palettes(&mut self, value: Vec<Vec<u8>>, py: Python) -> PyResult<()>;
-    }
-
-    impl DplProvider for Dpl {
-        fn set_palettes(&mut self, value: Vec<Vec<u8>>, _py: Python) -> PyResult<()> {
-            self.palettes = value;
-            Ok(())
-        }
-    }
-
-    pub struct InputDpl(pub(crate) Dpl);
-
-    impl From<InputDpl> for Dpl {
-        fn from(obj: InputDpl) -> Self {
-            obj.0
         }
     }
 }

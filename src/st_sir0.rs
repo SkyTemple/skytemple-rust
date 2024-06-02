@@ -1,7 +1,9 @@
 use crate::bytes::{StBytes, StBytesMut};
-use crate::python::PyErr;
-use crate::python::*;
 use bytes::{Buf, BufMut, Bytes, BytesMut};
+use pyo3::exceptions::PyValueError;
+use pyo3::prelude::*;
+use pyo3::types::PyType;
+use pyo3::PyErr;
 use std::cmp::min;
 use std::convert::TryFrom;
 use std::mem::size_of;
@@ -50,10 +52,7 @@ impl From<Sir0Error> for PyErr {
         match source {
             Sir0Error::SerializeFailedPy(e) => e,
             Sir0Error::UnwrapFailedPy(e) => e,
-            _ => exceptions::PyValueError::new_err(format!(
-                "Error trying to process Sir0 data: {}",
-                source
-            )),
+            _ => PyValueError::new_err(format!("Error trying to process Sir0 data: {}", source)),
         }
     }
 }
@@ -199,7 +198,6 @@ impl Sir0 {
         }
     }
 
-    #[cfg(feature = "python")]
     #[classmethod]
     #[pyo3(name = "from_bin")]
     pub fn _py_from_bin(_cls: &PyType, data: StBytes) -> PyResult<Self> {
@@ -274,7 +272,6 @@ impl Sir0Writer {
         Self
     }
 
-    #[cfg(feature = "python")]
     #[pyo3(name = "write")]
     pub fn _py_write(&self, model: Py<Sir0>, py: Python) -> PyResult<StBytes> {
         self.write(model, py).map_err(PyErr::from)
@@ -370,7 +367,6 @@ impl Sir0Writer {
     }
 }
 
-#[cfg(feature = "python")]
 pub(crate) fn create_st_sir0_module(py: Python) -> PyResult<(&str, &PyModule)> {
     let name: &'static str = "skytemple_rust.st_sir0";
     let m = PyModule::new(py, name)?;

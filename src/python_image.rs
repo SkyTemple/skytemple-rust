@@ -1,9 +1,4 @@
-use crate::bytes::StBytesMut;
-use crate::gettext::gettext;
-use crate::image::InIndexedImage;
-use crate::image::IndexedImage;
-use crate::python::create_value_user_error;
-/// This crate converts our image models from/into PIL images for Python.
+//! This module converts our image models from/into PIL images for Python.
 /*
  * Copyright 2021-2022 Capypara and the SkyTemple Contributors
  *
@@ -22,6 +17,11 @@ use crate::python::create_value_user_error;
  * You should have received a copy of the GNU General Public License
  * along with SkyTemple.  If not, see <https://www.gnu.org/licenses/>.
  */
+use crate::bytes::StBytesMut;
+use crate::gettext::gettext;
+use crate::image::InIndexedImage;
+use crate::image::IndexedImage;
+use crate::python::create_value_user_error;
 use log::error;
 use pyo3::prelude::*;
 use pyo3::types::{PyBytes, PyIterator, PyTuple};

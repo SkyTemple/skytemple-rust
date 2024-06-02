@@ -17,15 +17,16 @@
  * along with SkyTemple.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-use crate::python::{exceptions, PyErr};
 #[cfg(feature = "packed_struct")]
 use packed_struct::PackingError;
+use pyo3::exceptions::PyValueError;
+use pyo3::PyErr;
 use std::borrow::Cow;
 
 #[inline]
 #[allow(unused)]
 pub fn convert_encoding_err(err: Cow<'static, str>) -> PyErr {
-    exceptions::PyValueError::new_err(format!("Failed to decode/encode string for PMD2: {}", err))
+    PyValueError::new_err(format!("Failed to decode/encode string for PMD2: {}", err))
 }
 
 #[inline]
@@ -38,5 +39,5 @@ pub fn convert_io_err(err: std::io::Error) -> PyErr {
 #[inline]
 #[allow(unused)]
 pub fn convert_packing_err(err: PackingError) -> PyErr {
-    exceptions::PyValueError::new_err(format!("Failed packing/unpacking data: {}", err))
+    PyValueError::new_err(format!("Failed packing/unpacking data: {}", err))
 }

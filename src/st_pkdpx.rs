@@ -19,10 +19,11 @@
 
 use crate::bytes::StBytesMut;
 use crate::compression::px::{PxCompLevel, PxCompressor, PxDecompressor};
-use crate::python::*;
 use crate::st_at_common::CompressionContainer;
 use crate::util::slice_to_array;
 use bytes::{Buf, BufMut, Bytes, BytesMut};
+use pyo3::prelude::*;
+use pyo3::types::PyType;
 
 #[pyclass(module = "skytemple_rust.st_pkdpx")]
 #[derive(Clone)]
@@ -88,14 +89,14 @@ impl Pkdpx {
         debug_assert_eq!(self.len_comp as usize, res.len());
         res.into()
     }
-    #[cfg(feature = "python")]
+
     #[classmethod]
     #[pyo3(signature = (data, byte_offset = 0))]
     #[pyo3(name = "cont_size")]
     fn _cont_size(_cls: &PyType, data: &[u8], byte_offset: usize) -> u16 {
         Self::cont_size(&mut <&[u8]>::clone(&data), byte_offset)
     }
-    #[cfg(feature = "python")]
+
     #[classmethod]
     #[pyo3(name = "compress")]
     fn _compress(_cls: &PyType, data: &[u8]) -> PyResult<Self> {
@@ -103,7 +104,6 @@ impl Pkdpx {
     }
 }
 
-#[cfg(feature = "python")]
 pub(crate) fn create_st_pkdpx_module(py: Python) -> PyResult<(&str, &PyModule)> {
     let name: &'static str = "skytemple_rust.st_pkdpx";
     let m = PyModule::new(py, name)?;

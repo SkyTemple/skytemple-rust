@@ -16,8 +16,8 @@
  * You should have received a copy of the GNU General Public License
  * along with SkyTemple.  If not, see <https://www.gnu.org/licenses/>.
  */
-use crate::python::*;
 use log::info;
+use pyo3::prelude::*;
 use pyo3::types::PyDict;
 
 #[cfg(feature = "compression")]

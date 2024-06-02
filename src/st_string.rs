@@ -19,8 +19,8 @@
 use crate::bytes::StBytes;
 use crate::encoding::pmd2_encoder::Pmd2Encoding;
 use crate::err::convert_encoding_err;
-use crate::python::*;
 use encoding::{DecoderTrap, EncoderTrap, Encoding};
+use pyo3::prelude::*;
 
 #[pyclass(module = "skytemple_rust.st_string")]
 #[derive(Clone)]
@@ -60,7 +60,6 @@ impl StPmd2StringEncoder {
     }
 }
 
-#[cfg(feature = "python")]
 pub(crate) fn create_st_string_module(py: Python) -> PyResult<(&str, &PyModule)> {
     let name: &'static str = "skytemple_rust.st_string";
     let m = PyModule::new(py, name)?;

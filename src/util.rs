@@ -17,9 +17,8 @@
  * along with SkyTemple.  If not, see <https://www.gnu.org/licenses/>.
  */
 use crate::bytes::{AsStBytes, StBytes};
-use crate::python::PyErr;
-use crate::PyResult;
 use bytes::BytesMut;
+use pyo3::{PyErr, PyResult};
 use std::cmp::{max, min};
 use std::fmt::{Debug, Formatter};
 use std::hash::{Hash, Hasher};

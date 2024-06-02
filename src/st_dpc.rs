@@ -21,16 +21,14 @@ use crate::gettext::gettext;
 use crate::image::tiled::TiledImage;
 use crate::image::tilemap_entry::{InputTilemapEntry, ProvidesTilemapEntry, TilemapEntry};
 use crate::image::{In256ColIndexedImage, InIndexedImage, IndexedImage, PixelGenerator};
-use crate::python::*;
 use crate::st_dpci::input::InputDpci;
 use crate::st_dpci::DPCI_TILE_DIM;
 use crate::st_dpl::DPL_MAX_PAL;
 use bytes::{Buf, BufMut, BytesMut};
 use itertools::Itertools;
+use pyo3::exceptions::PyValueError;
+use pyo3::prelude::*;
 use std::iter::once;
-
-#[cfg(not(feature = "python"))]
-use crate::st_dpci::input::DpciProvider;
 
 pub const DPC_TILING_DIM: usize = 3;
 pub const DPC_TILING_DIM_SQUARED: usize = DPC_TILING_DIM * DPC_TILING_DIM;
@@ -146,7 +144,7 @@ impl Dpc {
         // Validate number of palettes
         for tm in &tilemap {
             if tm.pal_idx() > (DPL_MAX_PAL - 1) as u8 {
-                return Err(exceptions::PyValueError::new_err(gettext!(
+                return Err(PyValueError::new_err(gettext!(
                     "The image to import can only use the first 12 palettes. Tried to use palette {}", tm.pal_idx()
                 )));
             }
@@ -218,7 +216,7 @@ impl Dpc {
 impl Dpc {
     fn re_fill_chunks(&mut self, py: Python) -> PyResult<()> {
         if self.chunks.len() > 400 {
-            Err(exceptions::PyValueError::new_err(gettext(
+            Err(PyValueError::new_err(gettext(
                 "A dungeon background or tilemap can not have more than 400 chunks.",
             )))
         } else {
@@ -253,7 +251,6 @@ impl DpcWriter {
     }
 }
 
-#[cfg(feature = "python")]
 pub(crate) fn create_st_dpc_module(py: Python) -> PyResult<(&str, &PyModule)> {
     let name: &'static str = "skytemple_rust.st_dpc";
     let m = PyModule::new(py, name)?;
@@ -266,13 +263,13 @@ pub(crate) fn create_st_dpc_module(py: Python) -> PyResult<(&str, &PyModule)> {
 /////////////////////////
 /////////////////////////
 // DPCs as inputs (for compatibility of including other DPC implementations from Python)
-#[cfg(feature = "python")]
+
 pub mod input {
     use crate::image::tilemap_entry::InputTilemapEntry;
     use crate::image::{In256ColIndexedImage, InIndexedImage, IndexedImage};
-    use crate::python::*;
     use crate::st_dpc::Dpc;
     use crate::st_dpci::input::InputDpci;
+    use pyo3::prelude::*;
     use pyo3::types::{PyList, PyTuple};
 
     pub trait DpcProvider: ToPyObject {
@@ -390,64 +387,6 @@ pub mod input {
     impl From<InputDpc> for Dpc {
         fn from(obj: InputDpc) -> Self {
             Python::with_gil(|py| obj.0.to_object(py).extract(py).unwrap())
-        }
-    }
-}
-
-#[cfg(not(feature = "python"))]
-pub mod input {
-    use crate::image::tilemap_entry::InputTilemapEntry;
-    use crate::image::IndexedImage;
-    use crate::no_python::Python;
-    use crate::st_dpc::Dpc;
-    use crate::st_dpci::input::InputDpci;
-    use crate::PyResult;
-
-    pub trait DpcProvider {
-        fn do_chunks_to_pil(
-            &self,
-            dpci: InputDpci,
-            palettes: Vec<Vec<u8>>,
-            width_in_mtiles: usize,
-            py: Python,
-        ) -> PyResult<IndexedImage>;
-
-        fn do_import_tile_mappings(
-            &mut self,
-            tile_mappings: Vec<Vec<InputTilemapEntry>>,
-            contains_null_chunk: bool,
-            correct_tile_ids: bool,
-            py: Python,
-        ) -> PyResult<()>;
-    }
-
-    impl DpcProvider for Dpc {
-        fn do_chunks_to_pil(
-            &self,
-            dpci: InputDpci,
-            palettes: Vec<Vec<u8>>,
-            width_in_mtiles: usize,
-            py: Python,
-        ) -> PyResult<IndexedImage> {
-            self.chunks_to_pil(dpci, palettes, width_in_mtiles, py)
-        }
-
-        fn do_import_tile_mappings(
-            &mut self,
-            tile_mappings: Vec<Vec<InputTilemapEntry>>,
-            contains_null_chunk: bool,
-            correct_tile_ids: bool,
-            py: Python,
-        ) -> PyResult<()> {
-            self.import_tile_mappings(tile_mappings, contains_null_chunk, correct_tile_ids, py)
-        }
-    }
-
-    pub struct InputDpc(pub(crate) Dpc);
-
-    impl From<InputDpc> for Dpc {
-        fn from(obj: InputDpc) -> Self {
-            obj.0
         }
     }
 }

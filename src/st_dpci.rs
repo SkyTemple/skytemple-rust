@@ -20,7 +20,7 @@ use crate::bytes::StBytes;
 use crate::image::tiled::TiledImage;
 use crate::image::tilemap_entry::TilemapEntry;
 use crate::image::{In256ColIndexedImage, InIndexedImage, IndexedImage, PixelGenerator};
-use crate::python::*;
+use pyo3::prelude::*;
 
 pub const DPCI_TILE_DIM: usize = 8;
 
@@ -116,7 +116,6 @@ impl DpciWriter {
     }
 }
 
-#[cfg(feature = "python")]
 pub(crate) fn create_st_dpci_module(py: Python) -> PyResult<(&str, &PyModule)> {
     let name: &'static str = "skytemple_rust.st_dpci";
     let m = PyModule::new(py, name)?;
@@ -129,11 +128,11 @@ pub(crate) fn create_st_dpci_module(py: Python) -> PyResult<(&str, &PyModule)> {
 /////////////////////////
 /////////////////////////
 // DPCIs as inputs (for compatibility of including other DPCI implementations from Python)
-#[cfg(feature = "python")]
+
 pub mod input {
     use crate::bytes::StBytes;
-    use crate::python::*;
     use crate::st_dpci::Dpci;
+    use pyo3::prelude::*;
     use pyo3::types::PyTuple;
 
     pub trait DpciProvider: ToPyObject {
@@ -200,49 +199,6 @@ pub mod input {
     impl From<InputDpci> for Dpci {
         fn from(obj: InputDpci) -> Self {
             Python::with_gil(|py| obj.0.to_object(py).extract(py).unwrap())
-        }
-    }
-}
-
-#[cfg(not(feature = "python"))]
-pub mod input {
-    use crate::bytes::StBytes;
-    use crate::no_python::Python;
-    use crate::st_dpci::Dpci;
-    use crate::PyResult;
-
-    pub trait DpciProvider {
-        fn get_tiles(&self, py: Python) -> PyResult<Vec<StBytes>>;
-
-        fn do_import_tiles(
-            &mut self,
-            tiles: Vec<StBytes>,
-            contains_null_tile: bool,
-            py: Python,
-        ) -> PyResult<()>;
-    }
-
-    impl DpciProvider for Dpci {
-        fn get_tiles(&self, _py: Python) -> PyResult<Vec<StBytes>> {
-            Ok(self.tiles.clone())
-        }
-
-        fn do_import_tiles(
-            &mut self,
-            tiles: Vec<StBytes>,
-            contains_null_tile: bool,
-            _py: Python,
-        ) -> PyResult<()> {
-            self.import_tiles(tiles, contains_null_tile);
-            Ok(())
-        }
-    }
-
-    pub struct InputDpci(pub(crate) Dpci);
-
-    impl From<InputDpci> for Dpci {
-        fn from(obj: InputDpci) -> Self {
-            obj.0
         }
     }
 }

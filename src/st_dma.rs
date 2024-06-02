@@ -17,10 +17,11 @@
  * along with SkyTemple.  If not, see <https://www.gnu.org/licenses/>.
  */
 use crate::bytes::StBytes;
-use crate::python::*;
 use num_derive::FromPrimitive;
-#[cfg(feature = "python")]
+use pyo3::prelude::*;
+
 use num_traits::FromPrimitive;
+use pyo3::exceptions::PyValueError;
 
 #[repr(u8)]
 #[derive(PartialEq, Eq, PartialOrd, FromPrimitive)]
@@ -30,13 +31,11 @@ pub enum DmaType {
     Floor = 2,
 }
 
-#[cfg(feature = "python")]
 impl<'source> FromPyObject<'source> for DmaType {
     fn extract(ob: &'source PyAny) -> PyResult<Self> {
         let int: u8 = ob.extract()?;
-        DmaType::from_u8(int).ok_or_else(|| {
-            exceptions::PyValueError::new_err(format!("Invalid value {} for DmaType", int))
-        })
+        DmaType::from_u8(int)
+            .ok_or_else(|| PyValueError::new_err(format!("Invalid value {} for DmaType", int)))
     }
 }
 
@@ -48,13 +47,11 @@ pub enum DmaExtraType {
     Floor2 = 2,
 }
 
-#[cfg(feature = "python")]
 impl<'source> FromPyObject<'source> for DmaExtraType {
     fn extract(ob: &'source PyAny) -> PyResult<Self> {
         let int: u8 = ob.extract()?;
-        DmaExtraType::from_u8(int).ok_or_else(|| {
-            exceptions::PyValueError::new_err(format!("Invalid value {} for DmaExtraType", int))
-        })
+        DmaExtraType::from_u8(int)
+            .ok_or_else(|| PyValueError::new_err(format!("Invalid value {} for DmaExtraType", int)))
     }
 }
 
@@ -152,7 +149,6 @@ impl DmaWriter {
     }
 }
 
-#[cfg(feature = "python")]
 pub(crate) fn create_st_dma_module(py: Python) -> PyResult<(&str, &PyModule)> {
     let name: &'static str = "skytemple_rust.st_dma";
     let m = PyModule::new(py, name)?;

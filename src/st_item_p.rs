@@ -18,11 +18,13 @@
  */
 use crate::bytes::StBytes;
 use crate::err::convert_packing_err;
-use crate::python::*;
 use crate::st_sir0::{Sir0Error, Sir0Result, Sir0Serializable};
 use packed_struct::prelude::*;
+use pyo3::prelude::*;
 use std::mem::size_of;
 use std::ops::Deref;
+use pyo3::exceptions::PyValueError;
+use pyo3::types::PyType;
 
 impl_pylist!("skytemple_rust.st_item_p", ItemPEntryList, Py<ItemPEntry>);
 
@@ -78,7 +80,6 @@ pub struct ItemPEntry {
     pub null: u8,
 }
 
-#[cfg(feature = "python")]
 #[pymethods]
 impl ItemPEntry {
     fn __richcmp__(&self, other: PyRef<Self>, op: pyo3::basic::CompareOp) -> Py<PyAny> {
@@ -117,13 +118,11 @@ impl ItemP {
         })
     }
 
-    #[cfg(feature = "python")]
     #[getter]
     pub fn item_list(&self) -> Py<ItemPEntryList> {
         self.item_list.clone()
     }
 
-    #[cfg(feature = "python")]
     #[setter]
     pub fn set_item_list(&mut self, py: Python, value: PyObject) -> PyResult<()> {
         if let Ok(val) = value.extract::<Py<ItemPEntryList>>(py) {
@@ -140,13 +139,11 @@ impl ItemP {
         }
     }
 
-    #[cfg(feature = "python")]
     #[pyo3(name = "sir0_serialize_parts")]
     pub fn _sir0_serialize_parts(&self, py: Python) -> PyResult<PyObject> {
         Ok(self.sir0_serialize_parts()?.into_py(py))
     }
 
-    #[cfg(feature = "python")]
     #[classmethod]
     #[pyo3(name = "sir0_unwrap")]
     pub fn _sir0_unwrap(_cls: &PyType, content_data: StBytes, data_pointer: u32) -> PyResult<Self> {
@@ -193,11 +190,10 @@ impl ItemPWriter {
             .borrow(py)
             .sir0_serialize_parts()
             .map(|(c, _, _)| c)
-            .map_err(|e| exceptions::PyValueError::new_err(format!("{}", e)))
+            .map_err(|e| PyValueError::new_err(format!("{}", e)))
     }
 }
 
-#[cfg(feature = "python")]
 pub(crate) fn create_st_item_p_module(py: Python) -> PyResult<(&str, &PyModule)> {
     let name: &'static str = "skytemple_rust.st_item_p";
     let m = PyModule::new(py, name)?;

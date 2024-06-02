@@ -20,9 +20,9 @@
 extern crate proc_macro;
 use proc_macro::TokenStream;
 use quote::quote;
+use syn::parse_macro_input;
 use syn::DeriveInput;
 use syn::Ident;
-use syn::parse_macro_input;
 
 /// Derive conversion from/to Python integers for PrimitiveEnums.
 /// Only works if packed_struct and pyo3 are available.
@@ -66,12 +66,12 @@ fn do_enum_to_py_derive(input: DeriveInput, bytesize: Ident) -> TokenStream {
             fn extract(ob: &'source ::pyo3::prelude::PyAny) -> ::pyo3::prelude::PyResult<Self> {
                 if let Ok(obj) = ob.extract::<#bytesize>() {
                     <Self as packed_struct::PrimitiveEnum>::from_primitive(obj).ok_or_else(
-                        || exceptions::PyTypeError::new_err(
+                        || ::pyo3::exceptions::PyTypeError::new_err(
                             "Invalid value to convert into enum.",
                         )
                     )
                 } else {
-                    Err(exceptions::PyTypeError::new_err(
+                    Err(::pyo3::exceptions::PyTypeError::new_err(
                         "Invalid type to convert into enum.",
                     ))
                 }

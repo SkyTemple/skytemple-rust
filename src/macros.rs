@@ -21,16 +21,23 @@
 macro_rules! pyr_assert {
     ($cond:expr $(,)?) => {{
         if !$cond {
-            return Err(crate::python::exceptions::PyAssertionError::new_err(
-                format!("{} [{}:{}]", stringify!($cond), file!(), line!()),
-            ));
+            return Err(pyo3::exceptions::PyAssertionError::new_err(format!(
+                "{} [{}:{}]",
+                stringify!($cond),
+                file!(),
+                line!()
+            )));
         }
     }};
     ($cond:expr, $msg:expr) => {{
         if !$cond {
-            return Err(crate::python::exceptions::PyAssertionError::new_err(
-                format!("{} | {} [{}:{}]", $msg, stringify!($cond), file!(), line!()),
-            ));
+            return Err(pyo3::exceptions::PyAssertionError::new_err(format!(
+                "{} | {} [{}:{}]",
+                $msg,
+                stringify!($cond),
+                file!(),
+                line!()
+            )));
         }
     }};
     ($cond:expr, $msg:expr, $exc:path) => {{
@@ -73,10 +80,10 @@ macro_rules! impl_pylist {
                         }) {
                             Ok(idx)
                         } else {
-                            Err(exceptions::PyValueError::new_err("not in list"))
+                            Err(::pyo3::exceptions::PyValueError::new_err("not in list"))
                         }
                     } else {
-                        Err(exceptions::PyValueError::new_err("not in list"))
+                        Err(::pyo3::exceptions::PyValueError::new_err("not in list"))
                     }
                 }
                 pub fn count(&self, value: PyObject, py: Python) -> usize {
@@ -111,10 +118,10 @@ macro_rules! impl_pylist {
                             self.0.remove(idx);
                             Ok(())
                         } else {
-                            Err(exceptions::PyValueError::new_err("not in list"))
+                            Err(::pyo3::exceptions::PyValueError::new_err("not in list"))
                         }
                     } else {
-                        Err(exceptions::PyValueError::new_err("not in list"))
+                        Err(::pyo3::exceptions::PyValueError::new_err("not in list"))
                     }
                 }
             },
@@ -148,10 +155,10 @@ macro_rules! impl_pylist_primitive {
                         if let Some(idx) = self.0.iter().position(|x| *x == value) {
                             Ok(idx)
                         } else {
-                            Err(exceptions::PyValueError::new_err("not in list"))
+                            Err(::pyo3::exceptions::PyValueError::new_err("not in list"))
                         }
                     } else {
-                        Err(exceptions::PyValueError::new_err("not in list"))
+                        Err(::pyo3::exceptions::PyValueError::new_err("not in list"))
                     }
                 }
                 pub fn count(&self, value: PyObject, py: Python) -> usize {
@@ -167,10 +174,10 @@ macro_rules! impl_pylist_primitive {
                             self.0.remove(idx);
                             Ok(())
                         } else {
-                            Err(exceptions::PyValueError::new_err("not in list"))
+                            Err(::pyo3::exceptions::PyValueError::new_err("not in list"))
                         }
                     } else {
-                        Err(exceptions::PyValueError::new_err("not in list"))
+                        Err(::pyo3::exceptions::PyValueError::new_err("not in list"))
                     }
                 }
             },
@@ -191,32 +198,32 @@ macro_rules! __do_impl_pylist {
             #[derive(Clone, Debug)]
             pub struct $name(pub Vec<$itemty>);
 
-            #[cfg(feature = "python")]
+
             #[pymethods]
             impl $name {
                 pub fn __iter__(&mut self) -> [<$name Iterator>] {
                     [<$name Iterator>]::new(self.0.clone().into_iter())
                 }
-                pub fn __getitem__(&self, idx: SliceOrInt, py: Python) -> PyResult<PyObject> {
+                pub fn __getitem__(&self, idx: $crate::python::SliceOrInt, py: Python) -> PyResult<PyObject> {
                     match idx {
-                        SliceOrInt::Slice(sl) => {
+                        $crate::python::SliceOrInt::Slice(sl) => {
                             let pylist = ::pyo3::types::PyList::new(py, self.0.iter().cloned());
                             pylist
                                 .call_method1("__getitem__", ::pyo3::types::PyTuple::new(py, [sl]))
                                 .map(|v| v.into_py(py))
                         }
-                        SliceOrInt::Int(idx) => {
+                        $crate::python::SliceOrInt::Int(idx) => {
                             if idx >= 0 && idx as usize <= self.0.len() {
                                 Ok(self.0[idx as usize].clone().into_py(py))
                             } else {
-                                Err(exceptions::PyIndexError::new_err("list index out of range"))
+                                Err(::pyo3::exceptions::PyIndexError::new_err("list index out of range"))
                             }
                         }
                     }
                 }
-                pub fn __setitem__(&mut self, idx: SliceOrInt, o: PyObject, py: Python) -> PyResult<()> {
+                pub fn __setitem__(&mut self, idx: $crate::python::SliceOrInt, o: PyObject, py: Python) -> PyResult<()> {
                     match idx {
-                        SliceOrInt::Slice(sl) => {
+                        $crate::python::SliceOrInt::Slice(sl) => {
                             let pylist = ::pyo3::types::PyList::new(py, self.0.iter().cloned());
                             pylist.call_method1("__setitem__", ::pyo3::types::PyTuple::new(py, [sl.into_py(py), o]))?;
                             self.0 = pylist
@@ -225,19 +232,19 @@ macro_rules! __do_impl_pylist {
                                 .collect::<PyResult<Vec<$itemty>>>()?;
                             Ok(())
                         }
-                        SliceOrInt::Int(idx) => {
+                        $crate::python::SliceOrInt::Int(idx) => {
                             if idx >= 0 && idx as usize <= self.0.len() {
                                 self.0[idx as usize] = o.extract(py)?;
                                 Ok(())
                             } else {
-                                Err(exceptions::PyIndexError::new_err("list index out of range"))
+                                Err(::pyo3::exceptions::PyIndexError::new_err("list index out of range"))
                             }
                         }
                     }
                 }
-                pub fn __delitem__(&mut self, idx: SliceOrInt, py: Python) -> PyResult<()> {
+                pub fn __delitem__(&mut self, idx: $crate::python::SliceOrInt, py: Python) -> PyResult<()> {
                     match idx {
-                        SliceOrInt::Slice(sl) => {
+                        $crate::python::SliceOrInt::Slice(sl) => {
                             let pylist = ::pyo3::types::PyList::new(py, self.0.iter().cloned());
                             pylist.call_method1("__delitem__", ::pyo3::types::PyTuple::new(py, [sl]))?;
                             self.0 = pylist
@@ -246,12 +253,12 @@ macro_rules! __do_impl_pylist {
                                 .collect::<PyResult<Vec<$itemty>>>()?;
                             Ok(())
                         }
-                        SliceOrInt::Int(idx) => {
+                        $crate::python::SliceOrInt::Int(idx) => {
                             if idx >= 0 && idx as usize <= self.0.len() {
                                 self.0.remove(idx as usize);
                                 Ok(())
                             } else {
-                                Err(exceptions::PyIndexError::new_err("list index out of range"))
+                                Err(::pyo3::exceptions::PyIndexError::new_err("list index out of range"))
                             }
                         }
                     }
@@ -269,7 +276,7 @@ macro_rules! __do_impl_pylist {
                     self.0.clear()
                 }
                 pub fn extend(&mut self, _value: PyObject) -> PyResult<()> {
-                    Err(exceptions::PyNotImplementedError::new_err("Not supported."))
+                    Err(::pyo3::exceptions::PyNotImplementedError::new_err("Not supported."))
                 }
                 #[pyo3(signature = (idx = 0))]
                 pub fn pop(&mut self, idx: isize) -> PyResult<$itemty> {
@@ -277,12 +284,12 @@ macro_rules! __do_impl_pylist {
                         if !self.0.is_empty() {
                             Ok(self.0.pop().unwrap())
                         } else {
-                            Err(exceptions::PyIndexError::new_err("pop from empty list"))
+                            Err(::pyo3::exceptions::PyIndexError::new_err("pop from empty list"))
                         }
                     } else if idx >= 0 && idx as usize <= self.0.len() {
                         Ok(self.0.remove(idx as usize))
                     } else {
-                        Err(exceptions::PyIndexError::new_err("pop index out of range"))
+                        Err(::pyo3::exceptions::PyIndexError::new_err("pop index out of range"))
                     }
                 }
                 pub fn __iadd__(&mut self, value: PyObject) -> PyResult<()> {

@@ -17,14 +17,15 @@
  * along with SkyTemple.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-use crate::python::*;
+use pyo3::exceptions::PyTypeError;
+use pyo3::prelude::*;
+use pyo3::types::PyType;
 use std::ops::Deref;
 
 #[derive(PartialEq, Eq, Debug, Clone, Default)]
 #[pyclass(module = "skytemple_rust")]
 pub struct TilemapEntry(pub usize, pub bool, pub bool, pub u8); // idx, flip_x, flip_y, pal_idx
 
-#[cfg(feature = "python")]
 #[pymethods]
 impl TilemapEntry {
     #[new]
@@ -123,7 +124,6 @@ impl From<&TilemapEntry> for usize {
 #[derive(Clone)]
 pub struct InputTilemapEntry(pub Py<TilemapEntry>);
 
-#[cfg(feature = "python")]
 impl<'source> FromPyObject<'source> for InputTilemapEntry {
     fn extract(ob: &'source PyAny) -> PyResult<Self> {
         if let Ok(obj) = ob.extract::<Py<TilemapEntry>>() {
@@ -133,31 +133,20 @@ impl<'source> FromPyObject<'source> for InputTilemapEntry {
             let tm: TilemapEntry = val.into();
             Ok(Self(Py::new(ob.py(), tm)?))
         } else {
-            Err(exceptions::PyTypeError::new_err(
-                "Could not convert into TilemapEntry.",
-            ))
+            Err(PyTypeError::new_err("Could not convert into TilemapEntry."))
         }
     }
 }
 
-#[cfg(feature = "python")]
 impl IntoPy<Py<TilemapEntry>> for InputTilemapEntry {
     fn into_py(self, _py: Python) -> Py<TilemapEntry> {
         self.0
     }
 }
 
-#[cfg(feature = "python")]
 impl From<InputTilemapEntry> for TilemapEntry {
     fn from(obj: InputTilemapEntry) -> Self {
         Python::with_gil(|py| obj.0.extract(py).unwrap())
-    }
-}
-
-#[cfg(not(feature = "python"))]
-impl From<InputTilemapEntry> for TilemapEntry {
-    fn from(obj: InputTilemapEntry) -> Self {
-        obj.0.extract(Python).unwrap()
     }
 }
 
@@ -219,7 +208,6 @@ impl<T: Deref<Target = P>, P: ProvidesTilemapEntry> ProvidesTilemapEntry for T {
     }
 }
 
-#[cfg(feature = "python")]
 impl ProvidesTilemapEntry for InputTilemapEntry {
     fn idx(&self) -> usize {
         Python::with_gil(|py| self.0.borrow(py).0)

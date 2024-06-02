@@ -21,10 +21,12 @@ use crate::bytes::{StBytes, StBytesMut};
 use crate::gettext::gettext;
 use crate::image::tiled::TiledImage;
 use crate::image::{In16ColSolidIndexedImage, InIndexedImage, IndexedImage, PixelGenerator};
-use crate::python::*;
 use crate::st_at_common::{CommonAt, COMMON_AT_MUST_COMPRESS_3};
 use arr_macro::arr;
 use bytes::{Buf, BufMut};
+use pyo3::exceptions::PyValueError;
+use pyo3::prelude::*;
+use pyo3::types::PyType;
 use std::collections::hash_map::Entry;
 use std::collections::HashMap;
 use std::io::Cursor;
@@ -49,7 +51,7 @@ impl KaoImage {
             if let Some(x) = CommonAt::cont_size(&raw_data[Self::KAO_IMG_PAL_B_SIZE..], 0) {
                 x as usize
             } else {
-                return Err(exceptions::PyValueError::new_err(
+                return Err(PyValueError::new_err(
                     "Invalid Kao image data; image not an AT container.",
                 ));
             };
@@ -93,7 +95,7 @@ impl KaoImage {
         let compressed_img = CommonAt::compress(&img, COMMON_AT_MUST_COMPRESS_3.iter())?;
         // Check image size
         if compressed_img.len() > 800 {
-            return Err(exceptions::PyValueError::new_err(gettext!(
+            return Err(PyValueError::new_err(gettext!(
                 "This portrait does not compress well, the result size is greater than 800 bytes ({} bytes total).\n If you haven't done already, try applying the 'ProvideATUPXSupport' to install an optimized compression algorithm, which might be able to better compress this image.",
                 compressed_img.len()
             )));
@@ -196,12 +198,11 @@ impl KaoImage {
 
 #[pymethods]
 impl KaoImage {
-    #[cfg(feature = "python")]
     #[pyo3(name = "clone")]
     fn _clone(&self) -> Self {
         self.clone()
     }
-    #[cfg(feature = "python")]
+
     #[classmethod]
     #[pyo3(name = "create_from_raw")]
     fn _create_from_raw(_cls: &PyType, cimg: &[u8], pal: &[u8]) -> PyResult<Self> {
@@ -273,7 +274,7 @@ impl Kao {
             portraits.push(species);
         }
         if data.position() > first_pointer {
-            return Err(exceptions::PyValueError::new_err("Corrupt KAO TOC."));
+            return Err(PyValueError::new_err("Corrupt KAO TOC."));
         }
         Ok(Self { portraits })
     }
@@ -291,7 +292,7 @@ impl Kao {
     /// Enlarges the table of contents of the Kao to the new size.
     pub fn expand(&mut self, new_size: usize) -> PyResult<()> {
         if new_size < self.portraits.len() {
-            return Err(exceptions::PyValueError::new_err(format!(
+            return Err(PyValueError::new_err(format!(
                 "Can't reduce size from {} to {}",
                 self.portraits.len(),
                 new_size
@@ -308,12 +309,12 @@ impl Kao {
             if subindex < Self::PORTRAIT_SLOTS {
                 return Ok(self.portraits[index][subindex].clone());
             }
-            return Err(exceptions::PyValueError::new_err(format!(
+            return Err(PyValueError::new_err(format!(
                 "The subindex requested must be between 0 and {}",
                 Self::PORTRAIT_SLOTS
             )));
         }
-        Err(exceptions::PyValueError::new_err(format!(
+        Err(PyValueError::new_err(format!(
             "The index requested must be between 0 and {}",
             self.portraits.len()
         )))
@@ -325,12 +326,12 @@ impl Kao {
                 self.portraits[index][subindex] = Some(img);
                 return Ok(());
             }
-            return Err(exceptions::PyValueError::new_err(format!(
+            return Err(PyValueError::new_err(format!(
                 "The subindex requested must be between 0 and {}",
                 Self::PORTRAIT_SLOTS
             )));
         }
-        Err(exceptions::PyValueError::new_err(format!(
+        Err(PyValueError::new_err(format!(
             "The index requested must be between 0 and {}",
             self.portraits.len()
         )))
@@ -349,12 +350,12 @@ impl Kao {
                     Some(Py::new(py, KaoImage::new_from_img(img.extract(py)?)?)?);
                 return Ok(());
             }
-            return Err(exceptions::PyValueError::new_err(format!(
+            return Err(PyValueError::new_err(format!(
                 "The subindex requested must be between 0 and {}",
                 Self::PORTRAIT_SLOTS
             )));
         }
-        Err(exceptions::PyValueError::new_err(format!(
+        Err(PyValueError::new_err(format!(
             "The index requested must be between 0 and {}",
             self.portraits.len()
         )))
@@ -366,25 +367,7 @@ impl Kao {
         }
         Ok(())
     }
-    #[cfg(not(feature = "python"))]
-    /// Iterates over all KaoImages.
-    pub fn iter(&self) -> PyResult<KaoIterator> {
-        let mut reference = Box::new(
-            self.portraits
-                .clone()
-                .into_iter()
-                .map(|s| s.to_vec().into_iter()),
-        );
-        let iter_outer = reference.next();
-        Ok(KaoIterator {
-            reference,
-            iter_outer,
-            i_outer: 0,
-            i_inner: -1,
-        })
-    }
 
-    #[cfg(feature = "python")]
     /// Iterates over all KaoImages.
     #[allow(clippy::unnecessary_to_owned)]
     fn __iter__(slf: PyRef<Self>) -> PyResult<Py<KaoIterator>> {
@@ -435,7 +418,7 @@ impl Iterator for KaoIterator {
 }
 
 #[pymethods]
-#[cfg(feature = "python")]
+
 impl KaoIterator {
     fn __iter__(slf: PyRef<Self>) -> PyRef<Self> {
         slf
@@ -488,7 +471,6 @@ impl KaoWriter {
     }
 }
 
-#[cfg(feature = "python")]
 pub(crate) fn create_st_kao_module(py: Python) -> PyResult<(&str, &PyModule)> {
     let name: &'static str = "skytemple_rust.st_kao";
     let m = PyModule::new(py, name)?;

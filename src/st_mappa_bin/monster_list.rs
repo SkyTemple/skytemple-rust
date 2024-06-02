@@ -18,12 +18,13 @@
  */
 use crate::bytes::StBytes;
 use crate::err::convert_packing_err;
-use crate::python::*;
 use bytes::Buf;
 use packed_struct::prelude::*;
+use pyo3::prelude::*;
 use std::iter::repeat;
 use std::mem;
 use std::ops::Deref;
+use pyo3::exceptions::PyValueError;
 
 impl_pylist!(
     "skytemple_rust.st_mappa_bin",
@@ -101,7 +102,7 @@ impl MappaMonster {
     #[getter]
     pub fn level(&self) -> PyResult<u8> {
         u8::try_from(self.level_raw / Self::LEVEL_MULTIPLIER)
-            .map_err(|_| exceptions::PyValueError::new_err("Monster has invalid level value."))
+            .map_err(|_| PyValueError::new_err("Monster has invalid level value."))
     }
 
     #[setter]
@@ -109,7 +110,6 @@ impl MappaMonster {
         self.level_raw = (level as u16) * Self::LEVEL_MULTIPLIER;
     }
 
-    #[cfg(feature = "python")]
     fn __richcmp__(&self, other: PyRef<Self>, op: pyo3::basic::CompareOp) -> Py<PyAny> {
         let py = other.py();
         match op {

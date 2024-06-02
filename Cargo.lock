@@ -781,20 +781,11 @@ dependencies = [
  "pyo3",
  "pyo3-log",
  "skytemple_rust_macros",
- "skytemple_rust_macros_no_py",
  "thiserror",
 ]
 
 [[package]]
 name = "skytemple_rust_macros"
-version = "1.4.0"
-dependencies = [
- "quote",
- "syn 1.0.109",
-]
-
-[[package]]
-name = "skytemple_rust_macros_no_py"
 version = "1.4.0"
 dependencies = [
  "quote",
