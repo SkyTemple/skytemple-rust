@@ -1,5 +1,5 @@
 /*
- * Copyright 2021-2022 Capypara and the SkyTemple Contributors
+ * Copyright 2021-2024 Capypara and the SkyTemple Contributors
  *
  * This file is part of SkyTemple.
  *
@@ -25,12 +25,12 @@ use crate::util::pad;
 use anyhow::anyhow;
 use bytes::{BufMut, Bytes, BytesMut};
 use packed_struct::prelude::*;
+use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
 use std::iter::once;
 use std::num::TryFromIntError;
-use pyo3::exceptions::PyValueError;
 
 const EMPTY_MINIMIZED_FLOOR: [u8; 18] = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
 static DEFAULT_FLOOR: MinimizedMappaFloor = MinimizedMappaFloor {

@@ -1,5 +1,5 @@
 /*
- * Copyright 2021-2022 Capypara and the SkyTemple Contributors
+ * Copyright 2021-2024 Capypara and the SkyTemple Contributors
  *
  * This file is part of SkyTemple.
  *
@@ -20,11 +20,11 @@ use crate::bytes::StBytes;
 use crate::err::convert_packing_err;
 use bytes::Buf;
 use packed_struct::prelude::*;
+use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 use std::iter::repeat;
 use std::mem;
 use std::ops::Deref;
-use pyo3::exceptions::PyValueError;
 
 impl_pylist!(
     "skytemple_rust.st_mappa_bin",

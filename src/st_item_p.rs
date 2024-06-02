@@ -1,5 +1,5 @@
 /*
- * Copyright 2021-2022 Capypara and the SkyTemple Contributors
+ * Copyright 2021-2024 Capypara and the SkyTemple Contributors
  *
  * This file is part of SkyTemple.
  *
@@ -20,11 +20,11 @@ use crate::bytes::StBytes;
 use crate::err::convert_packing_err;
 use crate::st_sir0::{Sir0Error, Sir0Result, Sir0Serializable};
 use packed_struct::prelude::*;
+use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
+use pyo3::types::PyType;
 use std::mem::size_of;
 use std::ops::Deref;
-use pyo3::exceptions::PyValueError;
-use pyo3::types::PyType;
 
 impl_pylist!("skytemple_rust.st_item_p", ItemPEntryList, Py<ItemPEntry>);
 
