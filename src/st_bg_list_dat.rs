@@ -185,7 +185,6 @@ impl BgListEntry {
 }
 
 #[pyclass(module = "skytemple_rust.st_bg_list_dat")]
-#[derive(Clone)]
 pub struct BgList {
     #[pyo3(get)]
     level: Vec<Py<BgListEntry>>,

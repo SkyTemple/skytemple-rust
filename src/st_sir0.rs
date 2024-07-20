@@ -1,14 +1,16 @@
-use crate::bytes::{StBytes, StBytesMut};
+use std::cmp::min;
+use std::convert::TryFrom;
+use std::mem::size_of;
+use std::vec;
+
 use bytes::{Buf, BufMut, Bytes, BytesMut};
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 use pyo3::types::PyType;
 use pyo3::PyErr;
-use std::cmp::min;
-use std::convert::TryFrom;
-use std::mem::size_of;
-use std::vec;
 use thiserror::Error;
+
+use crate::bytes::{StBytes, StBytesMut};
 
 pub type Sir0Result<T> = Result<T, Sir0Error>;
 const SIR0_DECODE_MAX_INITIAL_CAPACITY: usize = 1048576 / size_of::<u32>();
@@ -61,17 +63,17 @@ pub trait Sir0Serializable
 where
     Self: Sized,
 {
-    fn sir0_serialize_parts(&self) -> Sir0Result<(StBytes, Vec<u32>, Option<u32>)>;
+    fn sir0_serialize_parts(&self, py: Python) -> Sir0Result<(StBytes, Vec<u32>, Option<u32>)>;
 
-    fn sir0_unwrap(content_data: StBytes, data_pointer: u32) -> Sir0Result<Self>;
+    fn sir0_unwrap(content_data: StBytes, data_pointer: u32, py: Python) -> Sir0Result<Self>;
 
-    fn wrap(&self) -> Sir0Result<Sir0> {
-        let (content, pointer_offsets, data_pointer) = self.sir0_serialize_parts()?;
+    fn wrap(&self, py: Python) -> Sir0Result<Sir0> {
+        let (content, pointer_offsets, data_pointer) = self.sir0_serialize_parts(py)?;
         Ok(Sir0::new(content, pointer_offsets, data_pointer))
     }
 
-    fn unwrap(self_as_sir0: Sir0) -> Sir0Result<Self> {
-        Self::sir0_unwrap(self_as_sir0.content, self_as_sir0.data_pointer)
+    fn unwrap(self_as_sir0: Sir0, py: Python) -> Sir0Result<Self> {
+        Self::sir0_unwrap(self_as_sir0.content, self_as_sir0.data_pointer, py)
     }
 }
 

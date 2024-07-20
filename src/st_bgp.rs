@@ -16,17 +16,19 @@
  * You should have received a copy of the GNU General Public License
  * along with SkyTemple.  If not, see <https://www.gnu.org/licenses/>.
  */
-use crate::bytes::StBytes;
-use crate::image::tiled::TiledImage;
-use crate::image::tilemap_entry::TilemapEntry;
-use crate::image::{In256ColIndexedImage, InIndexedImage, IndexedImage, PixelGenerator};
+use std::cmp::{max, min};
+use std::io::Cursor;
+use std::iter::{once, repeat, repeat_with};
+
 use bytes::{Buf, BufMut, Bytes, BytesMut};
 use itertools::Itertools;
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
-use std::cmp::{max, min};
-use std::io::Cursor;
-use std::iter::{once, repeat, repeat_with};
+
+use crate::bytes::StBytes;
+use crate::image::tiled::TiledImage;
+use crate::image::tilemap_entry::TilemapEntry;
+use crate::image::{In256ColIndexedImage, InIndexedImage, IndexedImage, PixelGenerator};
 
 pub const BGP_RES_WIDTH: usize = 256;
 pub const BGP_RES_HEIGHT: usize = 192;
@@ -48,7 +50,6 @@ pub const BGP_TOTAL_NUMBER_TILES_ACTUALLY: usize = 1024;
 // NOTE: Tile 0 is always 0x0.
 
 #[pyclass(module = "skytemple_rust.st_bgp")]
-#[derive(Clone)]
 pub struct Bgp {
     #[pyo3(get, set)]
     pub palettes: Vec<Vec<u8>>,

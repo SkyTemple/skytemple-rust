@@ -16,15 +16,16 @@
  * You should have received a copy of the GNU General Public License
  * along with SkyTemple.  If not, see <https://www.gnu.org/licenses/>.
  */
-use crate::bytes::StBytes;
-use crate::gettext::gettext;
-use crate::st_sir0::{Sir0Error, Sir0Result, Sir0Serializable};
 use bytes::{Buf, BufMut, BytesMut};
 use itertools::Itertools;
 use log::warn;
 use pyo3::exceptions::{PyIndexError, PyValueError};
 use pyo3::prelude::*;
 use pyo3::types::PyType;
+
+use crate::bytes::StBytes;
+use crate::gettext::gettext;
+use crate::st_sir0::{Sir0Error, Sir0Result, Sir0Serializable};
 
 pub const DPLA_COLORS_PER_PALETTE: usize = 16;
 pub const DPLA_MAX_COLORS: usize = 32;
@@ -223,7 +224,7 @@ impl Dpla {
 
     #[pyo3(name = "sir0_serialize_parts")]
     pub fn _sir0_serialize_parts(&self, py: Python) -> PyResult<PyObject> {
-        Ok(self.sir0_serialize_parts()?.into_py(py))
+        Ok(self.sir0_serialize_parts(py)?.into_py(py))
     }
 
     #[classmethod]
@@ -232,13 +233,14 @@ impl Dpla {
         _cls: &Bound<'_, PyType>,
         content_data: StBytes,
         data_pointer: u32,
+        py: Python,
     ) -> PyResult<Self> {
-        Ok(Self::sir0_unwrap(content_data, data_pointer)?)
+        Ok(Self::sir0_unwrap(content_data, data_pointer, py)?)
     }
 }
 
 impl Sir0Serializable for Dpla {
-    fn sir0_serialize_parts(&self) -> Sir0Result<(StBytes, Vec<u32>, Option<u32>)> {
+    fn sir0_serialize_parts(&self, _py: Python) -> Sir0Result<(StBytes, Vec<u32>, Option<u32>)> {
         let mut pointers: Vec<u32> = vec![];
         let mut pointer_offsets: Vec<u32> = vec![];
         let mut written_so_far: u32 = 0;
@@ -292,7 +294,7 @@ impl Sir0Serializable for Dpla {
         Ok((StBytes::from(data), pointer_offsets, Some(data_offset)))
     }
 
-    fn sir0_unwrap(content_data: StBytes, data_pointer: u32) -> Sir0Result<Self> {
+    fn sir0_unwrap(content_data: StBytes, data_pointer: u32, _py: Python) -> Sir0Result<Self> {
         Self::new(content_data, data_pointer)
             .map_err(|e| Sir0Error::UnwrapFailed(anyhow::Error::from(e)))
     }
@@ -312,7 +314,7 @@ impl DplaWriter {
     pub fn write(&self, model: Py<Dpla>, py: Python) -> PyResult<StBytes> {
         model
             .borrow(py)
-            .sir0_serialize_parts()
+            .sir0_serialize_parts(py)
             .map(|(c, _, _)| c)
             .map_err(|e| PyValueError::new_err(format!("{}", e)))
     }

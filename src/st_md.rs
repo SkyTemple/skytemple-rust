@@ -16,13 +16,6 @@
  * You should have received a copy of the GNU General Public License
  * along with SkyTemple.  If not, see <https://www.gnu.org/licenses/>.
  */
-use crate::bytes::StBytes;
-use crate::err::convert_packing_err;
-use bytes::Buf;
-use packed_struct::prelude::*;
-use pyo3::exceptions::PyIndexError;
-use pyo3::prelude::*;
-use pyo3::types::PyType;
 use std::cell::RefCell;
 use std::collections::btree_map::Entry;
 use std::collections::BTreeMap;
@@ -30,6 +23,15 @@ use std::mem::size_of;
 use std::ops::Deref;
 use std::sync::Mutex;
 use std::vec;
+
+use bytes::Buf;
+use packed_struct::prelude::*;
+use pyo3::exceptions::PyIndexError;
+use pyo3::prelude::*;
+use pyo3::types::PyType;
+
+use crate::bytes::StBytes;
+use crate::err::convert_packing_err;
 
 const DEFAULT_NUM_ENTITIES: u32 = 600;
 const DEFAULT_MAX_POSSIBLE: u32 = 554;
@@ -56,7 +58,7 @@ impl MdPropertiesState {
                 },
             )?)
         }
-        Ok(inst_locked.deref().as_ref().unwrap().clone())
+        Ok(inst_locked.deref().as_ref().unwrap().clone_ref(py))
     }
 }
 
@@ -1214,7 +1216,7 @@ impl MdIterator {
 }
 
 #[pyclass(module = "skytemple_rust.st_md")]
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 pub struct Md {
     #[pyo3(get, set)]
     pub entries: Vec<Py<MdEntry>>,
@@ -1259,11 +1261,11 @@ impl Md {
         Ok(slf)
     }
 
-    pub fn get_by_index(&self, index: usize) -> PyResult<Py<MdEntry>> {
+    pub fn get_by_index(&self, index: usize, py: Python) -> PyResult<Py<MdEntry>> {
         self.entries
             .get(index)
             .ok_or_else(|| PyIndexError::new_err("Index for Md out of range."))
-            .cloned()
+            .map(|e| e.clone_ref(py))
     }
 
     pub fn get_by_entity_id(&self, index: usize, py: Python) -> PyResult<Vec<(u32, Py<MdEntry>)>> {
@@ -1274,7 +1276,7 @@ impl Md {
                     .entries
                     .iter()
                     .filter(|e| e.borrow(py).data.entid as usize == index)
-                    .cloned()
+                    .map(|e| e.clone_ref(py))
                     .collect();
                 let new_list_ref = ve.insert(new_list);
                 Self::get_by_entity_id_process(new_list_ref, py)
@@ -1287,8 +1289,8 @@ impl Md {
         self.entries.len()
     }
 
-    pub fn __getitem__(&self, key: usize) -> PyResult<Py<MdEntry>> {
-        self.get_by_index(key)
+    pub fn __getitem__(&self, key: usize, py: Python) -> PyResult<Py<MdEntry>> {
+        self.get_by_index(key, py)
     }
 
     pub fn __setitem__(&mut self, key: usize, value: Py<MdEntry>) -> PyResult<()> {
@@ -1310,8 +1312,15 @@ impl Md {
         }
     }
 
-    pub fn __iter__(&mut self) -> MdIterator {
-        MdIterator::new(self.entries.clone().into_iter())
+    pub fn __iter__(&mut self, py: Python) -> MdIterator {
+        // TODO: This is needlessly slow probably? Rethink iterator implementation.
+        MdIterator::new(
+            self.entries
+                .iter()
+                .map(|e| e.clone_ref(py))
+                .collect::<Vec<_>>()
+                .into_iter(),
+        )
     }
 }
 
@@ -1325,7 +1334,7 @@ impl Md {
         } else {
             Ok(lst
                 .iter()
-                .map(|e| (e.borrow(py).md_index, e.clone()))
+                .map(|e| (e.borrow(py).md_index, e.clone_ref(py)))
                 .collect())
         }
     }

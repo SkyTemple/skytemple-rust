@@ -64,7 +64,6 @@ impl BplAnimationSpec {
 }
 
 #[pyclass(module = "skytemple_rust.st_bpl")]
-#[derive(Clone)]
 pub struct Bpl {
     #[pyo3(get, set)]
     pub number_palettes: u16,
@@ -423,12 +422,6 @@ pub mod input {
     impl IntoPy<PyObject> for InputBpl {
         fn into_py(self, py: Python) -> PyObject {
             self.0.to_object(py)
-        }
-    }
-
-    impl From<InputBpl> for Bpl {
-        fn from(obj: InputBpl) -> Self {
-            Python::with_gil(|py| obj.0.to_object(py).extract(py).unwrap())
         }
     }
 }

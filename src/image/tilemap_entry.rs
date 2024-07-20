@@ -122,7 +122,6 @@ impl From<&TilemapEntry> for usize {
     }
 }
 
-#[derive(Clone)]
 pub struct InputTilemapEntry(pub Py<TilemapEntry>);
 
 impl<'source> FromPyObject<'source> for InputTilemapEntry {

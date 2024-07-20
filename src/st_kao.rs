@@ -17,22 +17,23 @@
  * along with SkyTemple.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-use crate::bytes::{StBytes, StBytesMut};
-use crate::gettext::gettext;
-use crate::image::tiled::TiledImage;
-use crate::image::{In16ColSolidIndexedImage, InIndexedImage, IndexedImage, PixelGenerator};
-use crate::st_at_common::{CommonAt, COMMON_AT_MUST_COMPRESS_3};
-use arr_macro::arr;
-use bytes::{Buf, BufMut};
-use pyo3::exceptions::PyValueError;
-use pyo3::prelude::*;
-use pyo3::types::PyType;
 use std::collections::hash_map::Entry;
 use std::collections::HashMap;
 use std::io::Cursor;
 use std::iter::repeat;
 use std::mem::swap;
 use std::vec;
+
+use bytes::{Buf, BufMut};
+use pyo3::exceptions::PyValueError;
+use pyo3::prelude::*;
+use pyo3::types::PyType;
+
+use crate::bytes::{StBytes, StBytesMut};
+use crate::gettext::gettext;
+use crate::image::tiled::TiledImage;
+use crate::image::{In16ColSolidIndexedImage, InIndexedImage, IndexedImage, PixelGenerator};
+use crate::st_at_common::{CommonAt, COMMON_AT_MUST_COMPRESS_3};
 
 #[pyclass(module = "skytemple_rust.st_kao")]
 #[derive(Clone)]
@@ -239,7 +240,6 @@ impl KaoImage {
 }
 
 #[pyclass(module = "skytemple_rust.st_kao")]
-#[derive(Clone)]
 /// A container for portrait images.
 pub struct Kao {
     portraits: Vec<[Option<Py<KaoImage>>; Self::PORTRAIT_SLOTS]>,
@@ -261,7 +261,7 @@ impl Kao {
         data.advance(Self::TOC_PADDING);
         let mut first_pointer = 0;
         while first_pointer == 0 || data.position() < first_pointer {
-            let mut species: [Option<Py<KaoImage>>; Self::PORTRAIT_SLOTS] = arr![None; 40];
+            let mut species: [Option<Py<KaoImage>>; Self::PORTRAIT_SLOTS] = empty_portraits();
             for i in 0..Self::PORTRAIT_SLOTS {
                 let pointer = data.get_i32_le();
                 if pointer > 0 {
@@ -281,9 +281,11 @@ impl Kao {
     /// Creates a new empty KAO with the specified number of entries.
     #[classmethod]
     pub fn create_new(_cls: &Bound<'_, PyType>, number_entries: usize) -> Self {
-        Self {
-            portraits: vec![arr![None; 40]; number_entries],
+        let mut portraits = Vec::with_capacity(number_entries);
+        for _ in 0..number_entries {
+            portraits.push(empty_portraits());
         }
+        Self { portraits }
     }
     /// Returns the number of entries.
     pub fn n_entries(&self) -> usize {
@@ -299,15 +301,17 @@ impl Kao {
             )));
         }
         for _ in self.portraits.len()..new_size {
-            self.portraits.push(arr![None; 40]);
+            self.portraits.push(empty_portraits());
         }
         Ok(())
     }
     /// Gets an image from the Kao catalog.
-    pub fn get(&self, index: usize, subindex: usize) -> PyResult<Option<Py<KaoImage>>> {
+    pub fn get(&self, index: usize, subindex: usize, py: Python) -> PyResult<Option<Py<KaoImage>>> {
         if index < self.portraits.len() {
             if subindex < Self::PORTRAIT_SLOTS {
-                return Ok(self.portraits[index][subindex].clone());
+                return Ok(self.portraits[index][subindex]
+                    .as_ref()
+                    .map(|e| e.clone_ref(py)));
             }
             return Err(PyValueError::new_err(format!(
                 "The subindex requested must be between 0 and {}",
@@ -370,12 +374,19 @@ impl Kao {
 
     /// Iterates over all KaoImages.
     #[allow(clippy::unnecessary_to_owned)]
-    fn __iter__(slf: PyRef<Self>) -> PyResult<Py<KaoIterator>> {
+    fn __iter__(slf: PyRef<Self>, py: Python) -> PyResult<Py<KaoIterator>> {
+        // TODO: This is needlessly slow probably? Rethink iterator implementation.
         let mut reference = Box::new(
             slf.portraits
-                .clone()
-                .into_iter()
-                .map(|s| s.to_vec().into_iter()),
+                .iter()
+                .map(|s| {
+                    s.iter()
+                        .map(|e| e.as_ref().map(|ee| ee.clone_ref(py)))
+                        .collect::<Vec<_>>()
+                        .into_iter()
+                })
+                .collect::<Vec<_>>()
+                .into_iter(),
         );
         let iter_outer = reference.next();
         Py::new(
@@ -480,4 +491,12 @@ pub(crate) fn create_st_kao_module(py: Python) -> PyResult<(&str, Bound<'_, PyMo
     m.add_class::<KaoIterator>()?;
 
     Ok((name, m))
+}
+
+const fn empty_portraits() -> [Option<Py<KaoImage>>; 40] {
+    [
+        None, None, None, None, None, None, None, None, None, None, None, None, None, None, None,
+        None, None, None, None, None, None, None, None, None, None, None, None, None, None, None,
+        None, None, None, None, None, None, None, None, None, None,
+    ]
 }

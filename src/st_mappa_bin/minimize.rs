@@ -17,20 +17,22 @@
  * along with SkyTemple.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-use crate::bytes::{AsStBytes, StBytes};
-use crate::gettext::gettext;
-use crate::st_mappa_bin::MappaBin;
-use crate::st_sir0::{Sir0Error, Sir0Result, Sir0Serializable};
-use crate::util::pad;
+use std::collections::hash_map::DefaultHasher;
+use std::hash::{Hash, Hasher};
+use std::iter::once;
+use std::num::TryFromIntError;
+
 use anyhow::anyhow;
 use bytes::{BufMut, Bytes, BytesMut};
 use packed_struct::prelude::*;
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
-use std::collections::hash_map::DefaultHasher;
-use std::hash::{Hash, Hasher};
-use std::iter::once;
-use std::num::TryFromIntError;
+
+use crate::bytes::{AsStBytesPyRef, StBytes};
+use crate::gettext::gettext;
+use crate::st_mappa_bin::MappaBin;
+use crate::st_sir0::{Sir0Error, Sir0Result, Sir0Serializable};
+use crate::util::pad;
 
 const EMPTY_MINIMIZED_FLOOR: [u8; 18] = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
 static DEFAULT_FLOOR: MinimizedMappaFloor = MinimizedMappaFloor {
@@ -73,7 +75,7 @@ pub struct MinimizedMappa {
 }
 
 impl MinimizedMappa {
-    pub fn from_mappa(mappa: &MappaBin) -> Self {
+    pub fn from_mappa(mappa: &MappaBin, _py: Python) -> Self {
         let mut o_floor_lists = Vec::with_capacity(mappa.floor_lists.len());
         let mut o_layout = Vec::with_capacity(1000);
         let mut o_monsters = Vec::with_capacity(1000);
@@ -90,52 +92,61 @@ impl MinimizedMappa {
 
                 for floor in floor_list {
                     let floor_brw = floor.borrow(py);
-                    debug_assert_eq!(32, floor_brw.layout.as_bytes().len());
+                    debug_assert_eq!(32, floor_brw.layout.as_bytes(py).len());
                     o_floor_list.push(MinimizedMappaFloor {
                         layout_idx: Self::find_or_insert(
                             &mut o_layout,
                             &mut h_layout,
                             &floor_brw.layout,
+                            py,
                         ),
                         monsters_idx: Self::find_or_insert(
                             &mut o_monsters,
                             &mut h_monsters,
                             &floor_brw.monsters,
+                            py,
                         ),
                         traps_idx: Self::find_or_insert(
                             &mut o_traps,
                             &mut h_traps,
                             &floor_brw.traps,
+                            py,
                         ),
                         floor_items_idx: Self::find_or_insert(
                             &mut o_items,
                             &mut h_items,
                             &floor_brw.floor_items,
+                            py,
                         ),
                         shop_items_idx: Self::find_or_insert(
                             &mut o_items,
                             &mut h_items,
                             &floor_brw.shop_items,
+                            py,
                         ),
                         monster_house_items_idx: Self::find_or_insert(
                             &mut o_items,
                             &mut h_items,
                             &floor_brw.monster_house_items,
+                            py,
                         ),
                         buried_items_idx: Self::find_or_insert(
                             &mut o_items,
                             &mut h_items,
                             &floor_brw.buried_items,
+                            py,
                         ),
                         unk_items1_idx: Self::find_or_insert(
                             &mut o_items,
                             &mut h_items,
                             &floor_brw.unk_items1,
+                            py,
                         ),
                         unk_items2_idx: Self::find_or_insert(
                             &mut o_items,
                             &mut h_items,
                             &floor_brw.unk_items2,
+                            py,
                         ),
                     })
                 }
@@ -153,11 +164,16 @@ impl MinimizedMappa {
         }
     }
 
-    fn find_or_insert<T>(storage: &mut Vec<Bytes>, hash_storage: &mut Vec<u64>, source: T) -> u16
+    fn find_or_insert<T>(
+        storage: &mut Vec<Bytes>,
+        hash_storage: &mut Vec<u64>,
+        source: &T,
+        py: Python,
+    ) -> u16
     where
-        T: AsStBytes,
+        T: AsStBytesPyRef,
     {
-        let source_bytes = source.as_bytes().0;
+        let source_bytes = source.as_bytes_pyref(py).0;
         let source_hash = Self::calculate_hash(&source_bytes);
         debug_assert_eq!(
             storage.contains(&source_bytes),
@@ -187,7 +203,7 @@ impl MinimizedMappa {
 }
 
 impl Sir0Serializable for MinimizedMappa {
-    fn sir0_serialize_parts(&self) -> Sir0Result<(StBytes, Vec<u32>, Option<u32>)> {
+    fn sir0_serialize_parts(&self, _py: Python) -> Sir0Result<(StBytes, Vec<u32>, Option<u32>)> {
         static_assert_size!(<MinimizedMappaFloor as PackedStruct>::ByteArray, 18);
 
         let mut pointer_offsets: Vec<u32> = Vec::with_capacity(self.floor_lists.len() * 200);
@@ -334,8 +350,8 @@ impl Sir0Serializable for MinimizedMappa {
         Ok((data.into(), pointer_offsets, Some(data_pointer)))
     }
 
-    fn sir0_unwrap(content_data: StBytes, data_pointer: u32) -> Sir0Result<Self> {
-        MappaBin::sir0_unwrap(content_data, data_pointer).map(|m| Self::from_mappa(&m))
+    fn sir0_unwrap(content_data: StBytes, data_pointer: u32, py: Python) -> Sir0Result<Self> {
+        MappaBin::sir0_unwrap(content_data, data_pointer, py).map(|m| Self::from_mappa(&m, py))
     }
 }
 
