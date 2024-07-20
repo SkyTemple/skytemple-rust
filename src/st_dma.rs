@@ -16,12 +16,12 @@
  * You should have received a copy of the GNU General Public License
  * along with SkyTemple.  If not, see <https://www.gnu.org/licenses/>.
  */
-use crate::bytes::StBytes;
 use num_derive::FromPrimitive;
-use pyo3::prelude::*;
-
 use num_traits::FromPrimitive;
 use pyo3::exceptions::PyValueError;
+use pyo3::prelude::*;
+
+use crate::bytes::StBytes;
 
 #[repr(u8)]
 #[derive(PartialEq, Eq, PartialOrd, FromPrimitive)]
@@ -32,7 +32,7 @@ pub enum DmaType {
 }
 
 impl<'source> FromPyObject<'source> for DmaType {
-    fn extract(ob: &'source PyAny) -> PyResult<Self> {
+    fn extract_bound(ob: &Bound<'source, PyAny>) -> PyResult<Self> {
         let int: u8 = ob.extract()?;
         DmaType::from_u8(int)
             .ok_or_else(|| PyValueError::new_err(format!("Invalid value {} for DmaType", int)))
@@ -48,7 +48,7 @@ pub enum DmaExtraType {
 }
 
 impl<'source> FromPyObject<'source> for DmaExtraType {
-    fn extract(ob: &'source PyAny) -> PyResult<Self> {
+    fn extract_bound(ob: &Bound<'source, PyAny>) -> PyResult<Self> {
         let int: u8 = ob.extract()?;
         DmaExtraType::from_u8(int)
             .ok_or_else(|| PyValueError::new_err(format!("Invalid value {} for DmaExtraType", int)))

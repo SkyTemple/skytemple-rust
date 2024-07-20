@@ -17,15 +17,16 @@
  * You should have received a copy of the GNU General Public License
  * along with SkyTemple.  If not, see <https://www.gnu.org/licenses/>.
  */
-use crate::bytes::StBytesMut;
-use crate::gettext::gettext;
-use crate::image::InIndexedImage;
-use crate::image::IndexedImage;
-use crate::python::create_value_user_error;
 use log::error;
+use pyo3::{IntoPy, PyObject, Python};
 use pyo3::prelude::*;
 use pyo3::types::{PyBytes, PyIterator, PyTuple};
-use pyo3::{IntoPy, PyObject, Python};
+
+use crate::bytes::StBytesMut;
+use crate::gettext::gettext;
+use crate::image::IndexedImage;
+use crate::image::InIndexedImage;
+use crate::python::create_value_user_error;
 
 pub fn in_from_py<'py, T>(
     img: T,
@@ -120,7 +121,7 @@ fn pil_simple_quant(
         }
         transparency_map =
             PyIterator::from_bound_object(pil_img.getattr(py, "getdata")?.call0(py)?.bind(py))?
-                .map(|x| Ok(x?.extract::<&PyTuple>()?.get_item(3)?.extract::<usize>()? == 0))
+                .map(|x| Ok(x?.downcast::<PyTuple>()?.get_item(3)?.extract::<usize>()? == 0))
                 .collect::<PyResult<Vec<bool>>>()?;
     } else {
         if pil_img.getattr(py, "mode")?.extract::<&str>(py)? != "RGB" {

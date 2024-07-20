@@ -17,9 +17,7 @@
  * along with SkyTemple.  If not, see <https://www.gnu.org/licenses/>.
  */
 use pyo3::exceptions;
-
 use pyo3::prelude::*;
-
 use pyo3::PyErr;
 
 const USER_ERROR_MARK: &str = "_skytemple__user_error";
@@ -35,6 +33,6 @@ pub fn create_value_user_error<S: Into<String> + IntoPy<PyObject> + Send + Sync 
 
 #[derive(FromPyObject)]
 pub enum SliceOrInt<'a> {
-    Slice(&'a pyo3::types::PySlice),
+    Slice(Bound<'a, pyo3::types::PySlice>),
     Int(isize),
 }

@@ -20,10 +20,11 @@
 //! Fork from encoding @ 0.2 util.rs
 
 #[cfg(feature = "strings")]
-use encoding::types;
-#[cfg(feature = "strings")]
 use std::marker::PhantomData;
 use std::str::Chars;
+
+#[cfg(feature = "strings")]
+use encoding::types;
 
 /// External iterator for a string's characters with its corresponding byte offset range.
 pub struct StrCharIndexIterator<'r> {
@@ -63,6 +64,7 @@ impl<'r> StrCharIndex<'r> for &'r str {
 }
 
 #[cfg(feature = "strings")]
+#[allow(unused)]
 /// A helper struct for the stateful decoder DSL.
 pub struct StatefulDecoderHelper<'a, St, Data: 'a> {
     /// The current buffer.

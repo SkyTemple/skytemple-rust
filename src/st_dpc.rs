@@ -16,6 +16,13 @@
  * You should have received a copy of the GNU General Public License
  * along with SkyTemple.  If not, see <https://www.gnu.org/licenses/>.
  */
+use std::iter::once;
+
+use bytes::{Buf, BufMut, BytesMut};
+use itertools::Itertools;
+use pyo3::exceptions::PyValueError;
+use pyo3::prelude::*;
+
 use crate::bytes::StBytes;
 use crate::gettext::gettext;
 use crate::image::tiled::TiledImage;
@@ -24,11 +31,6 @@ use crate::image::{In256ColIndexedImage, InIndexedImage, IndexedImage, PixelGene
 use crate::st_dpci::input::InputDpci;
 use crate::st_dpci::DPCI_TILE_DIM;
 use crate::st_dpl::DPL_MAX_PAL;
-use bytes::{Buf, BufMut, BytesMut};
-use itertools::Itertools;
-use pyo3::exceptions::PyValueError;
-use pyo3::prelude::*;
-use std::iter::once;
 
 pub const DPC_TILING_DIM: usize = 3;
 pub const DPC_TILING_DIM_SQUARED: usize = DPC_TILING_DIM * DPC_TILING_DIM;
@@ -265,12 +267,13 @@ pub(crate) fn create_st_dpc_module(py: Python) -> PyResult<(&str, Bound<'_, PyMo
 // DPCs as inputs (for compatibility of including other DPC implementations from Python)
 
 pub mod input {
+    use pyo3::prelude::*;
+    use pyo3::types::{PyList, PyTuple};
+
     use crate::image::tilemap_entry::InputTilemapEntry;
     use crate::image::{In256ColIndexedImage, InIndexedImage, IndexedImage};
     use crate::st_dpc::Dpc;
     use crate::st_dpci::input::InputDpci;
-    use pyo3::prelude::*;
-    use pyo3::types::{PyList, PyTuple};
 
     pub trait DpcProvider: ToPyObject {
         fn do_chunks_to_pil(
@@ -369,7 +372,7 @@ pub mod input {
     pub struct InputDpc(pub Box<dyn DpcProvider>);
 
     impl<'source> FromPyObject<'source> for InputDpc {
-        fn extract(ob: &'source PyAny) -> PyResult<Self> {
+        fn extract_bound(ob: &Bound<'source, PyAny>) -> PyResult<Self> {
             if let Ok(obj) = ob.extract::<Py<Dpc>>() {
                 Ok(Self(Box::new(obj)))
             } else {

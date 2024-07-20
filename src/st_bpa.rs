@@ -16,17 +16,19 @@
  * You should have received a copy of the GNU General Public License
  * along with SkyTemple.  If not, see <https://www.gnu.org/licenses/>.
  */
+use std::cmp::Ordering;
+use std::mem::take;
+
+use bytes::{Buf, BufMut};
+use pyo3::exceptions::PyValueError;
+use pyo3::prelude::*;
+use pyo3::types::PyType;
+
 use crate::bytes::StBytes;
 use crate::gettext::gettext;
 use crate::image::tiled::TiledImage;
 use crate::image::tilemap_entry::TilemapEntry;
 use crate::image::{In256ColIndexedImage, InIndexedImage, IndexedImage, PixelGenerator};
-use bytes::{Buf, BufMut};
-use pyo3::exceptions::PyValueError;
-use pyo3::prelude::*;
-use pyo3::types::PyType;
-use std::cmp::Ordering;
-use std::mem::take;
 
 pub const BPA_TILE_DIM: usize = 8;
 
@@ -349,10 +351,11 @@ pub(crate) fn create_st_bpa_module(py: Python) -> PyResult<(&str, Bound<'_, PyMo
 // BPAs as inputs (for compatibility of including other BPA implementations from Python)
 
 pub mod input {
-    use crate::bytes::StBytes;
-    use crate::st_bpa::{Bpa, BpaFrameInfo};
     use pyo3::prelude::*;
     use pyo3::types::PyTuple;
+
+    use crate::bytes::StBytes;
+    use crate::st_bpa::{Bpa, BpaFrameInfo};
 
     pub trait BpaProvider: ToPyObject {
         fn get_number_of_tiles(&self, py: Python) -> PyResult<u16>;
@@ -424,7 +427,7 @@ pub mod input {
     pub struct InputBpa(pub Box<dyn BpaProvider>);
 
     impl<'source> FromPyObject<'source> for InputBpa {
-        fn extract(ob: &'source PyAny) -> PyResult<Self> {
+        fn extract_bound(ob: &Bound<'source, PyAny>) -> PyResult<Self> {
             if let Ok(obj) = ob.extract::<Py<Bpa>>() {
                 Ok(Self(Box::new(obj)))
             } else {

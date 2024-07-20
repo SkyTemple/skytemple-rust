@@ -16,6 +16,14 @@
  * You should have received a copy of the GNU General Public License
  * along with SkyTemple.  If not, see <https://www.gnu.org/licenses/>.
  */
+use std::io::Cursor;
+use std::iter::once;
+use std::mem::{swap, take};
+
+use bytes::{Buf, BufMut, Bytes, BytesMut};
+use pyo3::exceptions::{PyAssertionError, PyValueError};
+use pyo3::prelude::*;
+
 use crate::bytes::StBytes;
 use crate::compression::bpc_image::{BpcImageCompressor, BpcImageDecompressor};
 use crate::compression::bpc_tilemap::{BpcTilemapCompressor, BpcTilemapDecompressor};
@@ -23,12 +31,6 @@ use crate::gettext::gettext;
 use crate::image::tiled::TiledImage;
 use crate::image::tilemap_entry::{InputTilemapEntry, ProvidesTilemapEntry, TilemapEntry};
 use crate::image::{In256ColIndexedImage, InIndexedImage, IndexedImage, PixelGenerator};
-use bytes::{Buf, BufMut, Bytes, BytesMut};
-use pyo3::exceptions::{PyAssertionError, PyValueError};
-use pyo3::prelude::*;
-use std::io::Cursor;
-use std::iter::once;
-use std::mem::{swap, take};
 // For non-Python
 #[allow(unused_imports)]
 use crate::st_bpa::input::{BpaProvider, InputBpa};
@@ -1030,13 +1032,14 @@ pub(crate) fn create_st_bpc_module(py: Python) -> PyResult<(&str, Bound<'_, PyMo
 // BPCs as inputs (for compatibility of including other BPC implementations from Python)
 
 pub mod input {
+    use pyo3::prelude::*;
+    use pyo3::types::{PyList, PyTuple};
+
     use crate::bytes::StBytes;
     use crate::image::tilemap_entry::InputTilemapEntry;
     use crate::image::{In256ColIndexedImage, InIndexedImage, IndexedImage};
     use crate::st_bpa::input::InputBpa;
     use crate::st_bpc::{AnimatedExportMode, Bpc};
-    use pyo3::prelude::*;
-    use pyo3::types::{PyList, PyTuple};
 
     pub trait BpcProvider: ToPyObject {
         fn get_number_of_layers(&self, py: Python) -> PyResult<u8>;
@@ -1208,7 +1211,7 @@ pub mod input {
     pub struct InputBpc(pub Box<dyn BpcProvider>);
 
     impl<'source> FromPyObject<'source> for InputBpc {
-        fn extract(ob: &'source PyAny) -> PyResult<Self> {
+        fn extract_bound(ob: &Bound<'source, PyAny>) -> PyResult<Self> {
             if let Ok(obj) = ob.extract::<Py<Bpc>>() {
                 Ok(Self(Box::new(obj)))
             } else {

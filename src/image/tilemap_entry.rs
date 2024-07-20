@@ -17,10 +17,11 @@
  * along with SkyTemple.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+use std::ops::Deref;
+
 use pyo3::exceptions::PyTypeError;
 use pyo3::prelude::*;
 use pyo3::types::PyType;
-use std::ops::Deref;
 
 #[derive(PartialEq, Eq, Debug, Clone, Default)]
 #[pyclass(module = "skytemple_rust")]
@@ -125,7 +126,7 @@ impl From<&TilemapEntry> for usize {
 pub struct InputTilemapEntry(pub Py<TilemapEntry>);
 
 impl<'source> FromPyObject<'source> for InputTilemapEntry {
-    fn extract(ob: &'source PyAny) -> PyResult<Self> {
+    fn extract_bound(ob: &Bound<'source, PyAny>) -> PyResult<Self> {
         if let Ok(obj) = ob.extract::<Py<TilemapEntry>>() {
             Ok(Self(obj))
         } else if ob.hasattr("to_int")? {

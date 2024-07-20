@@ -16,11 +16,12 @@
  * You should have received a copy of the GNU General Public License
  * along with SkyTemple.  If not, see <https://www.gnu.org/licenses/>.
  */
+use pyo3::prelude::*;
+
 use crate::bytes::StBytes;
 use crate::image::tiled::TiledImage;
 use crate::image::tilemap_entry::TilemapEntry;
 use crate::image::{In256ColIndexedImage, InIndexedImage, IndexedImage, PixelGenerator};
-use pyo3::prelude::*;
 
 pub const DPCI_TILE_DIM: usize = 8;
 
@@ -130,10 +131,11 @@ pub(crate) fn create_st_dpci_module(py: Python) -> PyResult<(&str, Bound<'_, PyM
 // DPCIs as inputs (for compatibility of including other DPCI implementations from Python)
 
 pub mod input {
-    use crate::bytes::StBytes;
-    use crate::st_dpci::Dpci;
     use pyo3::prelude::*;
     use pyo3::types::PyTuple;
+
+    use crate::bytes::StBytes;
+    use crate::st_dpci::Dpci;
 
     pub trait DpciProvider: ToPyObject {
         fn get_tiles(&self, py: Python) -> PyResult<Vec<StBytes>>;
@@ -181,7 +183,7 @@ pub mod input {
     pub struct InputDpci(pub Box<dyn DpciProvider>);
 
     impl<'source> FromPyObject<'source> for InputDpci {
-        fn extract(ob: &'source PyAny) -> PyResult<Self> {
+        fn extract_bound(ob: &Bound<'source, PyAny>) -> PyResult<Self> {
             if let Ok(obj) = ob.extract::<Py<Dpci>>() {
                 Ok(Self(Box::new(obj)))
             } else {

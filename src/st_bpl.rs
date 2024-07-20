@@ -16,13 +16,15 @@
  * You should have received a copy of the GNU General Public License
  * along with SkyTemple.  If not, see <https://www.gnu.org/licenses/>.
  */
-use crate::bytes::StBytes;
-use bytes::{Buf, BufMut};
-use pyo3::exceptions::PyAssertionError;
-use pyo3::prelude::*;
 use std::cmp::Ordering;
 use std::iter::repeat;
 use std::mem::take;
+
+use bytes::{Buf, BufMut};
+use pyo3::exceptions::PyAssertionError;
+use pyo3::prelude::*;
+
+use crate::bytes::StBytes;
 
 // Length of a palette in colors. Color 0 is auto-generated (transparent)
 pub const BPL_PAL_LEN: usize = 15;
@@ -326,10 +328,11 @@ pub(crate) fn create_st_bpl_module(py: Python) -> PyResult<(&str, Bound<'_, PyMo
 // BPLs as inputs (for compatibility of including other BPL implementations from Python)
 
 pub mod input {
-    use crate::bytes::StBytes;
-    use crate::st_bpl::Bpl;
     use pyo3::prelude::*;
     use pyo3::types::PyTuple;
+
+    use crate::bytes::StBytes;
+    use crate::st_bpl::Bpl;
 
     pub trait BplProvider: ToPyObject {
         fn get_palettes(&self, py: Python) -> PyResult<Vec<StBytes>>;
@@ -408,7 +411,7 @@ pub mod input {
     pub struct InputBpl(pub Box<dyn BplProvider>);
 
     impl<'source> FromPyObject<'source> for InputBpl {
-        fn extract(ob: &'source PyAny) -> PyResult<Self> {
+        fn extract_bound(ob: &Bound<'source, PyAny>) -> PyResult<Self> {
             if let Ok(obj) = ob.extract::<Py<Bpl>>() {
                 Ok(Self(Box::new(obj)))
             } else {

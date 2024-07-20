@@ -16,9 +16,10 @@
  * You should have received a copy of the GNU General Public License
  * along with SkyTemple.  If not, see <https://www.gnu.org/licenses/>.
  */
-use crate::bytes::StBytes;
 use bytes::{Buf, BufMut};
 use pyo3::prelude::*;
+
+use crate::bytes::StBytes;
 
 /// Length of a palette in colors.
 pub const DPL_PAL_LEN: usize = 16;
@@ -106,8 +107,9 @@ pub(crate) fn create_st_dpl_module(py: Python) -> PyResult<(&str, Bound<'_, PyMo
 // DPLs as inputs (for compatibility of including other DPL implementations from Python)
 
 pub mod input {
-    use crate::st_dpl::Dpl;
     use pyo3::prelude::*;
+
+    use crate::st_dpl::Dpl;
 
     pub trait DplProvider: ToPyObject {
         fn set_palettes(&mut self, value: Vec<Vec<u8>>, py: Python) -> PyResult<()>;
@@ -130,7 +132,7 @@ pub mod input {
     pub struct InputDpl(pub Box<dyn DplProvider>);
 
     impl<'source> FromPyObject<'source> for InputDpl {
-        fn extract(ob: &'source PyAny) -> PyResult<Self> {
+        fn extract_bound(ob: &Bound<'source, PyAny>) -> PyResult<Self> {
             if let Ok(obj) = ob.extract::<Py<Dpl>>() {
                 Ok(Self(Box::new(obj)))
             } else {

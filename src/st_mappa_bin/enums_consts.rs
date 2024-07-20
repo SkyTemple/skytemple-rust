@@ -17,6 +17,7 @@
  * along with SkyTemple.  If not, see <https://www.gnu.org/licenses/>.
  */
 use packed_struct::prelude::*;
+use pyo3::types::PyAnyMethods;
 
 pub const GUARANTEED: u16 = 0xFFFF;
 

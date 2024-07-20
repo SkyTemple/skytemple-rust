@@ -17,11 +17,9 @@
  * along with SkyTemple.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-#[cfg_attr(not(feature = "python"), allow(unused_imports))]
+extern crate core;
 #[macro_use]
 extern crate skytemple_rust_macros;
-
-extern crate core;
 
 #[macro_use]
 pub(crate) mod encoding_utils;

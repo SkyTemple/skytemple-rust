@@ -16,6 +16,14 @@
  * You should have received a copy of the GNU General Public License
  * along with SkyTemple.  If not, see <https://www.gnu.org/licenses/>.
  */
+use std::fs;
+use std::path::Path;
+
+use bytes::BytesMut;
+use encoding::{DecoderTrap, EncoderTrap};
+use encoding::codec::ascii::ASCIIEncoding;
+use pyo3::prelude::*;
+
 use crate::bytes::StBytes;
 use crate::encoding::{BufEncoding, BufMutEncoding};
 use crate::err::convert_io_err;
@@ -24,12 +32,6 @@ use crate::st_bma::Bma;
 use crate::st_bpa::Bpa;
 use crate::st_bpc::Bpc;
 use crate::st_bpl::Bpl;
-use bytes::BytesMut;
-use encoding::codec::ascii::ASCIIEncoding;
-use encoding::{DecoderTrap, EncoderTrap};
-use pyo3::prelude::*;
-use std::fs;
-use std::path::Path;
 
 const DIR: &str = "MAP_BG/";
 const BPC_EXT: &str = ".bpc";
@@ -142,7 +144,11 @@ impl BgListEntry {
     }
 
     #[pyo3(name = "get_bpl")]
-    pub fn _get_bpl(&self, rom_or_directory_root: RomSource<&PyAny>, py: Python) -> PyResult<Bpl> {
+    pub fn _get_bpl(
+        &self,
+        rom_or_directory_root: RomSource<Bound<'_, PyAny>>,
+        py: Python,
+    ) -> PyResult<Bpl> {
         self.get_bpl(rom_or_directory_root, py)
     }
 
@@ -150,7 +156,7 @@ impl BgListEntry {
     #[pyo3(signature = (rom_or_directory_root, bpc_tiling_width = 3, bpc_tiling_height = 3))]
     pub fn _get_bpc(
         &self,
-        rom_or_directory_root: RomSource<&PyAny>,
+        rom_or_directory_root: RomSource<Bound<'_, PyAny>>,
         bpc_tiling_width: u16,
         bpc_tiling_height: u16,
         py: Python,
@@ -164,14 +170,14 @@ impl BgListEntry {
     }
 
     #[pyo3(name = "get_bma")]
-    pub fn _get_bma(&self, rom_or_directory_root: RomSource<&PyAny>) -> PyResult<Bma> {
+    pub fn _get_bma(&self, rom_or_directory_root: RomSource<Bound<'_, PyAny>>) -> PyResult<Bma> {
         self.get_bma(rom_or_directory_root)
     }
 
     #[pyo3(name = "get_bpas")]
     pub fn _get_bpas(
         &self,
-        rom_or_directory_root: RomSource<&PyAny>,
+        rom_or_directory_root: RomSource<Bound<'_, PyAny>>,
         py: Python,
     ) -> PyResult<Vec<Option<Bpa>>> {
         self.get_bpas(rom_or_directory_root, py)
@@ -298,6 +304,7 @@ impl BgList {
     }
 
     /// Overwrites an entry in a level's BPA list.
+    #[pyo3(signature = (level_id, bpa_id, bpa_name=None))]
     pub fn set_level_bpa(
         &mut self,
         level_id: usize,
