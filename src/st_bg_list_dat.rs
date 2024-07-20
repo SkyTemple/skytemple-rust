@@ -20,8 +20,8 @@ use std::fs;
 use std::path::Path;
 
 use bytes::BytesMut;
-use encoding::{DecoderTrap, EncoderTrap};
 use encoding::codec::ascii::ASCIIEncoding;
+use encoding::{DecoderTrap, EncoderTrap};
 use pyo3::prelude::*;
 
 use crate::bytes::StBytes;

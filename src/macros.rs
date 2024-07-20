@@ -171,7 +171,7 @@ macro_rules! impl_pylist {
                         _ => py.NotImplemented(),
                     }
                 }
-                
+
                 pub fn index(&self, value: PyObject, py: Python) -> PyResult<usize> {
                     if let Ok(value) = value.extract::<$itemty>(py) {
                         if let Some(idx) = self.0.iter().position(|x| {
@@ -389,7 +389,7 @@ macro_rules! impl_pylist_primitive {
                         _ => py.NotImplemented(),
                     }
                 }
-                
+
                 pub fn index(&self, value: PyObject, py: Python) -> PyResult<usize> {
                     if let Ok(value) = value.extract::<$itemty>(py) {
                         if let Some(idx) = self.0.iter().position(|x| *x == value) {

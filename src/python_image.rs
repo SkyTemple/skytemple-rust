@@ -18,14 +18,14 @@
  * along with SkyTemple.  If not, see <https://www.gnu.org/licenses/>.
  */
 use log::error;
-use pyo3::{IntoPy, PyObject, Python};
 use pyo3::prelude::*;
 use pyo3::types::{PyBytes, PyIterator, PyTuple};
+use pyo3::{IntoPy, PyObject, Python};
 
 use crate::bytes::StBytesMut;
 use crate::gettext::gettext;
-use crate::image::IndexedImage;
 use crate::image::InIndexedImage;
+use crate::image::IndexedImage;
 use crate::python::create_value_user_error;
 
 pub fn in_from_py<'py, T>(
