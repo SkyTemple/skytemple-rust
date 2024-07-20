@@ -1,5 +1,5 @@
 /*
- * Copyright 2021-2022 Capypara and the SkyTemple Contributors
+ * Copyright 2021-2024 Capypara and the SkyTemple Contributors
  *
  * This file is part of SkyTemple.
  *
@@ -17,10 +17,11 @@
  * along with SkyTemple.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-use crate::python::*;
 use bytes::{Buf, BufMut, Bytes, BytesMut};
 use num_derive::FromPrimitive;
 use num_traits::FromPrimitive;
+use pyo3::exceptions::PyValueError;
+use pyo3::prelude::*;
 use std::collections::VecDeque;
 use std::io::{Cursor, Read, Seek, SeekFrom};
 
@@ -107,7 +108,7 @@ impl PxCompressor<Bytes> {
     ) -> PyResult<(Bytes, [u8; 9])> {
         let input_size = buffer.len();
         if input_size > u32::MAX as usize {
-            return Err(exceptions::PyValueError::new_err(format!(
+            return Err(PyValueError::new_err(format!(
                 "PX Compression: The input data is too long {}.",
                 input_size
             )));
@@ -144,7 +145,7 @@ impl PxCompressor<Bytes> {
 
         // Validate compressed size
         if slf.output.len() > u16::MAX as usize {
-            return Err(exceptions::PyValueError::new_err(format!(
+            return Err(PyValueError::new_err(format!(
                 "PX Compression: Compressed size {} overflows 16 bits unsigned integer!",
                 slf.output.len()
             )));
@@ -634,7 +635,7 @@ where
         let offset = (-0x1000 + ((lonibble as i64) << 8)) | (self.buffer.get_u8() as i64);
         let curoutbyte: i64 = self.output.len() as i64;
         if offset < -curoutbyte {
-            return Err(exceptions::PyValueError::new_err(format!(
+            return Err(PyValueError::new_err(format!(
                 "Sequence to copy out of bound! Expected max. {} but got {}. \
                 Either the data to decompress is not valid PX compressed data, or \
                 something happened with our cursor that made us read the wrong bytes..",

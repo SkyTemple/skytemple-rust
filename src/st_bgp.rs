@@ -1,5 +1,5 @@
 /*
- * Copyright 2021-2022 Capypara and the SkyTemple Contributors
+ * Copyright 2021-2024 Capypara and the SkyTemple Contributors
  *
  * This file is part of SkyTemple.
  *
@@ -20,9 +20,10 @@ use crate::bytes::StBytes;
 use crate::image::tiled::TiledImage;
 use crate::image::tilemap_entry::TilemapEntry;
 use crate::image::{In256ColIndexedImage, InIndexedImage, IndexedImage, PixelGenerator};
-use crate::python::*;
 use bytes::{Buf, BufMut, Bytes, BytesMut};
 use itertools::Itertools;
+use pyo3::exceptions::PyValueError;
+use pyo3::prelude::*;
 use std::cmp::{max, min};
 use std::io::Cursor;
 use std::iter::{once, repeat, repeat_with};
@@ -140,7 +141,7 @@ impl Bgp {
         let tiles_len = tiles.len();
         let tilemap_len = tilemap.len();
         if tiles_len >= 0x3FF {
-            return Err(exceptions::PyValueError::new_err(
+            return Err(PyValueError::new_err(
                 "Error when importing: max tile count reached.",
             ));
         }
@@ -268,10 +269,9 @@ impl BgpWriter {
     }
 }
 
-#[cfg(feature = "python")]
-pub(crate) fn create_st_bgp_module(py: Python) -> PyResult<(&str, &PyModule)> {
+pub(crate) fn create_st_bgp_module(py: Python) -> PyResult<(&str, Bound<'_, PyModule>)> {
     let name: &'static str = "skytemple_rust.st_bgp";
-    let m = PyModule::new(py, name)?;
+    let m = PyModule::new_bound(py, name)?;
     m.add_class::<Bgp>()?;
     m.add_class::<BgpWriter>()?;
 

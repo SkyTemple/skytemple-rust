@@ -1,5 +1,5 @@
 /*
- * Copyright 2021-2022 Capypara and the SkyTemple Contributors
+ * Copyright 2021-2024 Capypara and the SkyTemple Contributors
  *
  * This file is part of SkyTemple.
  *
@@ -17,16 +17,12 @@
  * along with SkyTemple.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-use crate::python::Py;
-#[cfg(feature = "python")]
-use crate::python::{
-    FromPyObject, IntoPy, PyAny, PyByteArray, PyBytes, PyObject, PyResult, Python,
-};
+use std::ops::{Deref, DerefMut};
+
 use bytes::buf::IntoIter;
 use bytes::{Bytes, BytesMut};
-#[cfg(feature = "python")]
-use pyo3::types::PyList;
-use std::ops::{Deref, DerefMut};
+use pyo3::prelude::*;
+use pyo3::types::{PyByteArray, PyBytes, PyList};
 
 #[derive(Clone, Default, PartialEq, Eq, Debug)]
 pub struct StBytesMut(pub(crate) BytesMut);
@@ -35,16 +31,15 @@ pub struct StBytesMut(pub(crate) BytesMut);
 pub struct StBytes(pub(crate) Bytes);
 
 /** Export Bytes as bytes */
-#[cfg(feature = "python")]
+
 impl IntoPy<PyObject> for StBytes {
     fn into_py(self, py: Python) -> PyObject {
-        PyBytes::new(py, &self.0).into()
+        PyBytes::new_bound(py, &self.0).into()
     }
 }
 
-#[cfg(feature = "python")]
 impl<'source> FromPyObject<'source> for StBytes {
-    fn extract(ob: &'source PyAny) -> PyResult<Self> {
+    fn extract_bound(ob: &Bound<'source, PyAny>) -> PyResult<Self> {
         if let Ok(bytes) = ob.downcast::<PyBytes>() {
             // TODO: Maybe we could do without copying?
             let data = Vec::from(bytes.as_bytes());
@@ -57,7 +52,7 @@ impl<'source> FromPyObject<'source> for StBytes {
             }
             Ok(Self(Bytes::from(data)))
         } else {
-            let data: &PyList = ob.downcast()?;
+            let data: &Bound<PyList> = ob.downcast()?;
             Ok(Self(Bytes::from(
                 data.into_iter()
                     .map(|x| x.extract::<u8>())
@@ -133,10 +128,10 @@ impl AsRef<[u8]> for StBytes {
 }
 
 /** Export Vec<u8> as bytes */
-#[cfg(feature = "python")]
+
 impl IntoPy<PyObject> for StBytesMut {
     fn into_py(self, py: Python) -> PyObject {
-        PyBytes::new(py, &self.0).into()
+        PyBytes::new_bound(py, &self.0).into()
     }
 }
 
@@ -146,9 +141,8 @@ impl StBytesMut {
     }
 }
 
-#[cfg(feature = "python")]
 impl<'source> FromPyObject<'source> for StBytesMut {
-    fn extract(ob: &'source PyAny) -> PyResult<Self> {
+    fn extract_bound(ob: &Bound<'source, PyAny>) -> PyResult<Self> {
         if let Ok(bytearray) = ob.downcast::<PyByteArray>() {
             let data: BytesMut;
             unsafe {
@@ -159,7 +153,7 @@ impl<'source> FromPyObject<'source> for StBytesMut {
             let data = BytesMut::from(bytes.as_bytes());
             Ok(Self(data))
         } else {
-            let data: &PyList = ob.downcast()?;
+            let data: &Bound<PyList> = ob.downcast()?;
             Ok(Self(BytesMut::from(
                 &data
                     .into_iter()

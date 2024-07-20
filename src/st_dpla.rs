@@ -1,5 +1,5 @@
 /*
- * Copyright 2021-2023 Capypara and the SkyTemple Contributors
+ * Copyright 2021-2024 Capypara and the SkyTemple Contributors
  *
  * This file is part of SkyTemple.
  *
@@ -18,11 +18,13 @@
  */
 use crate::bytes::StBytes;
 use crate::gettext::gettext;
-use crate::python::*;
 use crate::st_sir0::{Sir0Error, Sir0Result, Sir0Serializable};
 use bytes::{Buf, BufMut, BytesMut};
 use itertools::Itertools;
 use log::warn;
+use pyo3::exceptions::{PyIndexError, PyValueError};
+use pyo3::prelude::*;
+use pyo3::types::PyType;
 
 pub const DPLA_COLORS_PER_PALETTE: usize = 16;
 pub const DPLA_MAX_COLORS: usize = 32;
@@ -105,13 +107,11 @@ impl Dpla {
                 .map(Result::<&_, _>::copied)
                 .collect::<Result<Vec<u8>, ()>>();
             match result {
-                Err(_) => Err(exceptions::PyIndexError::new_err(gettext(
-                    "Palette is invalid.",
-                ))),
+                Err(_) => Err(PyIndexError::new_err(gettext("Palette is invalid."))),
                 Ok(palette) => Ok(palette),
             }
         } else {
-            Err(exceptions::PyIndexError::new_err(gettext(
+            Err(PyIndexError::new_err(gettext(
                 "Palette index out of range.",
             )))
         }
@@ -126,9 +126,7 @@ impl Dpla {
     pub fn get_frame_count_for_palette(&self, palette_idx: usize) -> PyResult<usize> {
         self.colors
             .get(palette_idx * DPLA_COLORS_PER_PALETTE)
-            .ok_or_else(|| {
-                exceptions::PyValueError::new_err(gettext("This palette has no animation."))
-            })
+            .ok_or_else(|| PyValueError::new_err(gettext("This palette has no animation.")))
             .map(|x| x.len() / 3)
     }
 
@@ -171,9 +169,7 @@ impl Dpla {
     pub fn get_duration_for_palette(&self, palette_idx: usize) -> PyResult<u16> {
         self.durations_per_frame_for_colors
             .get(palette_idx * DPLA_COLORS_PER_PALETTE)
-            .ok_or_else(|| {
-                exceptions::PyIndexError::new_err(gettext("Palette index out of range."))
-            })
+            .ok_or_else(|| PyIndexError::new_err(gettext("Palette index out of range.")))
             .copied()
     }
 
@@ -208,7 +204,7 @@ impl Dpla {
     ) -> PyResult<Vec<Vec<u8>>> {
         if self.has_for_palette(0) {
             if palettes.len() < 11 {
-                return Err(exceptions::PyIndexError::new_err(gettext(
+                return Err(PyIndexError::new_err(gettext(
                     "Palette index out of range.",
                 )));
             }
@@ -216,7 +212,7 @@ impl Dpla {
         }
         if self.has_for_palette(1) {
             if palettes.len() < 12 {
-                return Err(exceptions::PyIndexError::new_err(gettext(
+                return Err(PyIndexError::new_err(gettext(
                     "Palette index out of range.",
                 )));
             }
@@ -225,16 +221,18 @@ impl Dpla {
         Ok(palettes)
     }
 
-    #[cfg(feature = "python")]
     #[pyo3(name = "sir0_serialize_parts")]
     pub fn _sir0_serialize_parts(&self, py: Python) -> PyResult<PyObject> {
         Ok(self.sir0_serialize_parts()?.into_py(py))
     }
 
-    #[cfg(feature = "python")]
     #[classmethod]
     #[pyo3(name = "sir0_unwrap")]
-    pub fn _sir0_unwrap(_cls: &PyType, content_data: StBytes, data_pointer: u32) -> PyResult<Self> {
+    pub fn _sir0_unwrap(
+        _cls: &Bound<'_, PyType>,
+        content_data: StBytes,
+        data_pointer: u32,
+    ) -> PyResult<Self> {
         Ok(Self::sir0_unwrap(content_data, data_pointer)?)
     }
 }
@@ -263,7 +261,7 @@ impl Sir0Serializable for Dpla {
                 buffer.put_u16_le(u16::try_from(number_colors)?);
                 buffer.put_u16_le(*self.durations_per_frame_for_colors.get(i).ok_or_else(
                     || {
-                        exceptions::PyIndexError::new_err(gettext(
+                        PyIndexError::new_err(gettext(
                             "Frame durations out of range while trying to build color.",
                         ))
                     },
@@ -316,14 +314,13 @@ impl DplaWriter {
             .borrow(py)
             .sir0_serialize_parts()
             .map(|(c, _, _)| c)
-            .map_err(|e| exceptions::PyValueError::new_err(format!("{}", e)))
+            .map_err(|e| PyValueError::new_err(format!("{}", e)))
     }
 }
 
-#[cfg(feature = "python")]
-pub(crate) fn create_st_dpla_module(py: Python) -> PyResult<(&str, &PyModule)> {
+pub(crate) fn create_st_dpla_module(py: Python) -> PyResult<(&str, Bound<'_, PyModule>)> {
     let name: &'static str = "skytemple_rust.st_dpla";
-    let m = PyModule::new(py, name)?;
+    let m = PyModule::new_bound(py, name)?;
     m.add_class::<Dpla>()?;
     m.add_class::<DplaWriter>()?;
 

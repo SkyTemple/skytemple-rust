@@ -1,6 +1,6 @@
 [package]
 name = "skytemple_rust"
-version = "1.6.5"
+version = "1.8.0"
 authors = ["Marco 'Capypara' Köpcke <hello@capypara.de>"]
 edition = "2021"
 repository = "https://github.com/SkyTemple/skytemple-rust"
@@ -12,14 +12,12 @@ name = "skytemple_rust"
 
 [features]
 default = [
-    "python", "strings", "compression", "image",
-    "sir0", "kao", "map_bg", "dungeon_graphics", "misc_graphics", "dse",
+    "strings", "compression", "image",
+    "sir0", "kao", "map_bg", "dungeon_graphics", "misc_graphics",
     "md", "item_p", "waza_p", "mappa_bin",
     "with_pmd_wan", "script_var_table"
 ]
 # non default: romfs
-
-python = ["pyo3", "pyo3-log"]
 
 strings = ["encoding-index-singlebyte"]
 compression = []
@@ -30,22 +28,20 @@ kao = ["compression", "image", "arr_macro"]
 map_bg = ["compression", "image"]
 misc_graphics = ["image"]
 dungeon_graphics = ["image", "sir0"]
-dse = ["time"]
 md = ["packed_struct"]
 item_p = ["packed_struct", "sir0"]
 waza_p = ["packed_struct", "sir0", "md"]
 mappa_bin = ["packed_struct", "sir0"]
 script_var_table = ["packed_struct"]
 
-with_pmd_wan = ["pmd_wan", "anyhow", "python"]
+with_pmd_wan = ["pmd_wan", "anyhow"]
 
 romfs = ["nitro_fs", "memmap2", "strings"]
 
 [dependencies]
 skytemple_rust_macros = { path = "skytemple_rust_macros" }
-skytemple_rust_macros_no_py = { path = "skytemple_rust_macros_no_py" }
-pyo3 = { version = "0.20", features = ["extension-module"], optional = true }
-pyo3-log = { version = "0.9", optional = true }
+pyo3 = { version = "0.22", features = ["extension-module", "py-clone"] }
+pyo3-log = { version = "0.11" }
 itertools = "0.13"
 log = "0.4"
 bytes = "1"
@@ -55,7 +51,6 @@ paste = "1.0"
 arr_macro = { version = "0.2", optional = true }
 encoding = "0.2"
 encoding-index-singlebyte = { version = "1", optional = true }
-time = { version = "0.3", optional = true }
 pmd_wan = { version = "5.1", optional = true }
 anyhow = { version = "1", optional = true }
 thiserror = "1"
@@ -65,4 +60,4 @@ packed_struct = { version = "0.10", optional = true }
 
 # gettext-rs is not supported under Windows (native)
 [target.'cfg( not(target_env = "msvc") )'.dependencies]
-gettext-rs = "0.7"
+gettext-rs = { version = "0.7", features = ["gettext-system"] }

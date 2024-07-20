@@ -1,5 +1,5 @@
 /*
- * Copyright 2021-2022 Capypara and the SkyTemple Contributors
+ * Copyright 2021-2024 Capypara and the SkyTemple Contributors
  *
  * This file is part of SkyTemple.
  *
@@ -18,9 +18,11 @@
  */
 use crate::bytes::StBytes;
 use crate::err::convert_packing_err;
-use crate::python::*;
 use crate::st_sir0::{Sir0Error, Sir0Result, Sir0Serializable};
 use packed_struct::prelude::*;
+use pyo3::exceptions::PyValueError;
+use pyo3::prelude::*;
+use pyo3::types::PyType;
 use std::mem::size_of;
 use std::ops::Deref;
 
@@ -78,7 +80,6 @@ pub struct ItemPEntry {
     pub null: u8,
 }
 
-#[cfg(feature = "python")]
 #[pymethods]
 impl ItemPEntry {
     fn __richcmp__(&self, other: PyRef<Self>, op: pyo3::basic::CompareOp) -> Py<PyAny> {
@@ -117,13 +118,11 @@ impl ItemP {
         })
     }
 
-    #[cfg(feature = "python")]
     #[getter]
     pub fn item_list(&self) -> Py<ItemPEntryList> {
         self.item_list.clone()
     }
 
-    #[cfg(feature = "python")]
     #[setter]
     pub fn set_item_list(&mut self, py: Python, value: PyObject) -> PyResult<()> {
         if let Ok(val) = value.extract::<Py<ItemPEntryList>>(py) {
@@ -140,16 +139,18 @@ impl ItemP {
         }
     }
 
-    #[cfg(feature = "python")]
     #[pyo3(name = "sir0_serialize_parts")]
     pub fn _sir0_serialize_parts(&self, py: Python) -> PyResult<PyObject> {
         Ok(self.sir0_serialize_parts()?.into_py(py))
     }
 
-    #[cfg(feature = "python")]
     #[classmethod]
     #[pyo3(name = "sir0_unwrap")]
-    pub fn _sir0_unwrap(_cls: &PyType, content_data: StBytes, data_pointer: u32) -> PyResult<Self> {
+    pub fn _sir0_unwrap(
+        _cls: &Bound<'_, PyType>,
+        content_data: StBytes,
+        data_pointer: u32,
+    ) -> PyResult<Self> {
         Ok(Self::sir0_unwrap(content_data, data_pointer)?)
     }
 }
@@ -193,14 +194,13 @@ impl ItemPWriter {
             .borrow(py)
             .sir0_serialize_parts()
             .map(|(c, _, _)| c)
-            .map_err(|e| exceptions::PyValueError::new_err(format!("{}", e)))
+            .map_err(|e| PyValueError::new_err(format!("{}", e)))
     }
 }
 
-#[cfg(feature = "python")]
-pub(crate) fn create_st_item_p_module(py: Python) -> PyResult<(&str, &PyModule)> {
+pub(crate) fn create_st_item_p_module(py: Python) -> PyResult<(&str, Bound<'_, PyModule>)> {
     let name: &'static str = "skytemple_rust.st_item_p";
-    let m = PyModule::new(py, name)?;
+    let m = PyModule::new_bound(py, name)?;
     m.add_class::<ItemPEntry>()?;
     m.add_class::<ItemPEntryList>()?;
     m.add_class::<ItemP>()?;

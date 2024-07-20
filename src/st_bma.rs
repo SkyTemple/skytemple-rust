@@ -1,5 +1,5 @@
 /*
- * Copyright 2021-2022 Capypara and the SkyTemple Contributors
+ * Copyright 2021-2024 Capypara and the SkyTemple Contributors
  *
  * This file is part of SkyTemple.
  *
@@ -26,19 +26,17 @@ use crate::gettext::gettext;
 use crate::image::tiled::TiledImage;
 use crate::image::tilemap_entry::{InputTilemapEntry, TilemapEntry};
 use crate::image::{In256ColIndexedImage, InIndexedImage, IndexedImage, Palette, Raster};
-use crate::python::*;
 use crate::st_bpa::input::InputBpa;
-#[cfg(not(feature = "python"))]
-use crate::st_bpc::input::BpcProvider;
 use crate::st_bpc::input::InputBpc;
 use crate::st_bpc::BPC_TILE_DIM;
-#[cfg(not(feature = "python"))]
-use crate::st_bpl::input::BplProvider;
 use crate::st_bpl::input::InputBpl;
 use crate::st_bpl::{BPL_IMG_PAL_LEN, BPL_MAX_PAL, BPL_PAL_LEN};
 use crate::util::lcm;
 use bytes::{Buf, BufMut, Bytes, BytesMut};
 use itertools::Itertools;
+use pyo3::exceptions::PyValueError;
+use pyo3::prelude::*;
+use pyo3::pyclass;
 use std::io::Cursor;
 use std::iter::{Copied, Enumerate};
 use std::slice::Iter;
@@ -138,7 +136,7 @@ impl Bma {
 
             while decompressed_data.len() < stop_when_size {
                 if !NrlCompRead::nrl_has_remaining(&data) {
-                    return Err(exceptions::PyValueError::new_err(format!(
+                    return Err(PyValueError::new_err(format!(
                         "BMA Collision Decompressor: End result length unexpected. Should be {}, is {}.",
                         stop_when_size, decompressed_data.len()
                     )));
@@ -464,7 +462,7 @@ impl Bma {
                 .as_ref()
                 .map_or(false, |upper_img| upper_img.0 .1 != expected_width)
         {
-            return Err(exceptions::PyValueError::new_err(gettext!(
+            return Err(PyValueError::new_err(gettext!(
                 "Can not import map background: Width of both images must match the current map width: {}px",
                 expected_width
             )));
@@ -476,7 +474,7 @@ impl Bma {
                 .as_ref()
                 .map_or(false, |upper_img| upper_img.0 .2 != expected_height)
         {
-            return Err(exceptions::PyValueError::new_err(gettext!(
+            return Err(PyValueError::new_err(gettext!(
                 "Can not import map background: Height of both images must match the current map width: {}px",
                 expected_height
             )));
@@ -938,10 +936,9 @@ impl BmaWriter {
     }
 }
 
-#[cfg(feature = "python")]
-pub(crate) fn create_st_bma_module(py: Python) -> PyResult<(&str, &PyModule)> {
+pub(crate) fn create_st_bma_module(py: Python) -> PyResult<(&str, Bound<'_, PyModule>)> {
     let name: &'static str = "skytemple_rust.st_bma";
-    let m = PyModule::new(py, name)?;
+    let m = PyModule::new_bound(py, name)?;
     m.add_class::<Bma>()?;
     m.add_class::<BmaWriter>()?;
 

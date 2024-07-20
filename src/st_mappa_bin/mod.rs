@@ -1,5 +1,5 @@
 /*
- * Copyright 2021-2022 Capypara and the SkyTemple Contributors
+ * Copyright 2021-2024 Capypara and the SkyTemple Contributors
  *
  * This file is part of SkyTemple.
  *
@@ -23,7 +23,7 @@ mod layout;
 mod mappa;
 mod minimize;
 mod monster_list;
-#[cfg(feature = "python")]
+
 mod pymodule;
 mod trap_list;
 
@@ -33,6 +33,6 @@ pub use crate::st_mappa_bin::item_list::*;
 pub use crate::st_mappa_bin::layout::*;
 pub use crate::st_mappa_bin::mappa::*;
 pub use crate::st_mappa_bin::monster_list::*;
-#[cfg(feature = "python")]
+
 pub(crate) use crate::st_mappa_bin::pymodule::create_st_mappa_bin_module;
 pub use crate::st_mappa_bin::trap_list::*;

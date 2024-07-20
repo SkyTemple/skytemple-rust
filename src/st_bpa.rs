@@ -1,5 +1,5 @@
 /*
- * Copyright 2021-2022 Capypara and the SkyTemple Contributors
+ * Copyright 2021-2024 Capypara and the SkyTemple Contributors
  *
  * This file is part of SkyTemple.
  *
@@ -16,15 +16,19 @@
  * You should have received a copy of the GNU General Public License
  * along with SkyTemple.  If not, see <https://www.gnu.org/licenses/>.
  */
+use std::cmp::Ordering;
+use std::mem::take;
+
+use bytes::{Buf, BufMut};
+use pyo3::exceptions::PyValueError;
+use pyo3::prelude::*;
+use pyo3::types::PyType;
+
 use crate::bytes::StBytes;
 use crate::gettext::gettext;
 use crate::image::tiled::TiledImage;
 use crate::image::tilemap_entry::TilemapEntry;
 use crate::image::{In256ColIndexedImage, InIndexedImage, IndexedImage, PixelGenerator};
-use crate::python::*;
-use bytes::{Buf, BufMut};
-use std::cmp::Ordering;
-use std::mem::take;
 
 pub const BPA_TILE_DIM: usize = 8;
 
@@ -89,7 +93,7 @@ impl Bpa {
     }
     /// Returns a new empty Bpa.
     #[classmethod]
-    pub fn new_empty(_cls: &PyType) -> PyResult<Self> {
+    pub fn new_empty(_cls: &Bound<'_, PyType>) -> PyResult<Self> {
         Ok(Self {
             number_of_tiles: 0,
             number_of_frames: 0,
@@ -230,7 +234,7 @@ impl Bpa {
                 first_image_dims = Some((w, h));
             }
             if Some((w, h)) != first_image_dims {
-                return Err(exceptions::PyValueError::new_err(gettext(
+                return Err(PyValueError::new_err(gettext(
                     "The dimensions of all images must be the same.",
                 )));
             }
@@ -332,10 +336,9 @@ impl BpaWriter {
     }
 }
 
-#[cfg(feature = "python")]
-pub(crate) fn create_st_bpa_module(py: Python) -> PyResult<(&str, &PyModule)> {
+pub(crate) fn create_st_bpa_module(py: Python) -> PyResult<(&str, Bound<'_, PyModule>)> {
     let name: &'static str = "skytemple_rust.st_bpa";
-    let m = PyModule::new(py, name)?;
+    let m = PyModule::new_bound(py, name)?;
     m.add_class::<BpaFrameInfo>()?;
     m.add_class::<Bpa>()?;
     m.add_class::<BpaWriter>()?;
@@ -346,12 +349,13 @@ pub(crate) fn create_st_bpa_module(py: Python) -> PyResult<(&str, &PyModule)> {
 /////////////////////////
 /////////////////////////
 // BPAs as inputs (for compatibility of including other BPA implementations from Python)
-#[cfg(feature = "python")]
+
 pub mod input {
-    use crate::bytes::StBytes;
-    use crate::python::*;
-    use crate::st_bpa::{Bpa, BpaFrameInfo};
+    use pyo3::prelude::*;
     use pyo3::types::PyTuple;
+
+    use crate::bytes::StBytes;
+    use crate::st_bpa::{Bpa, BpaFrameInfo};
 
     pub trait BpaProvider: ToPyObject {
         fn get_number_of_tiles(&self, py: Python) -> PyResult<u16>;
@@ -395,7 +399,7 @@ pub mod input {
         }
 
         fn provide_tiles_for_frame(&self, frame: u16, py: Python) -> PyResult<Vec<StBytes>> {
-            let args = PyTuple::new(py, [frame]);
+            let args = PyTuple::new_bound(py, [frame]);
             self.call_method1(py, "tiles_for_frame", args)?.extract(py)
         }
 
@@ -423,7 +427,7 @@ pub mod input {
     pub struct InputBpa(pub Box<dyn BpaProvider>);
 
     impl<'source> FromPyObject<'source> for InputBpa {
-        fn extract(ob: &'source PyAny) -> PyResult<Self> {
+        fn extract_bound(ob: &Bound<'source, PyAny>) -> PyResult<Self> {
             if let Ok(obj) = ob.extract::<Py<Bpa>>() {
                 Ok(Self(Box::new(obj)))
             } else {
@@ -460,42 +464,6 @@ pub mod input {
                     .unwrap(),
                 ))
             })
-        }
-    }
-}
-
-#[cfg(not(feature = "python"))]
-pub mod input {
-    use crate::bytes::StBytes;
-    use crate::python::{PyResult, Python};
-    use crate::st_bpa::Bpa;
-
-    pub trait BpaProvider {
-        fn get_number_of_tiles(&self, py: Python) -> PyResult<u16>;
-        fn get_number_of_frames(&self, py: Python) -> PyResult<u16>;
-        fn provide_tiles_for_frame(&self, frame: u16, py: Python) -> PyResult<Vec<StBytes>>;
-    }
-
-    impl BpaProvider for Bpa {
-        fn get_number_of_tiles(&self, _py: Python) -> PyResult<u16> {
-            Ok(self.number_of_tiles)
-        }
-
-        fn get_number_of_frames(&self, py: Python) -> PyResult<u16> {
-            Ok(self.number_of_frames)
-        }
-
-        fn provide_tiles_for_frame(&self, frame: u16, py: Python) -> PyResult<Vec<StBytes>> {
-            Ok(self.tiles_for_frame(frame))
-        }
-    }
-
-    #[derive(Clone)]
-    pub struct InputBpa(pub(crate) Bpa);
-
-    impl From<InputBpa> for Bpa {
-        fn from(obj: InputBpa) -> Self {
-            obj.0
         }
     }
 }

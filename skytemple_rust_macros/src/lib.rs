@@ -18,7 +18,9 @@
  */
 /** Dummy macros for using skytemple_rust without Pyo3 */
 extern crate proc_macro;
+
 use proc_macro::TokenStream;
+
 use quote::quote;
 use syn::DeriveInput;
 use syn::Ident;
@@ -63,15 +65,15 @@ fn do_enum_to_py_derive(input: DeriveInput, bytesize: Ident) -> TokenStream {
 
         impl<'source> ::pyo3::prelude::FromPyObject<'source> for #ident
         {
-            fn extract(ob: &'source ::pyo3::prelude::PyAny) -> ::pyo3::prelude::PyResult<Self> {
+            fn extract_bound(ob: &::pyo3::prelude::Bound<'source, ::pyo3::prelude::PyAny>) -> ::pyo3::prelude::PyResult<Self> {
                 if let Ok(obj) = ob.extract::<#bytesize>() {
                     <Self as packed_struct::PrimitiveEnum>::from_primitive(obj).ok_or_else(
-                        || exceptions::PyTypeError::new_err(
+                        || ::pyo3::exceptions::PyTypeError::new_err(
                             "Invalid value to convert into enum.",
                         )
                     )
                 } else {
-                    Err(exceptions::PyTypeError::new_err(
+                    Err(::pyo3::exceptions::PyTypeError::new_err(
                         "Invalid type to convert into enum.",
                     ))
                 }

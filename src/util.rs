@@ -1,5 +1,5 @@
 /*
- * Copyright 2021-2022 Capypara and the SkyTemple Contributors
+ * Copyright 2021-2024 Capypara and the SkyTemple Contributors
  *
  * This file is part of SkyTemple.
  *
@@ -17,9 +17,8 @@
  * along with SkyTemple.  If not, see <https://www.gnu.org/licenses/>.
  */
 use crate::bytes::{AsStBytes, StBytes};
-use crate::python::PyErr;
-use crate::PyResult;
 use bytes::BytesMut;
+use pyo3::{PyErr, PyResult};
 use std::cmp::{max, min};
 use std::fmt::{Debug, Formatter};
 use std::hash::{Hash, Hasher};

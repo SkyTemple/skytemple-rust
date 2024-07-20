@@ -1,5 +1,5 @@
 /*
- * Copyright 2021-2022 Capypara and the SkyTemple Contributors
+ * Copyright 2021-2024 Capypara and the SkyTemple Contributors
  *
  * This file is part of SkyTemple.
  *
@@ -16,11 +16,11 @@
  * You should have received a copy of the GNU General Public License
  * along with SkyTemple.  If not, see <https://www.gnu.org/licenses/>.
  */
-use crate::python::*;
 use crate::st_mappa_bin::{
     MappaFloorLayout, MappaItemList, MappaMonster, MappaMonsterList, MappaTrapList,
 };
 use crate::util::Lazy;
+use pyo3::prelude::*;
 use std::ops::Deref;
 
 #[pyclass(module = "skytemple_rust.st_mappa_bin")]
@@ -67,26 +67,26 @@ impl MappaFloor {
     }
 
     #[getter]
-    #[cfg(feature = "python")]
+
     pub fn layout(&mut self) -> PyResult<Py<MappaFloorLayout>> {
         Ok(self.layout.instance()?.clone())
     }
 
     #[setter]
-    #[cfg(feature = "python")]
+
     pub fn set_layout(&mut self, value: Py<MappaFloorLayout>) -> PyResult<()> {
         self.layout = Lazy::Instance(value);
         Ok(())
     }
 
     #[getter]
-    #[cfg(feature = "python")]
+
     pub fn monsters(&mut self) -> PyResult<Py<MappaMonsterList>> {
         Ok(self.monsters.instance()?.clone())
     }
 
     #[setter]
-    #[cfg(feature = "python")]
+
     pub fn set_monsters(&mut self, py: Python, value: PyObject) -> PyResult<()> {
         if let Ok(val) = value.extract::<Py<MappaMonsterList>>(py) {
             self.monsters = Lazy::Instance(val);
@@ -103,97 +103,96 @@ impl MappaFloor {
     }
 
     #[getter]
-    #[cfg(feature = "python")]
+
     pub fn traps(&mut self) -> PyResult<Py<MappaTrapList>> {
         Ok(self.traps.instance()?.clone())
     }
 
     #[setter]
-    #[cfg(feature = "python")]
+
     pub fn set_traps(&mut self, value: Py<MappaTrapList>) -> PyResult<()> {
         self.traps = Lazy::Instance(value);
         Ok(())
     }
 
     #[getter]
-    #[cfg(feature = "python")]
+
     pub fn floor_items(&mut self) -> PyResult<Py<MappaItemList>> {
         Ok(self.floor_items.instance()?.clone())
     }
 
     #[setter]
-    #[cfg(feature = "python")]
+
     pub fn set_floor_items(&mut self, value: Py<MappaItemList>) -> PyResult<()> {
         self.floor_items = Lazy::Instance(value);
         Ok(())
     }
 
     #[getter]
-    #[cfg(feature = "python")]
+
     pub fn shop_items(&mut self) -> PyResult<Py<MappaItemList>> {
         Ok(self.shop_items.instance()?.clone())
     }
 
     #[setter]
-    #[cfg(feature = "python")]
+
     pub fn set_shop_items(&mut self, value: Py<MappaItemList>) -> PyResult<()> {
         self.shop_items = Lazy::Instance(value);
         Ok(())
     }
 
     #[getter]
-    #[cfg(feature = "python")]
+
     pub fn monster_house_items(&mut self) -> PyResult<Py<MappaItemList>> {
         Ok(self.monster_house_items.instance()?.clone())
     }
 
     #[setter]
-    #[cfg(feature = "python")]
+
     pub fn set_monster_house_items(&mut self, value: Py<MappaItemList>) -> PyResult<()> {
         self.monster_house_items = Lazy::Instance(value);
         Ok(())
     }
 
     #[getter]
-    #[cfg(feature = "python")]
+
     pub fn buried_items(&mut self) -> PyResult<Py<MappaItemList>> {
         Ok(self.buried_items.instance()?.clone())
     }
 
     #[setter]
-    #[cfg(feature = "python")]
+
     pub fn set_buried_items(&mut self, value: Py<MappaItemList>) -> PyResult<()> {
         self.buried_items = Lazy::Instance(value);
         Ok(())
     }
 
     #[getter]
-    #[cfg(feature = "python")]
+
     pub fn unk_items1(&mut self) -> PyResult<Py<MappaItemList>> {
         Ok(self.unk_items1.instance()?.clone())
     }
 
     #[setter]
-    #[cfg(feature = "python")]
+
     pub fn set_unk_items1(&mut self, value: Py<MappaItemList>) -> PyResult<()> {
         self.unk_items1 = Lazy::Instance(value);
         Ok(())
     }
 
     #[getter]
-    #[cfg(feature = "python")]
+
     pub fn unk_items2(&mut self) -> PyResult<Py<MappaItemList>> {
         Ok(self.unk_items2.instance()?.clone())
     }
 
     #[setter]
-    #[cfg(feature = "python")]
+
     pub fn set_unk_items2(&mut self, value: Py<MappaItemList>) -> PyResult<()> {
         self.unk_items2 = Lazy::Instance(value);
         Ok(())
     }
 
-    #[cfg(feature = "python")]
     fn __richcmp__(&self, other: PyRef<Self>, op: pyo3::basic::CompareOp) -> Py<PyAny> {
         let py = other.py();
         match op {

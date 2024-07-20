@@ -1,5 +1,5 @@
 /*
- * Copyright 2021-2022 Capypara and the SkyTemple Contributors
+ * Copyright 2021-2024 Capypara and the SkyTemple Contributors
  *
  * This file is part of SkyTemple.
  *
@@ -16,13 +16,12 @@
  * You should have received a copy of the GNU General Public License
  * along with SkyTemple.  If not, see <https://www.gnu.org/licenses/>.
  */
-use crate::python::*;
 use packed_struct::prelude::*;
+use pyo3::types::PyAnyMethods;
 
 pub const GUARANTEED: u16 = 0xFFFF;
 
-#[derive(Clone, Copy, PartialEq, Eq)]
-#[cfg_attr(feature = "python", derive(EnumToPy_u16))]
+#[derive(Clone, Copy, PartialEq, Eq, EnumToPy_u16)]
 pub enum Probability {
     Percentage(u16), // as fixed int.
     Guaranteed,
@@ -68,8 +67,7 @@ impl PrimitiveEnum for Probability {
     }
 }
 
-#[derive(PrimitiveEnum_u8, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug)]
-#[cfg_attr(feature = "python", derive(EnumToPy_u8))]
+#[derive(PrimitiveEnum_u8, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug, EnumToPy_u8)]
 pub enum MappaFloorStructureType {
     MediumLarge = 0,
     Small = 1,
@@ -89,8 +87,7 @@ pub enum MappaFloorStructureType {
     MediumLarge15 = 15,
 }
 
-#[derive(PrimitiveEnum_u8, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug)]
-#[cfg_attr(feature = "python", derive(EnumToPy_u8))]
+#[derive(PrimitiveEnum_u8, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug, EnumToPy_u8)]
 pub enum MappaFloorWeather {
     Clear = 0,
     Sunny = 1,
@@ -103,8 +100,7 @@ pub enum MappaFloorWeather {
     Random = 8,
 }
 
-#[derive(PrimitiveEnum_u8, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug)]
-#[cfg_attr(feature = "python", derive(EnumToPy_u8))]
+#[derive(PrimitiveEnum_u8, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug, EnumToPy_u8)]
 pub enum MappaFloorDarknessLevel {
     NoDarkness = 0,
     HeavyDarkness = 1,
@@ -113,8 +109,9 @@ pub enum MappaFloorDarknessLevel {
     FourTile = 4,
 }
 
-#[derive(PrimitiveEnum_u8, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug, Hash)]
-#[cfg_attr(feature = "python", derive(EnumToPy_u8))]
+#[derive(
+    PrimitiveEnum_u8, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug, Hash, EnumToPy_u8,
+)]
 pub enum MappaTrapType {
     Unused = 0,
     MudTrap = 1,

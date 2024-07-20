@@ -1,5 +1,5 @@
 /*
- * Copyright 2021-2022 Capypara and the SkyTemple Contributors
+ * Copyright 2021-2024 Capypara and the SkyTemple Contributors
  *
  * This file is part of SkyTemple.
  *
@@ -16,8 +16,7 @@
  * You should have received a copy of the GNU General Public License
  * along with SkyTemple.  If not, see <https://www.gnu.org/licenses/>.
  */
-use crate::python::*;
-#[cfg(feature = "python")]
+use pyo3::prelude::*;
 use pyo3::types::PyTuple;
 
 pub enum RomSource<T: RomFileProvider + Sized> {
@@ -25,12 +24,11 @@ pub enum RomSource<T: RomFileProvider + Sized> {
     Rom(T),
 }
 
-#[cfg(feature = "python")]
-impl<'source> FromPyObject<'source> for RomSource<&'source PyAny> {
-    fn extract(ob: &'source PyAny) -> PyResult<Self> {
+impl<'source> FromPyObject<'source> for RomSource<Bound<'source, PyAny>> {
+    fn extract_bound(ob: &Bound<'source, PyAny>) -> PyResult<Self> {
         Ok(match ob.extract::<String>().ok() {
             Some(x) => Self::Folder(x),
-            None => Self::Rom(ob),
+            None => Self::Rom(ob.clone()),
         })
     }
 }
@@ -40,10 +38,9 @@ pub trait RomFileProvider {
     fn list_files_in_folder(&self, filename: &str) -> PyResult<Vec<String>>;
 }
 
-#[cfg(feature = "python")]
-impl RomFileProvider for &PyAny {
+impl RomFileProvider for Bound<'_, PyAny> {
     fn get_file_by_name(&self, filename: &str) -> PyResult<Vec<u8>> {
-        let args = PyTuple::new(self.py(), [filename]);
+        let args = PyTuple::new_bound(self.py(), [filename]);
         self.call_method1("getFileByName", args)?.extract()
     }
     fn list_files_in_folder(&self, _filename: &str) -> PyResult<Vec<String>> {

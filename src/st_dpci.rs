@@ -1,5 +1,5 @@
 /*
- * Copyright 2021-2022 Capypara and the SkyTemple Contributors
+ * Copyright 2021-2024 Capypara and the SkyTemple Contributors
  *
  * This file is part of SkyTemple.
  *
@@ -16,11 +16,12 @@
  * You should have received a copy of the GNU General Public License
  * along with SkyTemple.  If not, see <https://www.gnu.org/licenses/>.
  */
+use pyo3::prelude::*;
+
 use crate::bytes::StBytes;
 use crate::image::tiled::TiledImage;
 use crate::image::tilemap_entry::TilemapEntry;
 use crate::image::{In256ColIndexedImage, InIndexedImage, IndexedImage, PixelGenerator};
-use crate::python::*;
 
 pub const DPCI_TILE_DIM: usize = 8;
 
@@ -116,10 +117,9 @@ impl DpciWriter {
     }
 }
 
-#[cfg(feature = "python")]
-pub(crate) fn create_st_dpci_module(py: Python) -> PyResult<(&str, &PyModule)> {
+pub(crate) fn create_st_dpci_module(py: Python) -> PyResult<(&str, Bound<'_, PyModule>)> {
     let name: &'static str = "skytemple_rust.st_dpci";
-    let m = PyModule::new(py, name)?;
+    let m = PyModule::new_bound(py, name)?;
     m.add_class::<Dpci>()?;
     m.add_class::<DpciWriter>()?;
 
@@ -129,12 +129,13 @@ pub(crate) fn create_st_dpci_module(py: Python) -> PyResult<(&str, &PyModule)> {
 /////////////////////////
 /////////////////////////
 // DPCIs as inputs (for compatibility of including other DPCI implementations from Python)
-#[cfg(feature = "python")]
+
 pub mod input {
-    use crate::bytes::StBytes;
-    use crate::python::*;
-    use crate::st_dpci::Dpci;
+    use pyo3::prelude::*;
     use pyo3::types::PyTuple;
+
+    use crate::bytes::StBytes;
+    use crate::st_dpci::Dpci;
 
     pub trait DpciProvider: ToPyObject {
         fn get_tiles(&self, py: Python) -> PyResult<Vec<StBytes>>;
@@ -174,7 +175,7 @@ pub mod input {
             contains_null_tile: bool,
             py: Python,
         ) -> PyResult<()> {
-            let args = PyTuple::new(py, [tiles.into_py(py), contains_null_tile.into_py(py)]);
+            let args = PyTuple::new_bound(py, [tiles.into_py(py), contains_null_tile.into_py(py)]);
             self.call_method1(py, "import_tiles", args).map(|_| ())
         }
     }
@@ -182,7 +183,7 @@ pub mod input {
     pub struct InputDpci(pub Box<dyn DpciProvider>);
 
     impl<'source> FromPyObject<'source> for InputDpci {
-        fn extract(ob: &'source PyAny) -> PyResult<Self> {
+        fn extract_bound(ob: &Bound<'source, PyAny>) -> PyResult<Self> {
             if let Ok(obj) = ob.extract::<Py<Dpci>>() {
                 Ok(Self(Box::new(obj)))
             } else {
@@ -200,49 +201,6 @@ pub mod input {
     impl From<InputDpci> for Dpci {
         fn from(obj: InputDpci) -> Self {
             Python::with_gil(|py| obj.0.to_object(py).extract(py).unwrap())
-        }
-    }
-}
-
-#[cfg(not(feature = "python"))]
-pub mod input {
-    use crate::bytes::StBytes;
-    use crate::no_python::Python;
-    use crate::st_dpci::Dpci;
-    use crate::PyResult;
-
-    pub trait DpciProvider {
-        fn get_tiles(&self, py: Python) -> PyResult<Vec<StBytes>>;
-
-        fn do_import_tiles(
-            &mut self,
-            tiles: Vec<StBytes>,
-            contains_null_tile: bool,
-            py: Python,
-        ) -> PyResult<()>;
-    }
-
-    impl DpciProvider for Dpci {
-        fn get_tiles(&self, _py: Python) -> PyResult<Vec<StBytes>> {
-            Ok(self.tiles.clone())
-        }
-
-        fn do_import_tiles(
-            &mut self,
-            tiles: Vec<StBytes>,
-            contains_null_tile: bool,
-            _py: Python,
-        ) -> PyResult<()> {
-            self.import_tiles(tiles, contains_null_tile);
-            Ok(())
-        }
-    }
-
-    pub struct InputDpci(pub(crate) Dpci);
-
-    impl From<InputDpci> for Dpci {
-        fn from(obj: InputDpci) -> Self {
-            obj.0
         }
     }
 }

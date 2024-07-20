@@ -1,5 +1,5 @@
 /*
- * Copyright 2021-2022 Capypara and the SkyTemple Contributors
+ * Copyright 2021-2024 Capypara and the SkyTemple Contributors
  *
  * This file is part of SkyTemple.
  *
@@ -17,14 +17,16 @@
  * along with SkyTemple.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-use crate::python::*;
 use pmd_wan as lib;
 use pmd_wan::WanError;
+use pyo3::exceptions::{PyIOError, PyValueError};
+use pyo3::prelude::*;
 use std::convert::TryInto;
 use std::io::Cursor;
 
 use crate::bytes::StBytes;
 use crate::image::{In16ColIndexedImage, InIndexedImage};
+use crate::python::create_value_user_error;
 
 /// A PMD2 WAN sprite.
 #[pyclass(module = "skytemple_rust.pmd_wan")]
@@ -89,7 +91,7 @@ impl FragmentBytes {
                         target.extend(v)
                     }
                     None => {
-                        return Err(exceptions::PyValueError::new_err(format!(
+                        return Err(PyValueError::new_err(format!(
                             "An image reference the non-existing color with the id {}",
                             color_id
                         )))
@@ -400,17 +402,17 @@ impl WanImage {
 
 fn convert_error(err: lib::WanError) -> PyErr {
     match err {
-        WanError::IOError(_) => exceptions::PyIOError::new_err("an io error happened"),
-        err => exceptions::PyValueError::new_err(format!("{}", err)),
+        WanError::IOError(_) => PyIOError::new_err("an io error happened"),
+        err => PyValueError::new_err(format!("{}", err)),
     }
 }
 
 fn convert_decode_fragment_bytes_error(err: lib::DecodeFragmentBytesError) -> PyErr {
-    exceptions::PyValueError::new_err(format!("{}", err))
+    PyValueError::new_err(format!("{}", err))
 }
 
 fn convert_anyhow_error(err: anyhow::Error) -> PyErr {
-    exceptions::PyValueError::new_err(format!("{:?}", err))
+    PyValueError::new_err(format!("{:?}", err))
 }
 
 fn convert_anyhow_error_to_user(err: anyhow::Error) -> PyErr {
@@ -477,9 +479,9 @@ pub fn encode_image_to_static_wan_file(py: Python, image: PyObject) -> PyResult<
     }
 }
 
-pub(crate) fn create_pmd_wan_module(py: Python) -> PyResult<(&str, &PyModule)> {
+pub(crate) fn create_pmd_wan_module(py: Python) -> PyResult<(&str, Bound<'_, PyModule>)> {
     let name: &'static str = "skytemple_rust.pmd_wan";
-    let m = PyModule::new(py, name)?;
+    let m = PyModule::new_bound(py, name)?;
     m.add_class::<WanImage>()?;
     m.add_class::<FragmentBytesStore>()?;
     m.add_class::<FragmentBytes>()?;
@@ -494,7 +496,10 @@ pub(crate) fn create_pmd_wan_module(py: Python) -> PyResult<(&str, &PyModule)> {
     m.add_class::<AnimationFrame>()?;
     m.add_class::<Palette>()?;
     m.add_class::<SpriteType>()?;
-    m.add_function(wrap_pyfunction!(encode_image_to_static_wan_file, m)?)?;
+    m.add_function(wrap_pyfunction!(
+        encode_image_to_static_wan_file,
+        m.clone()
+    )?)?;
 
     Ok((name, m))
 }

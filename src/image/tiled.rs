@@ -1,5 +1,5 @@
 /*
- * Copyright 2021-2022 Capypara and the SkyTemple Contributors
+ * Copyright 2021-2024 Capypara and the SkyTemple Contributors
  *
  * This file is part of SkyTemple.
  *
@@ -23,9 +23,11 @@ use crate::image::tilemap_entry::{ProvidesTilemapEntry, TilemapEntry};
 use crate::image::{
     IndexedImage, Raster, Tile, TiledImageData, TiledImageDataSeq, Tiles, TilesGenerator,
 };
-use crate::python::*;
+use crate::python::create_value_user_error;
 use crate::util::init_default_vec;
 use log::warn;
+use pyo3::exceptions::PyValueError;
+use pyo3::prelude::*;
 use std::vec::IntoIter;
 
 // ---
@@ -107,7 +109,7 @@ impl TiledImage {
         optimize_chunks: bool,
     ) -> PyResult<TiledImageData> {
         if n_img.0 .1 != img_width || n_img.0 .2 != img_height {
-            return Err(exceptions::PyValueError::new_err(format!(
+            return Err(PyValueError::new_err(format!(
                 "Can not convert PIL image to PMD tiled image: Image dimensions must be {}x{}px.",
                 img_width, img_height
             )));

@@ -1,5 +1,5 @@
 /*
- * Copyright 2021-2022 Capypara and the SkyTemple Contributors
+ * Copyright 2021-2024 Capypara and the SkyTemple Contributors
  *
  * This file is part of SkyTemple.
  *
@@ -17,8 +17,10 @@
  * along with SkyTemple.  If not, see <https://www.gnu.org/licenses/>.
  */
 use crate::bytes::StBytesMut;
-use crate::python::*;
 use bytes::{Buf, BufMut, Bytes, BytesMut};
+use pyo3::exceptions::PyValueError;
+use pyo3::prelude::*;
+use pyo3::types::PyType;
 use std::io::Cursor;
 
 const RLE_MAX_LOOKAHEAD_SIZE: u8 = 127;
@@ -97,7 +99,7 @@ where
 
         while slf.decompressed_data.len() < slf.stop_when_size {
             if !slf.compressed_data.has_remaining() {
-                return Err(exceptions::PyValueError::new_err(format!(
+                return Err(PyValueError::new_err(format!(
                     "BMA Collision RLE Decompressor: End result length unexpected. \
                     Should be {}, is {}.",
                     slf.stop_when_size,
@@ -174,27 +176,30 @@ impl BmaCollisionRleCompressionContainer {
         res.put(self.compressed_data.clone());
         res.into()
     }
-    #[cfg(feature = "python")]
+
     #[classmethod]
     #[pyo3(signature = (data, byte_offset = 0))]
     #[pyo3(name = "cont_size")]
-    fn _cont_size(_cls: &PyType, data: crate::bytes::StBytes, byte_offset: usize) -> u16 {
+    fn _cont_size(
+        _cls: &Bound<'_, PyType>,
+        data: crate::bytes::StBytes,
+        byte_offset: usize,
+    ) -> u16 {
         Self::cont_size(data.0, byte_offset)
     }
-    #[cfg(feature = "python")]
+
     #[classmethod]
     #[pyo3(name = "compress")]
-    fn _compress(_cls: &PyType, data: &[u8]) -> PyResult<Self> {
+    fn _compress(_cls: &Bound<'_, PyType>, data: &[u8]) -> PyResult<Self> {
         Self::compress(data)
     }
 }
 
-#[cfg(feature = "python")]
 pub(crate) fn create_st_bma_collision_rle_compression_module(
     py: Python,
-) -> PyResult<(&str, &PyModule)> {
+) -> PyResult<(&str, Bound<'_, PyModule>)> {
     let name: &'static str = "skytemple_rust._st_bma_collision_rle_compression";
-    let m = PyModule::new(py, name)?;
+    let m = PyModule::new_bound(py, name)?;
     m.add_class::<BmaCollisionRleCompressionContainer>()?;
 
     Ok((name, m))

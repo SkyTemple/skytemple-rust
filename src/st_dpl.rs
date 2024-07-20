@@ -1,5 +1,5 @@
 /*
- * Copyright 2021-2023 Capypara and the SkyTemple Contributors
+ * Copyright 2021-2024 Capypara and the SkyTemple Contributors
  *
  * This file is part of SkyTemple.
  *
@@ -16,9 +16,10 @@
  * You should have received a copy of the GNU General Public License
  * along with SkyTemple.  If not, see <https://www.gnu.org/licenses/>.
  */
-use crate::bytes::StBytes;
-use crate::python::*;
 use bytes::{Buf, BufMut};
+use pyo3::prelude::*;
+
+use crate::bytes::StBytes;
 
 /// Length of a palette in colors.
 pub const DPL_PAL_LEN: usize = 16;
@@ -92,10 +93,9 @@ impl DplWriter {
     }
 }
 
-#[cfg(feature = "python")]
-pub(crate) fn create_st_dpl_module(py: Python) -> PyResult<(&str, &PyModule)> {
+pub(crate) fn create_st_dpl_module(py: Python) -> PyResult<(&str, Bound<'_, PyModule>)> {
     let name: &'static str = "skytemple_rust.st_dpl";
-    let m = PyModule::new(py, name)?;
+    let m = PyModule::new_bound(py, name)?;
     m.add_class::<Dpl>()?;
     m.add_class::<DplWriter>()?;
 
@@ -105,9 +105,10 @@ pub(crate) fn create_st_dpl_module(py: Python) -> PyResult<(&str, &PyModule)> {
 /////////////////////////
 /////////////////////////
 // DPLs as inputs (for compatibility of including other DPL implementations from Python)
-#[cfg(feature = "python")]
+
 pub mod input {
-    use crate::python::*;
+    use pyo3::prelude::*;
+
     use crate::st_dpl::Dpl;
 
     pub trait DplProvider: ToPyObject {
@@ -123,7 +124,7 @@ pub mod input {
 
     impl DplProvider for PyObject {
         fn set_palettes(&mut self, value: Vec<Vec<u8>>, py: Python) -> PyResult<()> {
-            let self_ref = self.as_ref(py);
+            let self_ref = self.bind(py);
             self_ref.setattr("palettes", value)
         }
     }
@@ -131,7 +132,7 @@ pub mod input {
     pub struct InputDpl(pub Box<dyn DplProvider>);
 
     impl<'source> FromPyObject<'source> for InputDpl {
-        fn extract(ob: &'source PyAny) -> PyResult<Self> {
+        fn extract_bound(ob: &Bound<'source, PyAny>) -> PyResult<Self> {
             if let Ok(obj) = ob.extract::<Py<Dpl>>() {
                 Ok(Self(Box::new(obj)))
             } else {
@@ -149,32 +150,6 @@ pub mod input {
     impl From<InputDpl> for Dpl {
         fn from(obj: InputDpl) -> Self {
             Python::with_gil(|py| obj.0.to_object(py).extract(py).unwrap())
-        }
-    }
-}
-
-#[cfg(not(feature = "python"))]
-pub mod input {
-    use crate::no_python::Python;
-    use crate::st_dpl::Dpl;
-    use crate::PyResult;
-
-    pub trait DplProvider {
-        fn set_palettes(&mut self, value: Vec<Vec<u8>>, py: Python) -> PyResult<()>;
-    }
-
-    impl DplProvider for Dpl {
-        fn set_palettes(&mut self, value: Vec<Vec<u8>>, _py: Python) -> PyResult<()> {
-            self.palettes = value;
-            Ok(())
-        }
-    }
-
-    pub struct InputDpl(pub(crate) Dpl);
-
-    impl From<InputDpl> for Dpl {
-        fn from(obj: InputDpl) -> Self {
-            obj.0
         }
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright 2021-2022 Capypara and the SkyTemple Contributors
+ * Copyright 2021-2024 Capypara and the SkyTemple Contributors
  *
  * This file is part of SkyTemple.
  *
@@ -19,8 +19,8 @@
 use crate::bytes::StBytes;
 use crate::encoding::pmd2_encoder::Pmd2Encoding;
 use crate::err::convert_encoding_err;
-use crate::python::*;
 use encoding::{DecoderTrap, EncoderTrap, Encoding};
+use pyo3::prelude::*;
 
 #[pyclass(module = "skytemple_rust.st_string")]
 #[derive(Clone)]
@@ -60,10 +60,9 @@ impl StPmd2StringEncoder {
     }
 }
 
-#[cfg(feature = "python")]
-pub(crate) fn create_st_string_module(py: Python) -> PyResult<(&str, &PyModule)> {
+pub(crate) fn create_st_string_module(py: Python) -> PyResult<(&str, Bound<'_, PyModule>)> {
     let name: &'static str = "skytemple_rust.st_string";
-    let m = PyModule::new(py, name)?;
+    let m = PyModule::new_bound(py, name)?;
     m.add_class::<StPmd2String>()?;
     m.add_class::<StPmd2StringEncoder>()?;
 

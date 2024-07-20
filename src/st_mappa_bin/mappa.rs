@@ -1,5 +1,5 @@
 /*
- * Copyright 2021-2022 Capypara and the SkyTemple Contributors
+ * Copyright 2021-2024 Capypara and the SkyTemple Contributors
  *
  * This file is part of SkyTemple.
  *
@@ -17,12 +17,14 @@
  * along with SkyTemple.  If not, see <https://www.gnu.org/licenses/>.
  */
 use crate::bytes::StBytes;
-use crate::python::*;
 use crate::st_mappa_bin::minimize::MinimizedMappa;
 use crate::st_mappa_bin::MappaFloor;
 use crate::st_sir0::{Sir0Error, Sir0Result, Sir0Serializable};
 use crate::util::Lazy;
 use bytes::Buf;
+use pyo3::exceptions::{PyIndexError, PyValueError};
+use pyo3::prelude::*;
+use pyo3::types::PyType;
 use std::ops::Deref;
 
 struct MappaReader {
@@ -38,13 +40,11 @@ impl MappaReader {
     pub fn new(source: StBytes, header_pointer: u32) -> PyResult<Self> {
         let mut header = source.clone();
         if source.len() <= header_pointer as usize {
-            return Err(exceptions::PyValueError::new_err(
-                "Mappa Header pointer out of bounds.",
-            ));
+            return Err(PyValueError::new_err("Mappa Header pointer out of bounds."));
         }
         header.advance(header_pointer as usize);
         if header.len() < 20 {
-            Err(exceptions::PyValueError::new_err("Mappa Header too short."))
+            Err(PyValueError::new_err("Mappa Header too short."))
         } else {
             Ok(Self {
                 source,
@@ -64,7 +64,7 @@ impl MappaReader {
     fn collect_floor_lists(&self) -> PyResult<Vec<Vec<Py<MappaFloor>>>> {
         let mut buf = &self.source[self.dungeon_list_index_start..self.floor_layout_data_start];
         if buf.len() % 4 != 0 {
-            return Err(exceptions::PyValueError::new_err(
+            return Err(PyValueError::new_err(
                 "Can't read floor lists: Invalid list data pointer area size.",
             ));
         }
@@ -159,7 +159,7 @@ impl MappaReader {
     fn read_floor_data_pnt(&self, index_list_start: usize, index: u16) -> PyResult<usize> {
         let idx = index_list_start + 4 * (index as usize);
         if idx + 4 > self.source.len() {
-            Err(exceptions::PyIndexError::new_err(format!(
+            Err(PyIndexError::new_err(format!(
                 "Pointer in floor list out of bounds ({} > {}).",
                 idx + 4,
                 self.source.len()
@@ -171,7 +171,7 @@ impl MappaReader {
     fn resolve_pointer(&self, pnt: usize, len: Option<usize>) -> PyResult<StBytes> {
         let mut b = self.source.clone();
         if pnt > b.len() {
-            Err(exceptions::PyIndexError::new_err(
+            Err(PyIndexError::new_err(
                 "Pointer in floor list out of bounds.",
             ))
         } else {
@@ -209,9 +209,7 @@ impl MappaBin {
             self.floor_lists.remove(index);
             Ok(())
         } else {
-            Err(exceptions::PyIndexError::new_err(
-                "Floor list index out of bounds",
-            ))
+            Err(PyIndexError::new_err("Floor list index out of bounds"))
         }
     }
 
@@ -224,9 +222,7 @@ impl MappaBin {
             self.floor_lists[floor_list_index].push(floor);
             Ok(())
         } else {
-            Err(exceptions::PyIndexError::new_err(
-                "Floor list index out of bounds",
-            ))
+            Err(PyIndexError::new_err("Floor list index out of bounds"))
         }
     }
 
@@ -238,17 +234,13 @@ impl MappaBin {
     ) -> PyResult<()> {
         if floor_list_index < self.floor_lists.len() {
             if insert_index > self.floor_lists[floor_list_index].len() {
-                Err(exceptions::PyIndexError::new_err(
-                    "Floor insert index out of bounds",
-                ))
+                Err(PyIndexError::new_err("Floor insert index out of bounds"))
             } else {
                 self.floor_lists[floor_list_index].insert(insert_index, floor);
                 Ok(())
             }
         } else {
-            Err(exceptions::PyIndexError::new_err(
-                "Floor list index out of bounds",
-            ))
+            Err(PyIndexError::new_err("Floor list index out of bounds"))
         }
     }
 
@@ -263,31 +255,28 @@ impl MappaBin {
                 floor_list.remove(floor_index);
                 Ok(())
             } else {
-                Err(exceptions::PyIndexError::new_err(
-                    "Floor index out of bounds",
-                ))
+                Err(PyIndexError::new_err("Floor index out of bounds"))
             }
         } else {
-            Err(exceptions::PyIndexError::new_err(
-                "Floor list index out of bounds",
-            ))
+            Err(PyIndexError::new_err("Floor list index out of bounds"))
         }
     }
 
-    #[cfg(feature = "python")]
     #[pyo3(name = "sir0_serialize_parts")]
     pub fn _sir0_serialize_parts(&self, py: Python) -> PyResult<PyObject> {
         Ok(self.sir0_serialize_parts()?.into_py(py))
     }
 
-    #[cfg(feature = "python")]
     #[classmethod]
     #[pyo3(name = "sir0_unwrap")]
-    pub fn _sir0_unwrap(_cls: &PyType, content_data: StBytes, data_pointer: u32) -> PyResult<Self> {
+    pub fn _sir0_unwrap(
+        _cls: &Bound<'_, PyType>,
+        content_data: StBytes,
+        data_pointer: u32,
+    ) -> PyResult<Self> {
         Ok(Self::sir0_unwrap(content_data, data_pointer)?)
     }
 
-    #[cfg(feature = "python")]
     fn __richcmp__(&self, other: PyRef<Self>, op: pyo3::basic::CompareOp) -> Py<PyAny> {
         let py = other.py();
         match op {
@@ -352,6 +341,6 @@ impl MappaBinWriter {
             .borrow(py)
             .sir0_serialize_parts()
             .map(|(c, _, _)| c)
-            .map_err(|e| exceptions::PyValueError::new_err(format!("{}", e)))
+            .map_err(|e| PyValueError::new_err(format!("{}", e)))
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright 2021-2022 Capypara and the SkyTemple Contributors
+ * Copyright 2021-2024 Capypara and the SkyTemple Contributors
  *
  * This file is part of SkyTemple.
  *
@@ -17,17 +17,15 @@
  * along with SkyTemple.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-use crate::python::{PyModule, Python};
 use crate::st_mappa_bin::{
     MappaBin, MappaBinWriter, MappaFloor, MappaFloorLayout, MappaFloorTerrainSettings,
     MappaItemList, MappaMonster, MappaMonsterList, MappaMonsterListIterator, MappaTrapList,
 };
-use crate::PyResult;
+use pyo3::prelude::*;
 
-#[cfg(feature = "python")]
-pub(crate) fn create_st_mappa_bin_module(py: Python) -> PyResult<(&str, &PyModule)> {
+pub(crate) fn create_st_mappa_bin_module(py: Python) -> PyResult<(&str, Bound<'_, PyModule>)> {
     let name: &'static str = "skytemple_rust.st_mappa_bin";
-    let m = PyModule::new(py, name)?;
+    let m = PyModule::new_bound(py, name)?;
     m.add_class::<MappaTrapList>()?;
     m.add_class::<MappaMonster>()?;
     m.add_class::<MappaMonsterList>()?;

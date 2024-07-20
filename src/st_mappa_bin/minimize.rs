@@ -1,5 +1,5 @@
 /*
- * Copyright 2021-2022 Capypara and the SkyTemple Contributors
+ * Copyright 2021-2024 Capypara and the SkyTemple Contributors
  *
  * This file is part of SkyTemple.
  *
@@ -19,13 +19,14 @@
 
 use crate::bytes::{AsStBytes, StBytes};
 use crate::gettext::gettext;
-use crate::python::*;
 use crate::st_mappa_bin::MappaBin;
 use crate::st_sir0::{Sir0Error, Sir0Result, Sir0Serializable};
 use crate::util::pad;
 use anyhow::anyhow;
 use bytes::{BufMut, Bytes, BytesMut};
 use packed_struct::prelude::*;
+use pyo3::exceptions::PyValueError;
+use pyo3::prelude::*;
 use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
 use std::iter::once;
@@ -207,7 +208,7 @@ impl Sir0Serializable for MinimizedMappa {
                     FloorMinimized::Floor(f) => {
                         let byf = f.pack().unwrap();
                         if byf == EMPTY_MINIMIZED_FLOOR {
-                            Err(exceptions::PyValueError::new_err(gettext(
+                            Err(PyValueError::new_err(gettext(
                                 "Could not save floor: It contains too much empty data.\nThis probably happened because a lot of spawn lists are empty.\nPlease check the floors you edited and fill them with more data. If you are using the randomizer, check your allowed item list."
                             )))
                         } else {

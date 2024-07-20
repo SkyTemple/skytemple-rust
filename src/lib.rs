@@ -1,5 +1,5 @@
 /*
- * Copyright 2021-2022 Capypara and the SkyTemple Contributors
+ * Copyright 2021-2024 Capypara and the SkyTemple Contributors
  *
  * This file is part of SkyTemple.
  *
@@ -17,14 +17,9 @@
  * along with SkyTemple.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-#[cfg_attr(not(feature = "python"), allow(unused_imports))]
+extern crate core;
 #[macro_use]
 extern crate skytemple_rust_macros;
-
-#[cfg(not(feature = "python"))]
-#[macro_use]
-extern crate skytemple_rust_macros_no_py;
-extern crate core;
 
 #[macro_use]
 pub(crate) mod encoding_utils;
@@ -38,21 +33,17 @@ pub mod encoding;
 pub(crate) mod err;
 #[cfg(feature = "image")]
 pub mod image;
-#[cfg(not(feature = "python"))]
-pub mod no_python;
 pub mod python;
-#[cfg(feature = "python")]
+
 #[cfg(feature = "image")]
 mod python_image;
-#[cfg(feature = "python")]
+
 mod python_module;
 pub mod rom_source;
 pub(crate) mod util;
 
 #[cfg(feature = "compression")]
 pub mod compression;
-#[cfg(feature = "dse")]
-pub mod dse;
 #[cfg(feature = "compression")]
 pub mod st_at3px;
 #[cfg(feature = "compression")]
@@ -110,5 +101,3 @@ pub mod st_waza_p;
 pub mod pmd_wan;
 #[cfg(feature = "romfs")]
 pub mod romfs;
-
-pub type PyResult<T> = crate::python::PyResult<T>;

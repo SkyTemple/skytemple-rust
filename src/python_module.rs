@@ -1,5 +1,5 @@
 /*
- * Copyright 2021-2022 Capypara and the SkyTemple Contributors
+ * Copyright 2021-2024 Capypara and the SkyTemple Contributors
  *
  * This file is part of SkyTemple.
  *
@@ -16,8 +16,8 @@
  * You should have received a copy of the GNU General Public License
  * along with SkyTemple.  If not, see <https://www.gnu.org/licenses/>.
  */
-use crate::python::*;
 use log::info;
+use pyo3::prelude::*;
 use pyo3::types::PyDict;
 
 #[cfg(feature = "compression")]
@@ -30,10 +30,6 @@ use crate::compression::bpc_image::create_st_bpc_image_compression_module;
 use crate::compression::bpc_tilemap::create_st_bpc_tilemap_compression_module;
 #[cfg(feature = "compression")]
 use crate::compression::generic::nrl::create_st_generic_nrl_compression_module;
-#[cfg(feature = "dse")]
-use crate::dse::st_smdl::python::create_st_smdl_module;
-#[cfg(feature = "dse")]
-use crate::dse::st_swdl::python::create_st_swdl_module;
 #[cfg(feature = "image")]
 use crate::image::tilemap_entry::TilemapEntry;
 #[cfg(feature = "with_pmd_wan")]
@@ -92,11 +88,12 @@ use crate::st_string::create_st_string_module;
 use crate::st_waza_p::create_st_waza_p_module;
 
 #[pymodule]
-fn skytemple_rust(py: Python, module: &PyModule) -> PyResult<()> {
+fn skytemple_rust(py: Python, module: &Bound<'_, PyModule>) -> PyResult<()> {
     pyo3_log::init();
     info!("Loading skytemple_rust...");
-    let sys = py.import("sys")?;
-    let modules: &PyDict = sys.getattr("modules")?.downcast()?;
+    let sys = py.import_bound("sys")?;
+    let modules_raw = sys.getattr("modules")?;
+    let modules: &Bound<'_, PyDict> = modules_raw.downcast()?;
     #[cfg(feature = "sir0")]
     add_submodule(module, create_st_sir0_module(py)?, modules)?;
     #[cfg(feature = "with_pmd_wan")]
@@ -147,10 +144,6 @@ fn skytemple_rust(py: Python, module: &PyModule) -> PyResult<()> {
     add_submodule(module, create_st_waza_p_module(py)?, modules)?;
     #[cfg(feature = "mappa_bin")]
     add_submodule(module, create_st_mappa_bin_module(py)?, modules)?;
-    #[cfg(feature = "dse")]
-    add_submodule(module, create_st_smdl_module(py)?, modules)?;
-    #[cfg(feature = "dse")]
-    add_submodule(module, create_st_swdl_module(py)?, modules)?;
     #[cfg(feature = "strings")]
     add_submodule(module, create_st_string_module(py)?, modules)?;
     #[cfg(feature = "script_var_table")]
@@ -191,11 +184,11 @@ fn skytemple_rust(py: Python, module: &PyModule) -> PyResult<()> {
 
 #[inline]
 fn add_submodule(
-    parent: &PyModule,
-    (name, module): (&str, &PyModule),
-    modules: &PyDict,
+    parent: &Bound<'_, PyModule>,
+    (name, module): (&str, Bound<'_, PyModule>),
+    modules: &Bound<'_, PyDict>,
 ) -> PyResult<()> {
-    modules.set_item(name, module)?;
-    parent.add_submodule(module)?;
-    parent.add(&name.split('.').skip(1).collect::<String>(), module)
+    modules.set_item(name, &module)?;
+    parent.add_submodule(&module)?;
+    parent.add(&*name.split('.').skip(1).collect::<String>(), module)
 }

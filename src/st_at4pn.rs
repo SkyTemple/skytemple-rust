@@ -1,5 +1,5 @@
 /*
- * Copyright 2021-2022 Capypara and the SkyTemple Contributors
+ * Copyright 2021-2024 Capypara and the SkyTemple Contributors
  *
  * This file is part of SkyTemple.
  *
@@ -18,9 +18,11 @@
  */
 
 use crate::bytes::StBytesMut;
-use crate::python::*;
 use crate::st_at_common::CompressionContainer;
 use bytes::{BufMut, Bytes, BytesMut};
+use pyo3::exceptions::PyValueError;
+use pyo3::prelude::*;
+use pyo3::types::PyType;
 
 #[pyclass(module = "skytemple_rust.st_at4pn")]
 #[derive(Clone)]
@@ -53,7 +55,7 @@ impl At4pn {
             if Self::cont_size(&mut Bytes::copy_from_slice(data), 0)
                 != (data.len() - Self::DATA_START) as u16
             {
-                return Err(exceptions::PyValueError::new_err("Invalid data size."));
+                return Err(PyValueError::new_err("Invalid data size."));
             }
             let (_, content) = data.split_at(Self::DATA_START);
             Ok(Self {
@@ -72,25 +74,24 @@ impl At4pn {
         res.put(self.data.clone());
         res.into()
     }
-    #[cfg(feature = "python")]
+
     #[classmethod]
     #[pyo3(signature = (data, byte_offset = 0))]
     #[pyo3(name = "cont_size")]
-    fn _cont_size(_cls: &PyType, data: &[u8], byte_offset: usize) -> u16 {
+    fn _cont_size(_cls: &Bound<'_, PyType>, data: &[u8], byte_offset: usize) -> u16 {
         Self::cont_size(&mut <&[u8]>::clone(&data), byte_offset)
     }
-    #[cfg(feature = "python")]
+
     #[classmethod]
     #[pyo3(name = "compress")]
-    fn _compress(_cls: &PyType, data: &[u8]) -> PyResult<Self> {
+    fn _compress(_cls: &Bound<'_, PyType>, data: &[u8]) -> PyResult<Self> {
         Self::compress(data)
     }
 }
 
-#[cfg(feature = "python")]
-pub(crate) fn create_st_at4pn_module(py: Python) -> PyResult<(&str, &PyModule)> {
+pub(crate) fn create_st_at4pn_module(py: Python) -> PyResult<(&str, Bound<'_, PyModule>)> {
     let name: &'static str = "skytemple_rust.st_at4pn";
-    let m = PyModule::new(py, name)?;
+    let m = PyModule::new_bound(py, name)?;
     m.add_class::<At4pn>()?;
 
     Ok((name, m))

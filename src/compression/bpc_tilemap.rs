@@ -1,5 +1,5 @@
 /*
- * Copyright 2021-2022 Capypara and the SkyTemple Contributors
+ * Copyright 2021-2024 Capypara and the SkyTemple Contributors
  *
  * This file is part of SkyTemple.
  *
@@ -20,8 +20,10 @@ use crate::bytes::StBytesMut;
 use crate::compression::generic::nrl::{
     compression_step, decompression_step, NrlCompRead, NrlDecompWrite,
 };
-use crate::python::*;
 use bytes::{Buf, BufMut, Bytes, BytesMut};
+use pyo3::exceptions::PyValueError;
+use pyo3::prelude::*;
+use pyo3::types::PyType;
 use std::io::Cursor;
 
 // Operations are encoded in command bytes (CMD):
@@ -120,7 +122,7 @@ where
         // Handle high bytes
         while slf.decompressed_data.0.len() < slf.stop_when_size {
             if !slf.compressed_data.has_remaining() {
-                return Err(exceptions::PyValueError::new_err(format!(
+                return Err(PyValueError::new_err(format!(
                     "BPC Tilemap Decompressor: Phase1: End result length unexpected. \
                     Should be {}, is {}.",
                     slf.stop_when_size,
@@ -137,7 +139,7 @@ where
 
         while slf.phase2_out_pos < slf.stop_when_size {
             if !slf.compressed_data.has_remaining() {
-                return Err(exceptions::PyValueError::new_err(format!(
+                return Err(PyValueError::new_err(format!(
                     "BPC Tilemap Decompressor: Phase2: End result length unexpected. \
                     Should be {}, is {}.",
                     slf.stop_when_size, slf.phase2_out_pos
@@ -237,25 +239,30 @@ impl BpcTilemapCompressionContainer {
         res.put(self.compressed_data.clone());
         res.into()
     }
-    #[cfg(feature = "python")]
+
     #[classmethod]
     #[pyo3(signature = (data, byte_offset = 0))]
     #[pyo3(name = "cont_size")]
-    fn _cont_size(_cls: &PyType, data: crate::bytes::StBytes, byte_offset: usize) -> u16 {
+    fn _cont_size(
+        _cls: &Bound<'_, PyType>,
+        data: crate::bytes::StBytes,
+        byte_offset: usize,
+    ) -> u16 {
         Self::cont_size(data.0, byte_offset)
     }
-    #[cfg(feature = "python")]
+
     #[classmethod]
     #[pyo3(name = "compress")]
-    fn _compress(_cls: &PyType, data: &[u8]) -> PyResult<Self> {
+    fn _compress(_cls: &Bound<'_, PyType>, data: &[u8]) -> PyResult<Self> {
         Self::compress(data)
     }
 }
 
-#[cfg(feature = "python")]
-pub(crate) fn create_st_bpc_tilemap_compression_module(py: Python) -> PyResult<(&str, &PyModule)> {
+pub(crate) fn create_st_bpc_tilemap_compression_module(
+    py: Python,
+) -> PyResult<(&str, Bound<'_, PyModule>)> {
     let name: &'static str = "skytemple_rust._st_bpc_tilemap_compression";
-    let m = PyModule::new(py, name)?;
+    let m = PyModule::new_bound(py, name)?;
     m.add_class::<BpcTilemapCompressionContainer>()?;
 
     Ok((name, m))

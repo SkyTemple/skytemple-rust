@@ -1,5 +1,5 @@
 /*
- * Copyright 2021-2022 Capypara and the SkyTemple Contributors
+ * Copyright 2021-2024 Capypara and the SkyTemple Contributors
  *
  * This file is part of SkyTemple.
  *
@@ -17,10 +17,12 @@
  * along with SkyTemple.  If not, see <https://www.gnu.org/licenses/>.
  */
 use crate::bytes::StBytes;
-use crate::python::*;
 use crate::st_mappa_bin::Probability;
 use bytes::{Buf, BufMut, BytesMut};
 use packed_struct::PrimitiveEnum;
+use pyo3::exceptions::PyValueError;
+use pyo3::prelude::*;
+use pyo3::types::PyType;
 use std::collections::BTreeMap;
 use std::ops::Deref;
 
@@ -46,9 +48,9 @@ impl MappaItemList {
     }
 
     #[classmethod]
-    #[cfg(feature = "python")]
+
     pub fn from_bytes(
-        _cls: &PyType,
+        _cls: &Bound<'_, PyType>,
         mut bytes: StBytes,
         pointer: usize,
     ) -> PyResult<Py<MappaItemList>> {
@@ -57,12 +59,10 @@ impl MappaItemList {
     }
 
     //noinspection RsSelfConvention
-    #[cfg(feature = "python")]
     pub fn to_bytes(slf: Py<Self>) -> StBytes {
         slf.into()
     }
 
-    #[cfg(feature = "python")]
     fn __richcmp__(&self, other: PyRef<Self>, op: pyo3::basic::CompareOp) -> Py<PyAny> {
         let py = other.py();
         match op {
@@ -98,18 +98,14 @@ impl TryFrom<StBytes> for Py<MappaItemList> {
                 if processing_categories {
                     categories.insert(
                         item_or_cat_id.try_into().map_err(|_| {
-                            exceptions::PyValueError::new_err(
-                                "Overflow while trying to load item list.",
-                            )
+                            PyValueError::new_err("Overflow while trying to load item list.")
                         })?,
                         weight,
                     );
                 } else {
                     items.insert(
                         item_or_cat_id.try_into().map_err(|_| {
-                            exceptions::PyValueError::new_err(
-                                "Overflow while trying to load item list.",
-                            )
+                            PyValueError::new_err("Overflow while trying to load item list.")
                         })?,
                         weight,
                     );

@@ -1,5 +1,5 @@
 /*
- * Copyright 2021-2022 Capypara and the SkyTemple Contributors
+ * Copyright 2021-2024 Capypara and the SkyTemple Contributors
  *
  * This file is part of SkyTemple.
  *
@@ -16,6 +16,14 @@
  * You should have received a copy of the GNU General Public License
  * along with SkyTemple.  If not, see <https://www.gnu.org/licenses/>.
  */
+use std::io::Cursor;
+use std::iter::once;
+use std::mem::{swap, take};
+
+use bytes::{Buf, BufMut, Bytes, BytesMut};
+use pyo3::exceptions::{PyAssertionError, PyValueError};
+use pyo3::prelude::*;
+
 use crate::bytes::StBytes;
 use crate::compression::bpc_image::{BpcImageCompressor, BpcImageDecompressor};
 use crate::compression::bpc_tilemap::{BpcTilemapCompressor, BpcTilemapDecompressor};
@@ -23,11 +31,6 @@ use crate::gettext::gettext;
 use crate::image::tiled::TiledImage;
 use crate::image::tilemap_entry::{InputTilemapEntry, ProvidesTilemapEntry, TilemapEntry};
 use crate::image::{In256ColIndexedImage, InIndexedImage, IndexedImage, PixelGenerator};
-use crate::python::*;
-use bytes::{Buf, BufMut, Bytes, BytesMut};
-use std::io::Cursor;
-use std::iter::once;
-use std::mem::{swap, take};
 // For non-Python
 #[allow(unused_imports)]
 use crate::st_bpa::input::{BpaProvider, InputBpa};
@@ -76,13 +79,13 @@ impl BpcLayer {
             tilemap: tilemap.into_iter().map(|x| x.into()).collect(),
         }
     }
-    #[cfg(feature = "python")]
+
     #[getter]
     fn get_tilemap(&self) -> PyResult<Vec<Py<TilemapEntry>>> {
         // todo: could be optimized
         Ok(self.tilemap.clone())
     }
-    #[cfg(feature = "python")]
+
     #[setter]
     fn set_tilemap(&mut self, value: Vec<InputTilemapEntry>) -> PyResult<()> {
         self.tilemap = value.into_iter().map(|x| x.into()).collect();
@@ -232,7 +235,7 @@ impl Bpc {
     ///
     /// Does NOT export BPA tiles. Chunks that reference BPA tiles are replaced with empty tiles.
     /// The mapping to BPA tiles has to be done programmatically using set_tile or set_chunk.
-    #[cfg(feature = "python")]
+
     #[pyo3(signature = (layer_id, palettes, width_in_mtiles = 20))]
     #[pyo3(name = "chunks_to_pil")]
     pub fn _chunks_to_pil(
@@ -247,7 +250,7 @@ impl Bpc {
 
     /// Convert a single chunk of the BPC to one big PIL image. For general notes, see chunks_to_pil.
     /// Does NOT export BPA tiles. Chunks that reference BPA tiles are replaced with empty tiles.
-    #[cfg(feature = "python")]
+
     #[pyo3(name = "single_chunk_to_pil")]
     pub fn _single_chunk_to_pil(
         &self,
@@ -445,7 +448,7 @@ impl Bpc {
         let mtidx = index * dim;
         let b = self.layers[layer].borrow_mut(py);
         if b.tilemap.len() < mtidx + dim {
-            Err(exceptions::PyValueError::new_err("Invalid chunk."))
+            Err(PyValueError::new_err("Invalid chunk."))
         } else {
             b.tilemap[mtidx..mtidx + dim]
                 .iter()
@@ -514,7 +517,7 @@ impl Bpc {
     /// The bg_list.dat contains a list of 8 BPAs. The first four are for layer 0, the next four for layer 1.
     ///
     /// This method asserts, that the number of tiles stored in the layer for the BPA, matches the data in the BPA!
-    #[cfg(feature = "python")]
+
     #[pyo3(name = "get_bpas_for_layer")]
     pub fn _get_bpas_for_layer(
         &self,
@@ -535,7 +538,7 @@ impl Bpc {
     ) -> PyResult<()> {
         let dim = self.tiling_width as usize * self.tiling_height as usize;
         if new_tilemappings.len() < dim {
-            return Err(exceptions::PyValueError::new_err(gettext!(
+            return Err(PyValueError::new_err(gettext!(
                 "new tilemapping for this chunk must contain {} tiles.",
                 dim
             )));
@@ -706,7 +709,7 @@ impl Bpc {
             match bpa {
                 None => {
                     if borrow.bpas[i] != 0 {
-                        return Err(exceptions::PyAssertionError::new_err(format!(
+                        return Err(PyAssertionError::new_err(format!(
                             "BPA {}: {} != 0",
                             i, borrow.bpas[i]
                         )));
@@ -715,7 +718,7 @@ impl Bpc {
                 Some(bpa) => {
                     let bpa_ref = &bpa.0;
                     if borrow.bpas[i] != bpa_ref.get_number_of_tiles(py)? {
-                        return Err(exceptions::PyAssertionError::new_err(format!(
+                        return Err(PyAssertionError::new_err(format!(
                             "BPA {}: {} != {}",
                             i,
                             borrow.bpas[i],
@@ -1007,20 +1010,16 @@ impl BpcWriter {
             .iter()
             .skip((model.tiling_width * model.tiling_height) as usize)
         {
-            #[cfg(feature = "python")]
             let entry = entry.extract::<InputTilemapEntry>(py)?;
-            #[cfg(not(feature = "python"))]
-            let entry = entry.extract(py)?;
             data.put_u16_le(entry.to_int() as u16);
         }
         BpcTilemapCompressor::run(data.freeze())
     }
 }
 
-#[cfg(feature = "python")]
-pub(crate) fn create_st_bpc_module(py: Python) -> PyResult<(&str, &PyModule)> {
+pub(crate) fn create_st_bpc_module(py: Python) -> PyResult<(&str, Bound<'_, PyModule>)> {
     let name: &'static str = "skytemple_rust.st_bpc";
-    let m = PyModule::new(py, name)?;
+    let m = PyModule::new_bound(py, name)?;
     m.add_class::<BpcLayer>()?;
     m.add_class::<Bpc>()?;
     m.add_class::<BpcWriter>()?;
@@ -1031,15 +1030,16 @@ pub(crate) fn create_st_bpc_module(py: Python) -> PyResult<(&str, &PyModule)> {
 /////////////////////////
 /////////////////////////
 // BPCs as inputs (for compatibility of including other BPC implementations from Python)
-#[cfg(feature = "python")]
+
 pub mod input {
+    use pyo3::prelude::*;
+    use pyo3::types::{PyList, PyTuple};
+
     use crate::bytes::StBytes;
     use crate::image::tilemap_entry::InputTilemapEntry;
     use crate::image::{In256ColIndexedImage, InIndexedImage, IndexedImage};
-    use crate::python::*;
     use crate::st_bpa::input::InputBpa;
     use crate::st_bpc::{AnimatedExportMode, Bpc};
-    use pyo3::types::{PyList, PyTuple};
 
     pub trait BpcProvider: ToPyObject {
         fn get_number_of_layers(&self, py: Python) -> PyResult<u8>;
@@ -1140,7 +1140,7 @@ pub mod input {
         ) -> PyResult<Vec<IndexedImage>> {
             // This is obviously very inefficient. You should not mix Rust models with Python models because of this.
             // This is mostly just to support the Mocks in the unit tests in skytemple-files.
-            let args = PyTuple::new(
+            let args = PyTuple::new_bound(
                 py,
                 [
                     layer_id.into_py(py),
@@ -1173,7 +1173,7 @@ pub mod input {
             contains_null_tile: bool,
             py: Python,
         ) -> PyResult<()> {
-            let args = PyTuple::new(
+            let args = PyTuple::new_bound(
                 py,
                 [
                     layer.into_py(py),
@@ -1193,11 +1193,12 @@ pub mod input {
             correct_tile_ids: bool,
             py: Python,
         ) -> PyResult<()> {
-            let args = PyTuple::new(
+            let args = PyTuple::new_bound(
                 py,
                 [
                     layer.into_py(py),
-                    PyList::new(py, tile_mappings.into_iter().map(|v| v.0.into_py(py))).into_py(py),
+                    PyList::new_bound(py, tile_mappings.into_iter().map(|v| v.0.into_py(py)))
+                        .into_py(py),
                     contains_null_chunk.into_py(py),
                     correct_tile_ids.into_py(py),
                 ],
@@ -1210,7 +1211,7 @@ pub mod input {
     pub struct InputBpc(pub Box<dyn BpcProvider>);
 
     impl<'source> FromPyObject<'source> for InputBpc {
-        fn extract(ob: &'source PyAny) -> PyResult<Self> {
+        fn extract_bound(ob: &Bound<'source, PyAny>) -> PyResult<Self> {
             if let Ok(obj) = ob.extract::<Py<Bpc>>() {
                 Ok(Self(Box::new(obj)))
             } else {
@@ -1228,107 +1229,6 @@ pub mod input {
     impl From<InputBpc> for Bpc {
         fn from(obj: InputBpc) -> Self {
             Python::with_gil(|py| obj.0.to_object(py).extract(py).unwrap())
-        }
-    }
-}
-
-#[cfg(not(feature = "python"))]
-pub mod input {
-    use crate::bytes::StBytes;
-    use crate::image::tilemap_entry::InputTilemapEntry;
-    use crate::image::IndexedImage;
-    use crate::python::{PyResult, Python};
-    use crate::st_bpa::input::InputBpa;
-    use crate::st_bpc::{AnimatedExportMode, Bpc};
-
-    pub trait BpcProvider {
-        fn get_number_of_layers(&self, py: Python) -> PyResult<u8>;
-        fn get_chunks_animated_to_pil(
-            &mut self,
-            layer_id: usize,
-            palettes: &[StBytes],
-            bpas: &[Option<InputBpa>],
-            width_in_mtiles: usize,
-            py: Python,
-        ) -> PyResult<Vec<IndexedImage>>;
-        fn do_add_upper_layer(&mut self, py: Python) -> PyResult<()>;
-        fn do_import_tiles(
-            &mut self,
-            layer: usize,
-            tiles: Vec<StBytes>,
-            contains_null_tile: bool,
-            py: Python,
-        ) -> PyResult<()>;
-        fn do_import_tile_mappings(
-            &mut self,
-            layer: usize,
-            tile_mappings: Vec<InputTilemapEntry>,
-            contains_null_chunk: bool,
-            correct_tile_ids: bool,
-            py: Python,
-        ) -> PyResult<()>;
-    }
-
-    impl BpcProvider for Bpc {
-        fn get_number_of_layers(&self, _py: Python) -> PyResult<u8> {
-            Ok(self.number_of_layers)
-        }
-
-        fn get_chunks_animated_to_pil(
-            &mut self,
-            layer_id: usize,
-            palettes: &[StBytes],
-            bpas: &[Option<InputBpa>],
-            width_in_mtiles: usize,
-            py: Python,
-        ) -> PyResult<Vec<IndexedImage>> {
-            self._chunks_animated_to_pil(
-                layer_id,
-                AnimatedExportMode::All(width_in_mtiles),
-                palettes,
-                bpas,
-                py,
-            )
-        }
-
-        fn do_add_upper_layer(&mut self, py: Python) -> PyResult<()> {
-            self.add_upper_layer(py)
-        }
-
-        fn do_import_tiles(
-            &mut self,
-            layer: usize,
-            tiles: Vec<StBytes>,
-            contains_null_tile: bool,
-            py: Python,
-        ) -> PyResult<()> {
-            self.import_tiles(layer, tiles, contains_null_tile, py);
-            Ok(())
-        }
-
-        fn do_import_tile_mappings(
-            &mut self,
-            layer: usize,
-            tile_mappings: Vec<InputTilemapEntry>,
-            contains_null_chunk: bool,
-            correct_tile_ids: bool,
-            py: Python,
-        ) -> PyResult<()> {
-            self.import_tile_mappings(
-                layer,
-                tile_mappings,
-                contains_null_chunk,
-                correct_tile_ids,
-                py,
-            )
-        }
-    }
-
-    pub struct InputBpc(pub(crate) Bpc);
-
-    impl From<InputBpc> for Bpc {
-        fn from(obj: InputBpc) -> Self {
-            obj.0
         }
     }
 }

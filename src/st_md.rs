@@ -1,5 +1,5 @@
 /*
- * Copyright 2021-2022 Capypara and the SkyTemple Contributors
+ * Copyright 2021-2024 Capypara and the SkyTemple Contributors
  *
  * This file is part of SkyTemple.
  *
@@ -18,9 +18,11 @@
  */
 use crate::bytes::StBytes;
 use crate::err::convert_packing_err;
-use crate::python::*;
 use bytes::Buf;
 use packed_struct::prelude::*;
+use pyo3::exceptions::PyIndexError;
+use pyo3::prelude::*;
+use pyo3::types::PyType;
 use std::cell::RefCell;
 use std::collections::btree_map::Entry;
 use std::collections::BTreeMap;
@@ -60,16 +62,14 @@ impl MdPropertiesState {
 
 #[pymethods]
 impl MdPropertiesState {
-    #[cfg(feature = "python")]
     #[classmethod]
     #[pyo3(name = "instance")]
-    pub fn _instance(_cls: &PyType, py: Python) -> PyResult<Py<Self>> {
+    pub fn _instance(_cls: &Bound<'_, PyType>, py: Python) -> PyResult<Py<Self>> {
         Self::instance(py)
     }
 }
 
-#[derive(PrimitiveEnum_u16, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug)]
-#[cfg_attr(feature = "python", derive(EnumToPy_u16))]
+#[derive(PrimitiveEnum_u16, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug, EnumToPy_u16)]
 pub enum EvolutionMethod {
     None = 0,
     Level = 1,
@@ -79,8 +79,7 @@ pub enum EvolutionMethod {
     NoReq = 5,
 }
 
-#[derive(PrimitiveEnum_u16, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug)]
-#[cfg_attr(feature = "python", derive(EnumToPy_u16))]
+#[derive(PrimitiveEnum_u16, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug, EnumToPy_u16)]
 pub enum AdditionalRequirement {
     None = 0,
     LinkCable = 1,
@@ -100,8 +99,7 @@ pub enum AdditionalRequirement {
     Mimic = 15,
 }
 
-#[derive(PrimitiveEnum_u8, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug)]
-#[cfg_attr(feature = "python", derive(EnumToPy_u8))]
+#[derive(PrimitiveEnum_u8, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug, EnumToPy_u8)]
 pub enum Gender {
     Invalid = 0,
     Male = 1,
@@ -109,8 +107,7 @@ pub enum Gender {
     Genderless = 3,
 }
 
-#[derive(PrimitiveEnum_u8, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug)]
-#[cfg_attr(feature = "python", derive(EnumToPy_u8))]
+#[derive(PrimitiveEnum_u8, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug, EnumToPy_u8)]
 pub enum PokeType {
     None = 0,
     Normal = 1,
@@ -133,8 +130,7 @@ pub enum PokeType {
     Neutral = 18,
 }
 
-#[derive(PrimitiveEnum_u8, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug)]
-#[cfg_attr(feature = "python", derive(EnumToPy_u8))]
+#[derive(PrimitiveEnum_u8, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug, EnumToPy_u8)]
 pub enum MovementType {
     Standard = 0,
     Unknown1 = 1,
@@ -144,8 +140,7 @@ pub enum MovementType {
     Water = 5,
 }
 
-#[derive(PrimitiveEnum_u8, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug)]
-#[cfg_attr(feature = "python", derive(EnumToPy_u8))]
+#[derive(PrimitiveEnum_u8, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug, EnumToPy_u8)]
 pub enum IQGroup {
     A = 0,
     B = 1,
@@ -165,8 +160,7 @@ pub enum IQGroup {
     Invalid = 0xF,
 }
 
-#[derive(PrimitiveEnum_u8, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug)]
-#[cfg_attr(feature = "python", derive(EnumToPy_u8))]
+#[derive(PrimitiveEnum_u8, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug, EnumToPy_u8)]
 pub enum Ability {
     Stench = 0x1,
     ThickFat = 0x2,
@@ -426,8 +420,7 @@ pub enum Ability {
     Null = 0x00,
 }
 
-#[derive(PrimitiveEnum_i8, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug)]
-#[cfg_attr(feature = "python", derive(EnumToPy_i8))]
+#[derive(PrimitiveEnum_i8, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug, EnumToPy_i8)]
 pub enum ShadowSize {
     Small = 0,
     Medium = 1,
@@ -519,7 +512,7 @@ pub struct MdEntry {
 #[pymethods]
 impl MdEntry {
     #[classmethod]
-    pub fn new_empty(_cls: &PyType, entid: u16) -> Self {
+    pub fn new_empty(_cls: &Bound<'_, PyType>, entid: u16) -> Self {
         Self {
             md_index: 0,
             data: MdEntryData {
@@ -585,613 +578,613 @@ impl MdEntry {
 
     // <editor-fold desc="Proxy getters for MdEntryData" defaultstate="collapsed">
     #[getter]
-    #[cfg(feature = "python")]
+
     pub fn entid(&self) -> u16 {
         self.data.entid
     }
 
     #[getter]
-    #[cfg(feature = "python")]
+
     pub fn unk31(&self) -> u16 {
         self.data.unk31
     }
 
     #[getter]
-    #[cfg(feature = "python")]
+
     pub fn national_pokedex_number(&self) -> u16 {
         self.data.national_pokedex_number
     }
 
     #[getter]
-    #[cfg(feature = "python")]
+
     pub fn base_movement_speed(&self) -> u16 {
         self.data.base_movement_speed
     }
 
     #[getter]
-    #[cfg(feature = "python")]
+
     pub fn pre_evo_index(&self) -> u16 {
         self.data.pre_evo_index
     }
 
     #[getter]
-    #[cfg(feature = "python")]
+
     pub fn evo_method(&self) -> EvolutionMethod {
         self.data.evo_method
     }
 
     #[getter]
-    #[cfg(feature = "python")]
+
     pub fn evo_param1(&self) -> u16 {
         self.data.evo_param1
     }
 
     #[getter]
-    #[cfg(feature = "python")]
+
     pub fn evo_param2(&self) -> AdditionalRequirement {
         self.data.evo_param2
     }
 
     #[getter]
-    #[cfg(feature = "python")]
+
     pub fn sprite_index(&self) -> i16 {
         self.data.sprite_index
     }
 
     #[getter]
-    #[cfg(feature = "python")]
+
     pub fn gender(&self) -> Gender {
         self.data.gender
     }
 
     #[getter]
-    #[cfg(feature = "python")]
+
     pub fn body_size(&self) -> u8 {
         self.data.body_size
     }
 
     #[getter]
-    #[cfg(feature = "python")]
+
     pub fn type_primary(&self) -> PokeType {
         self.data.type_primary
     }
 
     #[getter]
-    #[cfg(feature = "python")]
+
     pub fn type_secondary(&self) -> PokeType {
         self.data.type_secondary
     }
 
     #[getter]
-    #[cfg(feature = "python")]
+
     pub fn movement_type(&self) -> MovementType {
         self.data.movement_type
     }
 
     #[getter]
-    #[cfg(feature = "python")]
+
     pub fn iq_group(&self) -> IQGroup {
         self.data.iq_group
     }
 
     #[getter]
-    #[cfg(feature = "python")]
+
     pub fn ability_primary(&self) -> Ability {
         self.data.ability_primary
     }
 
     #[getter]
-    #[cfg(feature = "python")]
+
     pub fn ability_secondary(&self) -> Ability {
         self.data.ability_secondary
     }
 
     #[getter]
-    #[cfg(feature = "python")]
+
     pub fn bitfield1_0(&self) -> bool {
         self.data.bitfield1_0
     }
 
     #[getter]
-    #[cfg(feature = "python")]
+
     pub fn bitfield1_1(&self) -> bool {
         self.data.bitfield1_1
     }
 
     #[getter]
-    #[cfg(feature = "python")]
+
     pub fn bitfield1_2(&self) -> bool {
         self.data.bitfield1_2
     }
 
     #[getter]
-    #[cfg(feature = "python")]
+
     pub fn bitfield1_3(&self) -> bool {
         self.data.bitfield1_3
     }
 
     #[getter]
-    #[cfg(feature = "python")]
+
     pub fn can_move(&self) -> bool {
         self.data.can_move
     }
 
     #[getter]
-    #[cfg(feature = "python")]
+
     pub fn bitfield1_5(&self) -> bool {
         self.data.bitfield1_5
     }
 
     #[getter]
-    #[cfg(feature = "python")]
+
     pub fn can_evolve(&self) -> bool {
         self.data.can_evolve
     }
 
     #[getter]
-    #[cfg(feature = "python")]
+
     pub fn item_required_for_spawning(&self) -> bool {
         self.data.item_required_for_spawning
     }
 
     #[getter]
-    #[cfg(feature = "python")]
+
     pub fn bitfield2(&self) -> u8 {
         self.data.bitfield2
     }
 
     #[getter]
-    #[cfg(feature = "python")]
+
     pub fn exp_yield(&self) -> u16 {
         self.data.exp_yield
     }
 
     #[getter]
-    #[cfg(feature = "python")]
+
     pub fn recruit_rate1(&self) -> i16 {
         self.data.recruit_rate1
     }
 
     #[getter]
-    #[cfg(feature = "python")]
+
     pub fn base_hp(&self) -> u16 {
         self.data.base_hp
     }
 
     #[getter]
-    #[cfg(feature = "python")]
+
     pub fn recruit_rate2(&self) -> i16 {
         self.data.recruit_rate2
     }
 
     #[getter]
-    #[cfg(feature = "python")]
+
     pub fn base_atk(&self) -> u8 {
         self.data.base_atk
     }
 
     #[getter]
-    #[cfg(feature = "python")]
+
     pub fn base_sp_atk(&self) -> u8 {
         self.data.base_sp_atk
     }
 
     #[getter]
-    #[cfg(feature = "python")]
+
     pub fn base_def(&self) -> u8 {
         self.data.base_def
     }
 
     #[getter]
-    #[cfg(feature = "python")]
+
     pub fn base_sp_def(&self) -> u8 {
         self.data.base_sp_def
     }
 
     #[getter]
-    #[cfg(feature = "python")]
+
     pub fn weight(&self) -> i16 {
         self.data.weight
     }
 
     #[getter]
-    #[cfg(feature = "python")]
+
     pub fn size(&self) -> i16 {
         self.data.size
     }
 
     #[getter]
-    #[cfg(feature = "python")]
+
     pub fn unk17(&self) -> u8 {
         self.data.unk17
     }
 
     #[getter]
-    #[cfg(feature = "python")]
+
     pub fn unk18(&self) -> u8 {
         self.data.unk18
     }
 
     #[getter]
-    #[cfg(feature = "python")]
+
     pub fn shadow_size(&self) -> ShadowSize {
         self.data.shadow_size
     }
 
     #[getter]
-    #[cfg(feature = "python")]
+
     pub fn chance_spawn_asleep(&self) -> i8 {
         self.data.chance_spawn_asleep
     }
 
     #[getter]
-    #[cfg(feature = "python")]
+
     pub fn hp_regeneration(&self) -> u8 {
         self.data.hp_regeneration
     }
 
     #[getter]
-    #[cfg(feature = "python")]
+
     pub fn unk21_h(&self) -> i8 {
         self.data.unk21_h
     }
 
     #[getter]
-    #[cfg(feature = "python")]
+
     pub fn base_form_index(&self) -> i16 {
         self.data.base_form_index
     }
 
     #[getter]
-    #[cfg(feature = "python")]
+
     pub fn exclusive_item1(&self) -> i16 {
         self.data.exclusive_item1
     }
 
     #[getter]
-    #[cfg(feature = "python")]
+
     pub fn exclusive_item2(&self) -> i16 {
         self.data.exclusive_item2
     }
 
     #[getter]
-    #[cfg(feature = "python")]
+
     pub fn exclusive_item3(&self) -> i16 {
         self.data.exclusive_item3
     }
 
     #[getter]
-    #[cfg(feature = "python")]
+
     pub fn exclusive_item4(&self) -> i16 {
         self.data.exclusive_item4
     }
 
     #[getter]
-    #[cfg(feature = "python")]
+
     pub fn unk27(&self) -> i16 {
         self.data.unk27
     }
 
     #[getter]
-    #[cfg(feature = "python")]
+
     pub fn unk28(&self) -> i16 {
         self.data.unk28
     }
 
     #[getter]
-    #[cfg(feature = "python")]
+
     pub fn unk29(&self) -> i16 {
         self.data.unk29
     }
 
     #[getter]
-    #[cfg(feature = "python")]
+
     pub fn unk30(&self) -> i16 {
         self.data.unk30
     }
 
     #[setter]
-    #[cfg(feature = "python")]
+
     pub fn set_entid(&mut self, value: u16) {
         self.data.entid = value;
     }
 
     #[setter]
-    #[cfg(feature = "python")]
+
     pub fn set_unk31(&mut self, value: u16) {
         self.data.unk31 = value;
     }
 
     #[setter]
-    #[cfg(feature = "python")]
+
     pub fn set_national_pokedex_number(&mut self, value: u16) {
         self.data.national_pokedex_number = value;
     }
 
     #[setter]
-    #[cfg(feature = "python")]
+
     pub fn set_base_movement_speed(&mut self, value: u16) {
         self.data.base_movement_speed = value;
     }
 
     #[setter]
-    #[cfg(feature = "python")]
+
     pub fn set_pre_evo_index(&mut self, value: u16) {
         self.data.pre_evo_index = value;
     }
 
     #[setter]
-    #[cfg(feature = "python")]
+
     pub fn set_evo_method(&mut self, value: EvolutionMethod) {
         self.data.evo_method = value;
     }
 
     #[setter]
-    #[cfg(feature = "python")]
+
     pub fn set_evo_param1(&mut self, value: u16) {
         self.data.evo_param1 = value;
     }
 
     #[setter]
-    #[cfg(feature = "python")]
+
     pub fn set_evo_param2(&mut self, value: AdditionalRequirement) {
         self.data.evo_param2 = value;
     }
 
     #[setter]
-    #[cfg(feature = "python")]
+
     pub fn set_sprite_index(&mut self, value: i16) {
         self.data.sprite_index = value;
     }
 
     #[setter]
-    #[cfg(feature = "python")]
+
     pub fn set_gender(&mut self, value: Gender) {
         self.data.gender = value;
     }
 
     #[setter]
-    #[cfg(feature = "python")]
+
     pub fn set_body_size(&mut self, value: u8) {
         self.data.body_size = value;
     }
 
     #[setter]
-    #[cfg(feature = "python")]
+
     pub fn set_type_primary(&mut self, value: PokeType) {
         self.data.type_primary = value;
     }
 
     #[setter]
-    #[cfg(feature = "python")]
+
     pub fn set_type_secondary(&mut self, value: PokeType) {
         self.data.type_secondary = value;
     }
 
     #[setter]
-    #[cfg(feature = "python")]
+
     pub fn set_movement_type(&mut self, value: MovementType) {
         self.data.movement_type = value;
     }
 
     #[setter]
-    #[cfg(feature = "python")]
+
     pub fn set_iq_group(&mut self, value: IQGroup) {
         self.data.iq_group = value;
     }
 
     #[setter]
-    #[cfg(feature = "python")]
+
     pub fn set_ability_primary(&mut self, value: Ability) {
         self.data.ability_primary = value;
     }
 
     #[setter]
-    #[cfg(feature = "python")]
+
     pub fn set_ability_secondary(&mut self, value: Ability) {
         self.data.ability_secondary = value;
     }
 
     #[setter]
-    #[cfg(feature = "python")]
+
     pub fn set_bitfield1_0(&mut self, value: bool) {
         self.data.bitfield1_0 = value;
     }
 
     #[setter]
-    #[cfg(feature = "python")]
+
     pub fn set_bitfield1_1(&mut self, value: bool) {
         self.data.bitfield1_1 = value;
     }
 
     #[setter]
-    #[cfg(feature = "python")]
+
     pub fn set_bitfield1_2(&mut self, value: bool) {
         self.data.bitfield1_2 = value;
     }
 
     #[setter]
-    #[cfg(feature = "python")]
+
     pub fn set_bitfield1_3(&mut self, value: bool) {
         self.data.bitfield1_3 = value;
     }
 
     #[setter]
-    #[cfg(feature = "python")]
+
     pub fn set_can_move(&mut self, value: bool) {
         self.data.can_move = value;
     }
 
     #[setter]
-    #[cfg(feature = "python")]
+
     pub fn set_bitfield1_5(&mut self, value: bool) {
         self.data.bitfield1_5 = value;
     }
 
     #[setter]
-    #[cfg(feature = "python")]
+
     pub fn set_can_evolve(&mut self, value: bool) {
         self.data.can_evolve = value;
     }
 
     #[setter]
-    #[cfg(feature = "python")]
+
     pub fn set_item_required_for_spawning(&mut self, value: bool) {
         self.data.item_required_for_spawning = value;
     }
 
     #[setter]
-    #[cfg(feature = "python")]
+
     pub fn set_bitfield2(&mut self, value: u8) {
         self.data.bitfield2 = value;
     }
 
     #[setter]
-    #[cfg(feature = "python")]
+
     pub fn set_exp_yield(&mut self, value: u16) {
         self.data.exp_yield = value;
     }
 
     #[setter]
-    #[cfg(feature = "python")]
+
     pub fn set_recruit_rate1(&mut self, value: i16) {
         self.data.recruit_rate1 = value;
     }
 
     #[setter]
-    #[cfg(feature = "python")]
+
     pub fn set_base_hp(&mut self, value: u16) {
         self.data.base_hp = value;
     }
 
     #[setter]
-    #[cfg(feature = "python")]
+
     pub fn set_recruit_rate2(&mut self, value: i16) {
         self.data.recruit_rate2 = value;
     }
 
     #[setter]
-    #[cfg(feature = "python")]
+
     pub fn set_base_atk(&mut self, value: u8) {
         self.data.base_atk = value;
     }
 
     #[setter]
-    #[cfg(feature = "python")]
+
     pub fn set_base_sp_atk(&mut self, value: u8) {
         self.data.base_sp_atk = value;
     }
 
     #[setter]
-    #[cfg(feature = "python")]
+
     pub fn set_base_def(&mut self, value: u8) {
         self.data.base_def = value;
     }
 
     #[setter]
-    #[cfg(feature = "python")]
+
     pub fn set_base_sp_def(&mut self, value: u8) {
         self.data.base_sp_def = value;
     }
 
     #[setter]
-    #[cfg(feature = "python")]
+
     pub fn set_weight(&mut self, value: i16) {
         self.data.weight = value;
     }
 
     #[setter]
-    #[cfg(feature = "python")]
+
     pub fn set_size(&mut self, value: i16) {
         self.data.size = value;
     }
 
     #[setter]
-    #[cfg(feature = "python")]
+
     pub fn set_unk17(&mut self, value: u8) {
         self.data.unk17 = value;
     }
 
     #[setter]
-    #[cfg(feature = "python")]
+
     pub fn set_unk18(&mut self, value: u8) {
         self.data.unk18 = value;
     }
 
     #[setter]
-    #[cfg(feature = "python")]
+
     pub fn set_shadow_size(&mut self, value: ShadowSize) {
         self.data.shadow_size = value;
     }
 
     #[setter]
-    #[cfg(feature = "python")]
+
     pub fn set_chance_spawn_asleep(&mut self, value: i8) {
         self.data.chance_spawn_asleep = value;
     }
 
     #[setter]
-    #[cfg(feature = "python")]
+
     pub fn set_hp_regeneration(&mut self, value: u8) {
         self.data.hp_regeneration = value;
     }
 
     #[setter]
-    #[cfg(feature = "python")]
+
     pub fn set_unk21_h(&mut self, value: i8) {
         self.data.unk21_h = value;
     }
 
     #[setter]
-    #[cfg(feature = "python")]
+
     pub fn set_base_form_index(&mut self, value: i16) {
         self.data.base_form_index = value;
     }
 
     #[setter]
-    #[cfg(feature = "python")]
+
     pub fn set_exclusive_item1(&mut self, value: i16) {
         self.data.exclusive_item1 = value;
     }
 
     #[setter]
-    #[cfg(feature = "python")]
+
     pub fn set_exclusive_item2(&mut self, value: i16) {
         self.data.exclusive_item2 = value;
     }
 
     #[setter]
-    #[cfg(feature = "python")]
+
     pub fn set_exclusive_item3(&mut self, value: i16) {
         self.data.exclusive_item3 = value;
     }
 
     #[setter]
-    #[cfg(feature = "python")]
+
     pub fn set_exclusive_item4(&mut self, value: i16) {
         self.data.exclusive_item4 = value;
     }
 
     #[setter]
-    #[cfg(feature = "python")]
+
     pub fn set_unk27(&mut self, value: i16) {
         self.data.unk27 = value;
     }
 
     #[setter]
-    #[cfg(feature = "python")]
+
     pub fn set_unk28(&mut self, value: i16) {
         self.data.unk28 = value;
     }
 
     #[setter]
-    #[cfg(feature = "python")]
+
     pub fn set_unk29(&mut self, value: i16) {
         self.data.unk29 = value;
     }
 
     #[setter]
-    #[cfg(feature = "python")]
+
     pub fn set_unk30(&mut self, value: i16) {
         self.data.unk30 = value;
     }
@@ -1269,7 +1262,7 @@ impl Md {
     pub fn get_by_index(&self, index: usize) -> PyResult<Py<MdEntry>> {
         self.entries
             .get(index)
-            .ok_or_else(|| exceptions::PyIndexError::new_err("Index for Md out of range."))
+            .ok_or_else(|| PyIndexError::new_err("Index for Md out of range."))
             .cloned()
     }
 
@@ -1290,42 +1283,33 @@ impl Md {
         }
     }
 
-    #[cfg(feature = "python")]
     pub fn __len__(&self) -> usize {
         self.entries.len()
     }
 
-    #[cfg(feature = "python")]
     pub fn __getitem__(&self, key: usize) -> PyResult<Py<MdEntry>> {
         self.get_by_index(key)
     }
 
-    #[cfg(feature = "python")]
     pub fn __setitem__(&mut self, key: usize, value: Py<MdEntry>) -> PyResult<()> {
         let entry = self.entries.get_mut(key);
         if let Some(e) = entry {
             *e = value;
             Ok(())
         } else {
-            Err(exceptions::PyIndexError::new_err(
-                "Index for Md out of range.",
-            ))
+            Err(PyIndexError::new_err("Index for Md out of range."))
         }
     }
 
-    #[cfg(feature = "python")]
     pub fn __delitem__(&mut self, key: usize) -> PyResult<()> {
         if key >= self.entries.len() {
-            Err(exceptions::PyIndexError::new_err(
-                "Index for Md out of range.",
-            ))
+            Err(PyIndexError::new_err("Index for Md out of range."))
         } else {
             self.entries.remove(key);
             Ok(())
         }
     }
 
-    #[cfg(feature = "python")]
     pub fn __iter__(&mut self) -> MdIterator {
         MdIterator::new(self.entries.clone().into_iter())
     }
@@ -1337,9 +1321,7 @@ impl Md {
         py: Python,
     ) -> PyResult<Vec<(u32, Py<MdEntry>)>> {
         if lst.is_empty() {
-            Err(exceptions::PyIndexError::new_err(
-                "No entities with entid found.",
-            ))
+            Err(PyIndexError::new_err("No entities with entid found."))
         } else {
             Ok(lst
                 .iter()
@@ -1382,10 +1364,9 @@ impl MdWriter {
     }
 }
 
-#[cfg(feature = "python")]
-pub(crate) fn create_st_md_module(py: Python) -> PyResult<(&str, &PyModule)> {
+pub(crate) fn create_st_md_module(py: Python) -> PyResult<(&str, Bound<'_, PyModule>)> {
     let name: &'static str = "skytemple_rust.st_md";
-    let m = PyModule::new(py, name)?;
+    let m = PyModule::new_bound(py, name)?;
     m.add_class::<MdPropertiesState>()?;
     m.add_class::<MdEntry>()?;
     m.add_class::<MdIterator>()?;
