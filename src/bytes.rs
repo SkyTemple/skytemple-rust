@@ -229,24 +229,15 @@ impl From<StBytesMut> for Bytes {
     }
 }
 
-pub trait AsStBytes {
-    fn as_bytes(&self) -> StBytes;
+pub trait AsStBytesPyRef {
+    fn as_bytes_pyref(&self, py: Python) -> StBytes;
 }
 
-impl<T> AsStBytes for Py<T>
+impl<T> AsStBytesPyRef for Py<T>
 where
-    Self: Into<StBytes> + Clone,
+    Self: Into<StBytes>,
 {
-    fn as_bytes(&self) -> StBytes {
-        self.clone().into()
-    }
-}
-
-impl<T> AsStBytes for &T
-where
-    T: AsStBytes,
-{
-    fn as_bytes(&self) -> StBytes {
-        T::as_bytes(self)
+    fn as_bytes_pyref(&self, py: Python) -> StBytes {
+        self.clone_ref(py).into()
     }
 }

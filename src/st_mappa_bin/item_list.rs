@@ -16,15 +16,17 @@
  * You should have received a copy of the GNU General Public License
  * along with SkyTemple.  If not, see <https://www.gnu.org/licenses/>.
  */
-use crate::bytes::StBytes;
-use crate::st_mappa_bin::Probability;
+use std::collections::BTreeMap;
+use std::ops::Deref;
+
 use bytes::{Buf, BufMut, BytesMut};
 use packed_struct::PrimitiveEnum;
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 use pyo3::types::PyType;
-use std::collections::BTreeMap;
-use std::ops::Deref;
+
+use crate::bytes::StBytes;
+use crate::st_mappa_bin::Probability;
 
 #[pyclass(module = "skytemple_rust.st_mappa_bin")]
 #[derive(Clone, PartialEq, Eq)]
@@ -80,7 +82,7 @@ impl TryFrom<StBytes> for Py<MappaItemList> {
         let mut processing_categories = true;
         let mut item_or_cat_id: i32 = 0;
         #[cfg(debug_assertions)]
-        let mut orig_value = value.clone();
+        let _orig_value = value.clone();
 
         let mut items: BTreeMap<u16, Probability> = BTreeMap::new();
         let mut categories: BTreeMap<u16, Probability> = BTreeMap::new();
@@ -123,15 +125,6 @@ impl TryFrom<StBytes> for Py<MappaItemList> {
         }
 
         let mil = Python::with_gil(|py| Py::new(py, MappaItemList::new(categories, items)))?;
-
-        #[cfg(debug_assertions)]
-        {
-            let orig_value_len = orig_value.len();
-            debug_assert_eq!(
-                StBytes(orig_value.copy_to_bytes(orig_value_len - value.len())),
-                crate::bytes::AsStBytes::as_bytes(&mil)
-            );
-        }
 
         Ok(mil)
     }

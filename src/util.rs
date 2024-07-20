@@ -16,14 +16,15 @@
  * You should have received a copy of the GNU General Public License
  * along with SkyTemple.  If not, see <https://www.gnu.org/licenses/>.
  */
-use crate::bytes::{AsStBytes, StBytes};
-use bytes::BytesMut;
-use pyo3::{PyErr, PyResult};
 use std::cmp::{max, min};
 use std::fmt::{Debug, Formatter};
-use std::hash::{Hash, Hasher};
 use std::hint::unreachable_unchecked;
 use std::iter::repeat;
+
+use bytes::BytesMut;
+use pyo3::{Py, PyErr, PyResult, Python};
+
+use crate::bytes::{AsStBytesPyRef, StBytes};
 
 #[inline]
 #[allow(unused)]
@@ -69,21 +70,9 @@ pub enum Lazy<T> {
     Instance(T),
 }
 
-impl<T> Clone for Lazy<T>
-where
-    T: AsStBytes + TryFrom<StBytes> + Clone,
-{
-    fn clone(&self) -> Self {
-        match self {
-            Self::Source(v) => Self::Source(v.clone()),
-            Self::Instance(v) => Self::Instance(v.clone()),
-        }
-    }
-}
-
 impl<T> Debug for Lazy<T>
 where
-    T: AsStBytes + TryFrom<StBytes> + Debug,
+    T: Debug,
 {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
@@ -93,36 +82,25 @@ where
     }
 }
 
-impl<T, E> PartialEq for Lazy<T>
+impl<T> Lazy<T>
 where
-    T: AsStBytes + TryFrom<StBytes, Error = E>,
-    E: Into<PyErr>,
+    T: AsStBytesPyRef,
 {
-    fn eq(&self, other: &Self) -> bool {
-        self.as_bytes() == other.as_bytes()
+    pub fn as_bytes(&self, py: Python) -> StBytes {
+        match self {
+            Lazy::Source(s) => s.clone(),
+            Lazy::Instance(i) => i.as_bytes_pyref(py),
+        }
     }
-}
 
-impl<T, E> Eq for Lazy<T>
-where
-    T: AsStBytes + TryFrom<StBytes, Error = E>,
-    E: Into<PyErr>,
-{
-}
-
-impl<T, E> Hash for Lazy<T>
-where
-    T: AsStBytes + TryFrom<StBytes, Error = E> + Hash,
-    E: Into<PyErr>,
-{
-    fn hash<H: Hasher>(&self, state: &mut H) {
-        self.as_bytes().hash(state)
+    pub fn eq_pyref(&self, other: &Self, py: Python) -> bool {
+        self.as_bytes(py) == other.as_bytes(py)
     }
 }
 
 impl<T, E> Lazy<T>
 where
-    T: AsStBytes + TryFrom<StBytes, Error = E>,
+    T: AsStBytesPyRef + TryFrom<StBytes, Error = E>,
     E: Into<PyErr>,
 {
     /// Creates a Lazy wrapper from some byte source but immediately constructs it.
@@ -151,32 +129,33 @@ where
 
 impl<T> From<StBytes> for Lazy<T>
 where
-    T: AsStBytes + TryFrom<StBytes>,
+    T: AsStBytesPyRef,
 {
     fn from(value: StBytes) -> Self {
         Self::Source(value)
     }
 }
 
-impl<T, E> From<Lazy<T>> for StBytes
+impl<T> AsStBytesPyRef for Lazy<T>
 where
-    T: AsStBytes + TryFrom<StBytes, Error = E>,
-    E: Into<PyErr>,
+    T: AsStBytesPyRef,
 {
-    fn from(source: Lazy<T>) -> Self {
-        source.as_bytes()
+    fn as_bytes_pyref(&self, py: Python) -> StBytes {
+        match self {
+            Lazy::Source(v) => v.clone(),
+            Lazy::Instance(v) => v.as_bytes_pyref(py),
+        }
     }
 }
 
-impl<T, E> AsStBytes for Lazy<T>
+impl<T> Lazy<Py<T>>
 where
-    T: AsStBytes + TryFrom<StBytes, Error = E>,
-    E: Into<PyErr>,
+    Self: Into<StBytes>,
 {
-    fn as_bytes(&self) -> StBytes {
+    pub fn clone_ref(&self, py: Python) -> Self {
         match self {
-            Lazy::Source(s) => s.clone(),
-            Lazy::Instance(i) => i.as_bytes(),
+            Self::Source(v) => Self::Source(v.clone()),
+            Self::Instance(v) => Self::Instance(v.clone_ref(py)),
         }
     }
 }

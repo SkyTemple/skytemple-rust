@@ -63,26 +63,27 @@ macro_rules! impl_pylist {
         ::paste::paste! {
             #[pyclass(module = $module)]
             #[allow(clippy::derive_partial_eq_without_eq)]
-            #[derive(Clone, Debug)]
+            #[derive(Debug)]
             pub struct $name(pub Vec<$itemty>);
 
 
             #[pymethods]
             impl $name {
-                pub fn __iter__(&mut self) -> [<$name Iterator>] {
-                    [<$name Iterator>]::new(self.0.clone().into_iter())
+                pub fn __iter__(&mut self, py: Python) -> [<$name Iterator>] {
+                    // TODO: This is needlessly slow probably? Rethink iterator implementation.
+                    [<$name Iterator>]::new(self.0.iter().map(|e| e.clone_ref(py)).collect::<Vec<_>>().into_iter())
                 }
                 pub fn __getitem__(&self, idx: $crate::python::SliceOrInt, py: Python) -> PyResult<PyObject> {
                     match idx {
                         $crate::python::SliceOrInt::Slice(sl) => {
-                            let pylist = ::pyo3::types::PyList::new_bound(py, self.0.iter().cloned());
+                            let pylist = ::pyo3::types::PyList::new_bound(py, self.0.iter().map(|e| e.clone_ref(py)));
                             pylist
                                 .call_method1("__getitem__", ::pyo3::types::PyTuple::new_bound(py, [sl]))
                                 .map(|v| v.into_py(py))
                         }
                         $crate::python::SliceOrInt::Int(idx) => {
                             if idx >= 0 && idx as usize <= self.0.len() {
-                                Ok(self.0[idx as usize].clone().into_py(py))
+                                Ok(self.0[idx as usize].clone_ref(py).into_py(py))
                             } else {
                                 Err(::pyo3::exceptions::PyIndexError::new_err("list index out of range"))
                             }
@@ -92,7 +93,7 @@ macro_rules! impl_pylist {
                 pub fn __setitem__(&mut self, idx: $crate::python::SliceOrInt, o: PyObject, py: Python) -> PyResult<()> {
                     match idx {
                         $crate::python::SliceOrInt::Slice(sl) => {
-                            let pylist = ::pyo3::types::PyList::new_bound(py, self.0.iter().cloned());
+                            let pylist = ::pyo3::types::PyList::new_bound(py, self.0.iter().map(|e| e.clone_ref(py)));
                             pylist.call_method1("__setitem__", ::pyo3::types::PyTuple::new_bound(py, [sl.into_py(py), o]))?;
                             self.0 = pylist
                                 .into_iter()
@@ -113,7 +114,7 @@ macro_rules! impl_pylist {
                 pub fn __delitem__(&mut self, idx: $crate::python::SliceOrInt, py: Python) -> PyResult<()> {
                     match idx {
                         $crate::python::SliceOrInt::Slice(sl) => {
-                            let pylist = ::pyo3::types::PyList::new_bound(py, self.0.iter().cloned());
+                            let pylist = ::pyo3::types::PyList::new_bound(py, self.0.iter().map(|e| e.clone_ref(py)));
                             pylist.call_method1("__delitem__", ::pyo3::types::PyTuple::new_bound(py, [sl]))?;
                             self.0 = pylist
                                 .into_iter()
@@ -178,7 +179,7 @@ macro_rules! impl_pylist {
                             x.call_method1(
                                 py,
                                 "__eq__",
-                                ::pyo3::types::PyTuple::new_bound(py, [value.clone()]),
+                                ::pyo3::types::PyTuple::new_bound(py, [value.clone_ref(py)]),
                             )
                             .and_then(|x| x.is_truthy(py))
                             .unwrap_or_default()
@@ -199,7 +200,7 @@ macro_rules! impl_pylist {
                                 x.call_method1(
                                     py,
                                     "__eq__",
-                                    ::pyo3::types::PyTuple::new_bound(py, [value.clone()]),
+                                    ::pyo3::types::PyTuple::new_bound(py, [value.clone_ref(py)]),
                                 )
                                 .and_then(|x| x.is_truthy(py))
                                 .unwrap_or_default()
@@ -215,7 +216,7 @@ macro_rules! impl_pylist {
                             x.call_method1(
                                 py,
                                 "__eq__",
-                                ::pyo3::types::PyTuple::new_bound(py, [value.clone()]),
+                                ::pyo3::types::PyTuple::new_bound(py, [value.clone_ref(py)]),
                             )
                             .and_then(|x| x.is_truthy(py))
                             .unwrap_or_default()

@@ -36,7 +36,6 @@ pub const DPC_TILING_DIM: usize = 3;
 pub const DPC_TILING_DIM_SQUARED: usize = DPC_TILING_DIM * DPC_TILING_DIM;
 
 #[pyclass(module = "skytemple_rust.st_dpc")]
-#[derive(Clone)]
 pub struct Dpc {
     #[pyo3(get)]
     pub chunks: Vec<Vec<Py<TilemapEntry>>>,
@@ -204,7 +203,7 @@ impl Dpc {
                 .collect::<PyResult<_>>()
         });
         let tile_mappings: Vec<Vec<Py<TilemapEntry>>> = if !contains_null_chunk {
-            once(Ok(vec![Py::new(py, TilemapEntry::default())?; 9]))
+            once(Ok(empty_chunk(py)?))
                 .chain(tile_mappings_iter)
                 .collect::<PyResult<_>>()?
         } else {
@@ -223,8 +222,7 @@ impl Dpc {
             )))
         } else {
             for _ in 0..400 - self.chunks.len() {
-                self.chunks
-                    .push(vec![Py::new(py, TilemapEntry::default())?; 9]);
+                self.chunks.push(empty_chunk(py)?);
             }
             Ok(())
         }
@@ -386,10 +384,19 @@ pub mod input {
             self.0.to_object(py)
         }
     }
+}
 
-    impl From<InputDpc> for Dpc {
-        fn from(obj: InputDpc) -> Self {
-            Python::with_gil(|py| obj.0.to_object(py).extract(py).unwrap())
-        }
-    }
+#[inline(always)]
+fn empty_chunk(py: Python) -> PyResult<Vec<Py<TilemapEntry>>> {
+    Ok(vec![
+        Py::new(py, TilemapEntry::default())?,
+        Py::new(py, TilemapEntry::default())?,
+        Py::new(py, TilemapEntry::default())?,
+        Py::new(py, TilemapEntry::default())?,
+        Py::new(py, TilemapEntry::default())?,
+        Py::new(py, TilemapEntry::default())?,
+        Py::new(py, TilemapEntry::default())?,
+        Py::new(py, TilemapEntry::default())?,
+        Py::new(py, TilemapEntry::default())?,
+    ])
 }

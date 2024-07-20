@@ -16,17 +16,19 @@
  * You should have received a copy of the GNU General Public License
  * along with SkyTemple.  If not, see <https://www.gnu.org/licenses/>.
  */
+use std::ops::Deref;
+
+use packed_struct::prelude::*;
+use packed_struct::PackingResult;
+use pyo3::prelude::*;
+
 use crate::bytes::StBytes;
 use crate::err::convert_packing_err;
 use crate::python::create_value_user_error;
 use crate::st_mappa_bin::{MappaFloorDarknessLevel, MappaFloorStructureType, MappaFloorWeather};
-use packed_struct::prelude::*;
-use packed_struct::PackingResult;
-use pyo3::prelude::*;
-use std::ops::Deref;
 
 #[pyclass(module = "skytemple_rust.st_mappa_bin")]
-#[derive(Clone, PackedStruct, Debug, PartialEq, Eq)]
+#[derive(PackedStruct, Debug, PartialEq, Eq)]
 #[packed_struct(endian = "lsb")]
 pub struct MappaFloorTerrainSettings {
     #[pyo3(get, set)]
@@ -93,10 +95,16 @@ impl MappaFloorTerrainSettings {
 
 /// MappaFloorTerrainSettings but on the Python heap
 /// (packable wrapper around Py<MappaFloorTerrainSettings>
-#[derive(FromPyObject, Clone, Debug)]
+#[derive(FromPyObject, Debug)]
 #[pyo3(transparent)]
 #[repr(transparent)]
 pub struct PyMappaFloorTerrainSettings(Py<MappaFloorTerrainSettings>);
+
+impl Clone for PyMappaFloorTerrainSettings {
+    fn clone(&self) -> Self {
+        Python::with_gil(|py| Self(self.0.clone_ref(py)))
+    }
+}
 
 impl PackedStruct for PyMappaFloorTerrainSettings {
     type ByteArray = <MappaFloorTerrainSettings as PackedStruct>::ByteArray;
@@ -134,7 +142,7 @@ impl PartialEq for PyMappaFloorTerrainSettings {
 
 impl Eq for PyMappaFloorTerrainSettings {}
 
-#[derive(Clone, PackedStruct, Debug, PartialEq, Eq)]
+#[derive(PackedStruct, Debug, PartialEq, Eq)]
 #[packed_struct(endian = "lsb")]
 #[pyclass(module = "skytemple_rust.st_mappa_bin")]
 pub struct MappaFloorLayout {

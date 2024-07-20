@@ -16,15 +16,17 @@
  * You should have received a copy of the GNU General Public License
  * along with SkyTemple.  If not, see <https://www.gnu.org/licenses/>.
  */
-use crate::bytes::StBytes;
-use crate::err::convert_packing_err;
-use crate::st_sir0::{Sir0Error, Sir0Result, Sir0Serializable};
+use std::mem::size_of;
+use std::ops::Deref;
+
 use packed_struct::prelude::*;
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 use pyo3::types::PyType;
-use std::mem::size_of;
-use std::ops::Deref;
+
+use crate::bytes::StBytes;
+use crate::err::convert_packing_err;
+use crate::st_sir0::{Sir0Error, Sir0Result, Sir0Serializable};
 
 impl_pylist!("skytemple_rust.st_item_p", ItemPEntryList, Py<ItemPEntry>);
 
@@ -93,7 +95,6 @@ impl ItemPEntry {
 }
 
 #[pyclass(module = "skytemple_rust.st_item_p")]
-#[derive(Clone)]
 pub struct ItemP {
     pub item_list: Py<ItemPEntryList>,
 }
@@ -119,8 +120,8 @@ impl ItemP {
     }
 
     #[getter]
-    pub fn item_list(&self) -> Py<ItemPEntryList> {
-        self.item_list.clone()
+    pub fn item_list(&self, py: Python) -> Py<ItemPEntryList> {
+        self.item_list.clone_ref(py)
     }
 
     #[setter]
@@ -141,7 +142,7 @@ impl ItemP {
 
     #[pyo3(name = "sir0_serialize_parts")]
     pub fn _sir0_serialize_parts(&self, py: Python) -> PyResult<PyObject> {
-        Ok(self.sir0_serialize_parts()?.into_py(py))
+        Ok(self.sir0_serialize_parts(py)?.into_py(py))
     }
 
     #[classmethod]
@@ -150,13 +151,14 @@ impl ItemP {
         _cls: &Bound<'_, PyType>,
         content_data: StBytes,
         data_pointer: u32,
+        py: Python,
     ) -> PyResult<Self> {
-        Ok(Self::sir0_unwrap(content_data, data_pointer)?)
+        Ok(Self::sir0_unwrap(content_data, data_pointer, py)?)
     }
 }
 
 impl Sir0Serializable for ItemP {
-    fn sir0_serialize_parts(&self) -> Sir0Result<(StBytes, Vec<u32>, Option<u32>)> {
+    fn sir0_serialize_parts(&self, _py: Python) -> Sir0Result<(StBytes, Vec<u32>, Option<u32>)> {
         let content = Python::with_gil(|py| {
             self.item_list
                 .borrow(py)
@@ -172,7 +174,7 @@ impl Sir0Serializable for ItemP {
         Ok((StBytes::from(content.concat()), vec![], None))
     }
 
-    fn sir0_unwrap(content_data: StBytes, data_pointer: u32) -> Sir0Result<Self> {
+    fn sir0_unwrap(content_data: StBytes, data_pointer: u32, _py: Python) -> Sir0Result<Self> {
         Python::with_gil(|py| Self::new(content_data, data_pointer, py))
             .map_err(|e| Sir0Error::UnwrapFailed(anyhow::Error::from(e)))
     }
@@ -192,7 +194,7 @@ impl ItemPWriter {
     pub fn write(&self, model: Py<ItemP>, py: Python) -> PyResult<StBytes> {
         model
             .borrow(py)
-            .sir0_serialize_parts()
+            .sir0_serialize_parts(py)
             .map(|(c, _, _)| c)
             .map_err(|e| PyValueError::new_err(format!("{}", e)))
     }

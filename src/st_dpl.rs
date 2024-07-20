@@ -146,10 +146,4 @@ pub mod input {
             self.0.to_object(py)
         }
     }
-
-    impl From<InputDpl> for Dpl {
-        fn from(obj: InputDpl) -> Self {
-            Python::with_gil(|py| obj.0.to_object(py).extract(py).unwrap())
-        }
-    }
 }

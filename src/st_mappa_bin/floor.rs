@@ -16,15 +16,16 @@
  * You should have received a copy of the GNU General Public License
  * along with SkyTemple.  If not, see <https://www.gnu.org/licenses/>.
  */
+use std::ops::Deref;
+
+use pyo3::prelude::*;
+
 use crate::st_mappa_bin::{
     MappaFloorLayout, MappaItemList, MappaMonster, MappaMonsterList, MappaTrapList,
 };
 use crate::util::Lazy;
-use pyo3::prelude::*;
-use std::ops::Deref;
 
 #[pyclass(module = "skytemple_rust.st_mappa_bin")]
-#[derive(Clone, PartialEq)]
 pub struct MappaFloor {
     pub layout: Lazy<Py<MappaFloorLayout>>,
     pub monsters: Lazy<Py<MappaMonsterList>>,
@@ -42,7 +43,7 @@ impl MappaFloor {
     #[new]
     #[allow(clippy::too_many_arguments)]
     pub fn new(
-        layout: MappaFloorLayout,
+        layout: Py<MappaFloorLayout>,
         monsters: Vec<Py<MappaMonster>>,
         traps: MappaTrapList,
         floor_items: MappaItemList,
@@ -54,7 +55,7 @@ impl MappaFloor {
         py: Python,
     ) -> PyResult<Self> {
         Ok(Self {
-            layout: Lazy::Instance(Py::new(py, layout)?),
+            layout: Lazy::Instance(layout),
             monsters: Lazy::Instance(Py::new(py, MappaMonsterList(monsters))?),
             traps: Lazy::Instance(Py::new(py, traps)?),
             floor_items: Lazy::Instance(Py::new(py, floor_items)?),
@@ -68,8 +69,8 @@ impl MappaFloor {
 
     #[getter]
 
-    pub fn layout(&mut self) -> PyResult<Py<MappaFloorLayout>> {
-        Ok(self.layout.instance()?.clone())
+    pub fn layout(&mut self, py: Python) -> PyResult<Py<MappaFloorLayout>> {
+        Ok(self.layout.instance()?.clone_ref(py))
     }
 
     #[setter]
@@ -81,8 +82,8 @@ impl MappaFloor {
 
     #[getter]
 
-    pub fn monsters(&mut self) -> PyResult<Py<MappaMonsterList>> {
-        Ok(self.monsters.instance()?.clone())
+    pub fn monsters(&mut self, py: Python) -> PyResult<Py<MappaMonsterList>> {
+        Ok(self.monsters.instance()?.clone_ref(py))
     }
 
     #[setter]
@@ -104,8 +105,8 @@ impl MappaFloor {
 
     #[getter]
 
-    pub fn traps(&mut self) -> PyResult<Py<MappaTrapList>> {
-        Ok(self.traps.instance()?.clone())
+    pub fn traps(&mut self, py: Python) -> PyResult<Py<MappaTrapList>> {
+        Ok(self.traps.instance()?.clone_ref(py))
     }
 
     #[setter]
@@ -117,8 +118,8 @@ impl MappaFloor {
 
     #[getter]
 
-    pub fn floor_items(&mut self) -> PyResult<Py<MappaItemList>> {
-        Ok(self.floor_items.instance()?.clone())
+    pub fn floor_items(&mut self, py: Python) -> PyResult<Py<MappaItemList>> {
+        Ok(self.floor_items.instance()?.clone_ref(py))
     }
 
     #[setter]
@@ -130,8 +131,8 @@ impl MappaFloor {
 
     #[getter]
 
-    pub fn shop_items(&mut self) -> PyResult<Py<MappaItemList>> {
-        Ok(self.shop_items.instance()?.clone())
+    pub fn shop_items(&mut self, py: Python) -> PyResult<Py<MappaItemList>> {
+        Ok(self.shop_items.instance()?.clone_ref(py))
     }
 
     #[setter]
@@ -143,8 +144,8 @@ impl MappaFloor {
 
     #[getter]
 
-    pub fn monster_house_items(&mut self) -> PyResult<Py<MappaItemList>> {
-        Ok(self.monster_house_items.instance()?.clone())
+    pub fn monster_house_items(&mut self, py: Python) -> PyResult<Py<MappaItemList>> {
+        Ok(self.monster_house_items.instance()?.clone_ref(py))
     }
 
     #[setter]
@@ -156,8 +157,8 @@ impl MappaFloor {
 
     #[getter]
 
-    pub fn buried_items(&mut self) -> PyResult<Py<MappaItemList>> {
-        Ok(self.buried_items.instance()?.clone())
+    pub fn buried_items(&mut self, py: Python) -> PyResult<Py<MappaItemList>> {
+        Ok(self.buried_items.instance()?.clone_ref(py))
     }
 
     #[setter]
@@ -169,8 +170,8 @@ impl MappaFloor {
 
     #[getter]
 
-    pub fn unk_items1(&mut self) -> PyResult<Py<MappaItemList>> {
-        Ok(self.unk_items1.instance()?.clone())
+    pub fn unk_items1(&mut self, py: Python) -> PyResult<Py<MappaItemList>> {
+        Ok(self.unk_items1.instance()?.clone_ref(py))
     }
 
     #[setter]
@@ -182,8 +183,8 @@ impl MappaFloor {
 
     #[getter]
 
-    pub fn unk_items2(&mut self) -> PyResult<Py<MappaItemList>> {
-        Ok(self.unk_items2.instance()?.clone())
+    pub fn unk_items2(&mut self, py: Python) -> PyResult<Py<MappaItemList>> {
+        Ok(self.unk_items2.instance()?.clone_ref(py))
     }
 
     #[setter]
@@ -196,9 +197,25 @@ impl MappaFloor {
     fn __richcmp__(&self, other: PyRef<Self>, op: pyo3::basic::CompareOp) -> Py<PyAny> {
         let py = other.py();
         match op {
-            pyo3::basic::CompareOp::Eq => (self == other.deref()).into_py(py),
-            pyo3::basic::CompareOp::Ne => (self != other.deref()).into_py(py),
+            pyo3::basic::CompareOp::Eq => self.eq_pyref(other.deref(), py).into_py(py),
+            pyo3::basic::CompareOp::Ne => { !self.eq_pyref(other.deref(), py) }.into_py(py),
             _ => py.NotImplemented(),
         }
+    }
+}
+
+impl MappaFloor {
+    pub fn eq_pyref(&self, other: &Self, py: Python) -> bool {
+        self.layout.eq_pyref(&other.layout, py)
+            && self.monsters.eq_pyref(&other.monsters, py)
+            && self.traps.eq_pyref(&other.traps, py)
+            && self.floor_items.eq_pyref(&other.floor_items, py)
+            && self.shop_items.eq_pyref(&other.shop_items, py)
+            && self
+                .monster_house_items
+                .eq_pyref(&other.monster_house_items, py)
+            && self.buried_items.eq_pyref(&other.buried_items, py)
+            && self.unk_items1.eq_pyref(&other.unk_items1, py)
+            && self.unk_items2.eq_pyref(&other.unk_items2, py)
     }
 }

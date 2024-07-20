@@ -33,7 +33,6 @@ use crate::image::{In256ColIndexedImage, InIndexedImage, IndexedImage, PixelGene
 pub const BPA_TILE_DIM: usize = 8;
 
 #[pyclass(module = "skytemple_rust.st_bpa")]
-#[derive(Clone)]
 pub struct BpaFrameInfo {
     #[pyo3(get, set)]
     pub duration_per_frame: u16,
@@ -53,7 +52,6 @@ impl BpaFrameInfo {
 }
 
 #[pyclass(module = "skytemple_rust.st_bpa")]
-#[derive(Clone)]
 pub struct Bpa {
     #[pyo3(get, set)]
     pub number_of_tiles: u16,
@@ -285,11 +283,12 @@ impl Bpa {
                 for _ in len_finfo..(self.number_of_frames as usize) {
                     // If the length is shorter, we just copy the last entry
                     if len_finfo > 0 {
-                        let entry_before = self.frame_info[len_finfo - 1].borrow(py).clone();
-                        self.frame_info.push(Py::new(
-                            py,
-                            BpaFrameInfo::new(entry_before.duration_per_frame, entry_before.unk2),
-                        )?);
+                        let entry_before = self.frame_info[len_finfo - 1].borrow(py);
+                        let duration_per_frame = entry_before.duration_per_frame;
+                        let unk2 = entry_before.unk2;
+                        drop(entry_before);
+                        self.frame_info
+                            .push(Py::new(py, BpaFrameInfo::new(duration_per_frame, unk2))?);
                     } else {
                         self.frame_info.push(Py::new(py, BpaFrameInfo::new(10, 0))?);
                     }
@@ -385,7 +384,12 @@ pub mod input {
         }
 
         fn __get_cloned_frame_info(&self, py: Python) -> PyResult<Vec<Py<BpaFrameInfo>>> {
-            Ok(self.borrow(py).frame_info.clone())
+            Ok(self
+                .borrow(py)
+                .frame_info
+                .iter()
+                .map(|e| e.clone_ref(py))
+                .collect::<Vec<_>>())
         }
     }
 
@@ -439,12 +443,6 @@ pub mod input {
     impl IntoPy<PyObject> for InputBpa {
         fn into_py(self, py: Python) -> PyObject {
             self.0.to_object(py)
-        }
-    }
-
-    impl From<InputBpa> for Bpa {
-        fn from(obj: InputBpa) -> Self {
-            Python::with_gil(|py| obj.0.to_object(py).extract(py).unwrap())
         }
     }
 

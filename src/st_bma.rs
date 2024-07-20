@@ -16,6 +16,16 @@
  * You should have received a copy of the GNU General Public License
  * along with SkyTemple.  If not, see <https://www.gnu.org/licenses/>.
  */
+use std::io::Cursor;
+use std::iter::{Copied, Enumerate};
+use std::slice::Iter;
+
+use bytes::{Buf, BufMut, Bytes, BytesMut};
+use itertools::Itertools;
+use pyo3::exceptions::PyValueError;
+use pyo3::prelude::*;
+use pyo3::pyclass;
+
 use crate::bytes::StBytes;
 use crate::compression::bma_collision_rle::{
     BmaCollisionRleCompressor, BmaCollisionRleDecompressor,
@@ -32,17 +42,8 @@ use crate::st_bpc::BPC_TILE_DIM;
 use crate::st_bpl::input::InputBpl;
 use crate::st_bpl::{BPL_IMG_PAL_LEN, BPL_MAX_PAL, BPL_PAL_LEN};
 use crate::util::lcm;
-use bytes::{Buf, BufMut, Bytes, BytesMut};
-use itertools::Itertools;
-use pyo3::exceptions::PyValueError;
-use pyo3::prelude::*;
-use pyo3::pyclass;
-use std::io::Cursor;
-use std::iter::{Copied, Enumerate};
-use std::slice::Iter;
 
 #[pyclass(module = "skytemple_rust.st_bma")]
-#[derive(Clone)]
 pub struct Bma {
     #[pyo3(get, set)]
     pub map_width_camera: u8,
@@ -640,8 +641,22 @@ impl Bma {
     }
 
     pub fn deepcopy(&self) -> Self {
-        // Cloning isn't enough (pyo3 weirdness).
-        self.clone()
+        Self {
+            map_width_camera: self.map_width_camera,
+            map_height_camera: self.map_height_camera,
+            tiling_width: self.tiling_width,
+            tiling_height: self.tiling_height,
+            map_width_chunks: self.map_width_chunks,
+            map_height_chunks: self.map_height_chunks,
+            number_of_layers: self.number_of_layers,
+            unk6: self.unk6,
+            number_of_collision_layers: self.number_of_collision_layers,
+            layer0: self.layer0.clone(),
+            layer1: self.layer1.clone(),
+            unknown_data_block: self.unknown_data_block.clone(),
+            collision: self.collision.clone(),
+            collision2: self.collision2.clone(),
+        }
     }
 }
 

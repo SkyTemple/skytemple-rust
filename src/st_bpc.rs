@@ -45,7 +45,7 @@ enum AnimatedExportMode {
 }
 
 #[pyclass(module = "skytemple_rust.st_bpc")]
-#[derive(Clone, Default)]
+#[derive(Default)]
 pub struct BpcLayer {
     // The actual number of tiles is one lower
     #[pyo3(get, set)]
@@ -81,9 +81,9 @@ impl BpcLayer {
     }
 
     #[getter]
-    fn get_tilemap(&self) -> PyResult<Vec<Py<TilemapEntry>>> {
+    fn get_tilemap(&self, py: Python) -> PyResult<Vec<Py<TilemapEntry>>> {
         // todo: could be optimized
-        Ok(self.tilemap.clone())
+        Ok(self.tilemap.iter().map(|e| e.clone_ref(py)).collect::<_>())
     }
 
     #[setter]
@@ -94,7 +94,6 @@ impl BpcLayer {
 }
 
 #[pyclass(module = "skytemple_rust.st_bpc")]
-#[derive(Clone)]
 pub struct Bpc {
     #[pyo3(get, set)]
     pub tiling_width: u16,
@@ -1223,12 +1222,6 @@ pub mod input {
     impl IntoPy<PyObject> for InputBpc {
         fn into_py(self, py: Python) -> PyObject {
             self.0.to_object(py)
-        }
-    }
-
-    impl From<InputBpc> for Bpc {
-        fn from(obj: InputBpc) -> Self {
-            Python::with_gil(|py| obj.0.to_object(py).extract(py).unwrap())
         }
     }
 }
