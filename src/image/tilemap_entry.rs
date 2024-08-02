@@ -101,12 +101,6 @@ impl From<usize> for TilemapEntry {
     }
 }
 
-impl From<TilemapEntry> for usize {
-    fn from(entry: TilemapEntry) -> Self {
-        entry.into()
-    }
-}
-
 impl TilemapEntry {
     pub(crate) fn _to_int(&self) -> usize {
         (self.0 & 0x3FF)
