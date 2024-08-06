@@ -21,34 +21,28 @@ from skytemple_rust.st_dpc import Dpc
 from skytemple_rust.st_dpci import Dpci
 
 _DmaType = int
-    # WALL = 0
-    # WATER = 1
-    # FLOOR = 2
-
+# WALL = 0
+# WATER = 1
+# FLOOR = 2
 
 _DmaExtraType = int
-    # FLOOR1 = 0
-    # WALL_OR_VOID = 1
-    # FLOOR2 = 2
-
+# FLOOR1 = 0
+# WALL_OR_VOID = 1
+# FLOOR2 = 2
 
 class Dma:
     chunk_mappings: Sequence[int]
 
     def __init__(self, data: bytes): ...
-
     def get(self, get_type: _DmaType, neighbors_same: int) -> Sequence[int]: ...
-
     def get_extra(self, extra_type: _DmaExtraType) -> Sequence[int]: ...
-
-    def set(self, get_type: _DmaType, neighbors_same: int, variation_index: int, value: int): ...
-
+    def set(
+        self, get_type: _DmaType, neighbors_same: int, variation_index: int, value: int
+    ): ...
     def set_extra(self, extra_type: _DmaExtraType, index: int, value: int): ...
-
     def to_pil(
-            self, dpc: Dpc, dpci: Dpci, palettes: Sequence[Sequence[int]]
+        self, dpc: Dpc, dpci: Dpci, palettes: Sequence[Sequence[int]]
     ) -> Image.Image: ...
-
 
 class DmaWriter:
     def __new__(cls): ...

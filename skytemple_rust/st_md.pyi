@@ -14,9 +14,8 @@
 #
 #  You should have received a copy of the GNU General Public License
 #  along with SkyTemple.  If not, see <https://www.gnu.org/licenses/>.
+from range_typed_integers import u8, u16, u32, i8, i16
 from typing import Sequence, List, Tuple, Iterator
-
-from range_typed_integers import *
 
 _EvolutionMethod = u16
 _AdditionalRequirement = u16
@@ -27,14 +26,12 @@ _IQGroup = u8
 _Ability = u8
 _ShadowSize = i8
 
-
 class MdPropertiesState:
     num_entities: int
     max_possible: int
 
     @classmethod
     def instance(cls) -> "MdPropertiesState": ...
-
 
 class MdEntry:
     md_index: u32
@@ -91,28 +88,19 @@ class MdEntry:
 
     @classmethod
     def new_empty(cls, entid: u16) -> "MdEntry": ...
-
     @property
     def md_index_base(self) -> int: ...
-
 
 class Md:
     entries: Sequence[MdEntry]
 
     def __init__(self, data: bytes): ...
-
     def get_by_index(self, index: int) -> MdEntry: ...
-
     def get_by_entity_id(self, index: int) -> List[Tuple[int, MdEntry]]: ...
-
     def __len__(self) -> int: ...
-
     def __getitem__(self, key: int) -> MdEntry: ...
-
     def __setitem__(self, key: int, value: MdEntry) -> None: ...
-
     def __delitem__(self, key: int) -> None: ...
-
     def __iter__(self) -> Iterator[MdEntry]: ...
 
 class MdWriter:

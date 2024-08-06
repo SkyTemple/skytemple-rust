@@ -14,14 +14,12 @@
 #
 #  You should have received a copy of the GNU General Public License
 #  along with SkyTemple.  If not, see <https://www.gnu.org/licenses/>.
+from range_typed_integers import u16, u32, i16
 from typing import Sequence
-
-from range_typed_integers import *
 
 COUNT_GLOBAL_VARS: u32
 COUNT_LOCAL_VARS: u32
 DEFINITION_STRUCT_SIZE: int
-
 
 class ScriptVariableDefinition:
     id: int
@@ -33,10 +31,14 @@ class ScriptVariableDefinition:
     default: i16
     name: str
 
-
 class ScriptVariableTables:
     globals: Sequence[ScriptVariableDefinition]
     locals: Sequence[ScriptVariableDefinition]
 
-    def __init__(self, arm9: bytes, global_start: u32, local_start: u32, subtract_from_name_addrs: u32):
-        ...
+    def __init__(
+        self,
+        arm9: bytes,
+        global_start: u32,
+        local_start: u32,
+        subtract_from_name_addrs: u32,
+    ): ...

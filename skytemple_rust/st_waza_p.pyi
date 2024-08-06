@@ -14,35 +14,30 @@
 #
 #  You should have received a copy of the GNU General Public License
 #  along with SkyTemple.  If not, see <https://www.gnu.org/licenses/>.
+from range_typed_integers import u8, u16, u32
 from typing import MutableSequence, Sequence
 
-from range_typed_integers import *
-
 from skytemple_rust.st_sir0 import Sir0Serializable
-
 
 class LevelUpMove:
     move_id: u16
     level_id: u16
 
-    def __init__(self, move_id: u16, level_id: u16):
-        ...
-
-    def __eq__(self, other: object) -> bool:
-        ...
-
+    def __init__(self, move_id: u16, level_id: u16): ...
+    def __eq__(self, other: object) -> bool: ...
 
 class MoveLearnset:
     level_up_moves: MutableSequence[LevelUpMove]
     tm_hm_moves: MutableSequence[u32]
     egg_moves: MutableSequence[u32]
 
-    def __init__(self, level_up_moves: Sequence[LevelUpMove], tm_hm_moves: Sequence[u32], egg_moves: Sequence[u32]):
-        ...
-
-    def __eq__(self, other: object) -> bool:
-        ...
-
+    def __init__(
+        self,
+        level_up_moves: Sequence[LevelUpMove],
+        tm_hm_moves: Sequence[u32],
+        egg_moves: Sequence[u32],
+    ): ...
+    def __eq__(self, other: object) -> bool: ...
 
 class WazaMoveRangeSettings:
     target: int
@@ -50,14 +45,9 @@ class WazaMoveRangeSettings:
     condition: int
     unused: int
 
-    def __init__(self, data: bytes):
-        ...
-
-    def __int__(self):
-        ...
-
-    def __eq__(self, other: object) -> bool:
-        ...
+    def __init__(self, data: bytes): ...
+    def __int__(self): ...
+    def __eq__(self, other: object) -> bool: ...
 
 class WazaMove:
     base_power: u16
@@ -82,26 +72,16 @@ class WazaMove:
     move_id: u16
     message_id: u8
 
-    def __init__(self, data: bytes):
-        ...
-
-    def to_bytes(self) -> bytes:
-        ...
-
-    def __eq__(self, other: object) -> bool:
-        ...
-
+    def __init__(self, data: bytes): ...
+    def to_bytes(self) -> bytes: ...
+    def __eq__(self, other: object) -> bool: ...
 
 class WazaP(Sir0Serializable):
     moves: MutableSequence[WazaMove]
     learnsets: MutableSequence[MoveLearnset]
 
-    def __init__(self, data: bytes, waza_content_pointer: int):
-        ...
-
-    def __eq__(self, other: object) -> bool:
-        ...
-
+    def __init__(self, data: bytes, waza_content_pointer: int): ...
+    def __eq__(self, other: object) -> bool: ...
 
 class WazaPWriter:
     def __new__(cls): ...
