@@ -27,24 +27,19 @@ class WanImage:
     sprite_type: SpriteType
     unk2: int
 
-
 class FragmentBytesStore:
     fragment_bytes: List[FragmentBytes]
-
 
 class FragmentBytes:
     mixed_pixels: List[int]
     z_index: int
 
     def decode_fragment(self, resolution: FragmentResolution) -> List[int]: ...
-
     def to_image(self, palette: Palette, fragment: Fragment) -> List[int]: ...
-
 
 class FrameStore:
     frames: List[Frame]
     max_fragment_alloc_count: int
-
 
 class Fragment:
     unk1: int
@@ -76,15 +71,12 @@ class FragmentResolution:
     x: int
     y: int
 
-
 class AnimationStore:
     copied_on_previous: Optional[List[bool]]
     anim_groups: List[List[Animation]]
 
-
 class Animation:
     frames: List[AnimationFrame]
-
 
 class AnimationFrame:
     duration: int
@@ -95,10 +87,8 @@ class AnimationFrame:
     shadow_offset_x: int
     shadow_offset_y: int
 
-
 class Palette:
     palette: List[int]
-
 
 class SpriteType:
     PropsUI: SpriteType

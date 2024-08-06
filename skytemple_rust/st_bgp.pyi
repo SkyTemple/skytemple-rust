@@ -14,12 +14,10 @@
 #
 #  You should have received a copy of the GNU General Public License
 #  along with SkyTemple.  If not, see <https://www.gnu.org/licenses/>.
-from typing import Sequence, List
-
 from PIL import Image
+from typing import Sequence
 
 from skytemple_rust import TilemapEntry
-
 
 class Bgp:
     palettes: Sequence[Sequence[int]] = []
@@ -27,11 +25,8 @@ class Bgp:
     tilemap: Sequence[TilemapEntry] = []
 
     def __init__(self, data: bytes): ...
-
     def to_pil(self, ignore_flip_bits=False) -> Image.Image: ...
-
     def from_pil(self, pil: Image.Image, force_import=False) -> None: ...
-
 
 class BgpWriter:
     def __new__(cls): ...

@@ -16,12 +16,10 @@
 #  along with SkyTemple.  If not, see <https://www.gnu.org/licenses/>.
 from typing import Sequence
 
-
 class Dpl:
     palettes: Sequence[Sequence[int]]
 
     def __init__(self, data: bytes): ...
-
 
 class DplWriter:
     def __new__(cls): ...
