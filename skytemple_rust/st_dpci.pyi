@@ -18,18 +18,15 @@ from typing import Sequence
 
 from PIL import Image
 
-
 class Dpci:
     tiles: Sequence[bytes]
 
     def __init__(self, data: bytes): ...
-
-    def tiles_to_pil(self, palettes: Sequence[Sequence[int]], width_in_tiles=20, palette_index=0) -> Image.Image: ...
-
+    def tiles_to_pil(
+        self, palettes: Sequence[Sequence[int]], width_in_tiles=20, palette_index=0
+    ) -> Image.Image: ...
     def pil_to_tiles(self, image: Image.Image): ...
-
     def import_tiles(self, tiles: Sequence[bytearray], contains_null_tile=False): ...
-
 
 class DpciWriter:
     def __new__(cls): ...

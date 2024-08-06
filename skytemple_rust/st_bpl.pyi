@@ -14,17 +14,14 @@
 #
 #  You should have received a copy of the GNU General Public License
 #  along with SkyTemple.  If not, see <https://www.gnu.org/licenses/>.
+from range_typed_integers import u16
 from typing import List, Sequence
-
-from range_typed_integers import *
-
 
 class BplAnimationSpec:
     duration_per_frame: u16
     number_of_frames: u16
 
     def __init__(self, duration_per_frame: u16, number_of_frames: u16): ...
-
 
 class Bpl:
     number_palettes: u16
@@ -39,7 +36,6 @@ class Bpl:
     def is_palette_affected_by_animation(self, pal_idx: int) -> bool: ...
     def get_real_palettes(self) -> List[List[int]]: ...
     def set_palettes(self, palettes: List[List[int]]) -> None: ...
-
 
 class BplWriter:
     def __new__(cls): ...

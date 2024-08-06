@@ -14,15 +14,13 @@
 #
 #  You should have received a copy of the GNU General Public License
 #  along with SkyTemple.  If not, see <https://www.gnu.org/licenses/>.
-from typing import List, Optional, Sequence
-
 from PIL import Image
+from range_typed_integers import u8, u16
+from typing import List, Optional, Sequence
 
 from skytemple_rust.st_bpa import Bpa
 from skytemple_rust.st_bpc import Bpc
 from skytemple_rust.st_bpl import Bpl
-from range_typed_integers import *
-
 
 class Bma:
     map_width_camera: u8
@@ -46,21 +44,45 @@ class Bma:
     collision2: Optional[Sequence[bool]]
 
     def __init__(self, data: bytes): ...
-
-    def to_pil_single_layer(self, bpc: Bpc, palettes: Sequence[Sequence[int]], bpas: Sequence[Optional[Bpa]], layer: int) -> Image.Image: ...
+    def to_pil_single_layer(
+        self,
+        bpc: Bpc,
+        palettes: Sequence[Sequence[int]],
+        bpas: Sequence[Optional[Bpa]],
+        layer: int,
+    ) -> Image.Image: ...
     def to_pil(
-            self, bpc: Bpc, bpl: Bpl, bpas: List[Optional[Bpa]],
-            include_collision: bool = True, include_unknown_data_block: bool = True, pal_ani: bool = True, single_frame: bool = False
+        self,
+        bpc: Bpc,
+        bpl: Bpl,
+        bpas: List[Optional[Bpa]],
+        include_collision: bool = True,
+        include_unknown_data_block: bool = True,
+        pal_ani: bool = True,
+        single_frame: bool = False,
     ) -> List[Image.Image]: ...
     def from_pil(
-            self, bpc: Bpc, bpl: Bpl, lower_img: Optional[Image.Image] = None, upper_img: Optional[Image.Image] = None,
-            force_import: bool = False, how_many_palettes_lower_layer: int = 16
+        self,
+        bpc: Bpc,
+        bpl: Bpl,
+        lower_img: Optional[Image.Image] = None,
+        upper_img: Optional[Image.Image] = None,
+        force_import: bool = False,
+        how_many_palettes_lower_layer: int = 16,
     ) -> None: ...
     def remove_upper_layer(self) -> None: ...
     def add_upper_layer(self) -> None: ...
-    def resize(self, new_width_chunks: int, new_height_chunks: int, new_width_camera: int, new_height_camera: int) -> None: ...
+    def resize(
+        self,
+        new_width_chunks: int,
+        new_height_chunks: int,
+        new_width_camera: int,
+        new_height_camera: int,
+    ) -> None: ...
     def place_chunk(self, layer_id: int, x: int, y: int, chunk_index: int) -> None: ...
-    def place_collision(self, collision_layer_id: int, x: int, y: int, is_solid: bool) -> None: ...
+    def place_collision(
+        self, collision_layer_id: int, x: int, y: int, is_solid: bool
+    ) -> None: ...
     def place_data(self, x: int, y: int, data: int) -> None: ...
     def deepcopy(self) -> Bma: ...
 
