@@ -33,9 +33,9 @@ use pyo3::types::PyType;
 
 use crate::bytes::{StBytes, StBytesMut};
 use crate::gettext::gettext;
+use crate::image::{In16ColSolidIndexedImage, IndexedImage, InIndexedImage, PixelGenerator};
 use crate::image::tiled::TiledImage;
-use crate::image::{In16ColSolidIndexedImage, InIndexedImage, IndexedImage, PixelGenerator};
-use crate::st_at_common::{CommonAt, COMMON_AT_BEST_3};
+use crate::st_at_common::{COMMON_AT_BEST_3, CommonAt};
 
 const KAO_IMAGE_LIMIT: usize = 800;
 static KAO_PROPERTIES_STATE_INSTANCE: Mutex<Option<Py<KaoPropertiesState>>> = Mutex::new(None);
@@ -64,10 +64,9 @@ impl KaoPropertiesState {
 
 #[pymethods]
 impl KaoPropertiesState {
-    #[cfg(feature = "python")]
     #[classmethod]
     #[pyo3(name = "instance")]
-    pub fn _instance(_cls: &PyType, py: Python) -> PyResult<Py<Self>> {
+    pub fn _instance(_cls: &Bound<'_, PyType>, py: Python) -> PyResult<Py<Self>> {
         Self::instance(py)
     }
 }
