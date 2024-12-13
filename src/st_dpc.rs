@@ -23,7 +23,7 @@ use itertools::Itertools;
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 
-use crate::bytes::StBytes;
+use crate::bytes::{StBytes, StU8List};
 use crate::gettext::gettext;
 use crate::image::tiled::TiledImage;
 use crate::image::tilemap_entry::{InputTilemapEntry, ProvidesTilemapEntry, TilemapEntry};
@@ -83,7 +83,7 @@ impl Dpc {
     pub fn chunks_to_pil(
         &self,
         dpci: InputDpci,
-        palettes: Vec<Vec<u8>>,
+        palettes: Vec<StU8List>,
         width_in_mtiles: usize,
         py: Python,
     ) -> PyResult<IndexedImage> {
@@ -107,7 +107,7 @@ impl Dpc {
         &self,
         chunk_idx: usize,
         dpci: InputDpci,
-        palettes: Vec<Vec<u8>>,
+        palettes: Vec<StU8List>,
         py: Python,
     ) -> PyResult<IndexedImage> {
         Ok(TiledImage::tiled_to_native(
@@ -136,7 +136,7 @@ impl Dpc {
         img: In256ColIndexedImage,
         force_import: bool,
         py: Python,
-    ) -> PyResult<(Vec<StBytes>, Vec<Vec<u8>>)> {
+    ) -> PyResult<(Vec<StBytes>, Vec<StU8List>)> {
         let image = img.extract(py)?;
         let w = image.0 .1;
         let h = image.0 .2;
@@ -172,8 +172,8 @@ impl Dpc {
                 .chunks(3 * 16)
                 .into_iter()
                 .take(DPL_MAX_PAL)
-                .map(|x| x.into_iter().collect())
-                .collect::<Vec<Vec<u8>>>(),
+                .map(|x| x.into_iter().collect::<Vec<u8>>().into())
+                .collect::<Vec<StU8List>>(),
         ))
     }
 
@@ -265,6 +265,7 @@ pub(crate) fn create_st_dpc_module(py: Python) -> PyResult<(&str, Bound<'_, PyMo
 // DPCs as inputs (for compatibility of including other DPC implementations from Python)
 
 pub mod input {
+    use crate::bytes::StU8List;
     use crate::image::tilemap_entry::InputTilemapEntry;
     use crate::image::{In256ColIndexedImage, InIndexedImage, IndexedImage};
     use crate::st_dpc::Dpc;
@@ -279,7 +280,7 @@ pub mod input {
         fn do_chunks_to_pil(
             &self,
             dpci: InputDpci,
-            palettes: Vec<Vec<u8>>,
+            palettes: Vec<StU8List>,
             width_in_mtiles: usize,
             py: Python,
         ) -> PyResult<IndexedImage>;
@@ -297,7 +298,7 @@ pub mod input {
         fn do_chunks_to_pil(
             &self,
             dpci: InputDpci,
-            palettes: Vec<Vec<u8>>,
+            palettes: Vec<StU8List>,
             width_in_mtiles: usize,
             py: Python,
         ) -> PyResult<IndexedImage> {
@@ -325,7 +326,7 @@ pub mod input {
         fn do_chunks_to_pil(
             &self,
             dpci: InputDpci,
-            palettes: Vec<Vec<u8>>,
+            palettes: Vec<StU8List>,
             width_in_mtiles: usize,
             py: Python,
         ) -> PyResult<IndexedImage> {

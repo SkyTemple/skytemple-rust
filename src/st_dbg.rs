@@ -16,7 +16,7 @@
  * You should have received a copy of the GNU General Public License
  * along with SkyTemple.  If not, see <https://www.gnu.org/licenses/>.
  */
-use crate::bytes::StBytes;
+use crate::bytes::{StBytes, StU8List};
 use crate::gettext::gettext;
 use crate::image::tiled::TiledImage;
 use crate::image::tilemap_entry::{InputTilemapEntry, TilemapEntry};
@@ -68,7 +68,7 @@ impl Dbg {
         &self,
         dpc: InputDpc,
         dpci: InputDpci,
-        palettes: Vec<Vec<u8>>,
+        palettes: Vec<StU8List>,
         py: Python,
     ) -> PyResult<IndexedImage> {
         let width_and_height_map = DBG_WIDTH_AND_HEIGHT * DBG_CHUNK_WIDTH;
@@ -150,9 +150,9 @@ impl Dbg {
         let palettes = palettes
             .0
             .chunks(DPL_PAL_LEN * 3)
-            .map(|x| x.to_vec())
+            .map(|x| x.to_vec().into())
             .take(DPL_MAX_PAL)
-            .collect::<Vec<Vec<u8>>>();
+            .collect::<Vec<StU8List>>();
 
         dpci.do_import_tiles(tiles.into_iter().map(|x| x.0.into()).collect(), false, py)?;
 

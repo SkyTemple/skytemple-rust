@@ -19,7 +19,7 @@
 use bytes::{Buf, BufMut};
 use pyo3::prelude::*;
 
-use crate::bytes::StBytes;
+use crate::bytes::{StBytes, StU8List};
 
 /// Length of a palette in colors.
 pub const DPL_PAL_LEN: usize = 16;
@@ -36,7 +36,7 @@ pub const DPL_FOURTH_COLOR: u8 = 128;
 #[derive(Clone)]
 pub struct Dpl {
     #[pyo3(get, set)]
-    pub palettes: Vec<Vec<u8>>,
+    pub palettes: Vec<StU8List>,
 }
 
 #[pymethods]
@@ -44,7 +44,7 @@ impl Dpl {
     #[new]
     pub fn new(data: StBytes) -> PyResult<Self> {
         let mut data = &data[..];
-        let mut palettes: Vec<Vec<u8>> = Vec::with_capacity(data.len() / DPL_PAL_SIZE);
+        let mut palettes: Vec<StU8List> = Vec::with_capacity(data.len() / DPL_PAL_SIZE);
         let mut current_pal = Vec::with_capacity(16 * 3);
         while data.has_remaining() {
             current_pal.push(data.get_u8());
@@ -53,12 +53,12 @@ impl Dpl {
             let unk = data.get_u8();
             debug_assert_eq!(DPL_FOURTH_COLOR, unk);
             if current_pal.len() == DPL_PAL_LEN * 3 {
-                palettes.push(current_pal);
+                palettes.push(current_pal.into());
                 current_pal = Vec::with_capacity(16 * 3);
             }
         }
         if !current_pal.is_empty() {
-            palettes.push(current_pal);
+            palettes.push(current_pal.into());
         }
         Ok(Self { palettes })
     }
@@ -107,20 +107,27 @@ pub(crate) fn create_st_dpl_module(py: Python) -> PyResult<(&str, Bound<'_, PyMo
 // DPLs as inputs (for compatibility of including other DPL implementations from Python)
 
 pub mod input {
+    use crate::bytes::StU8List;
+    use crate::st_dpl::Dpl;
     use enum_dispatch::enum_dispatch;
     use pyo3::prelude::*;
 
-    use crate::st_dpl::Dpl;
-
     #[enum_dispatch(InputDpl)]
     pub trait DplProvider {
-        fn set_palettes(&mut self, value: Vec<Vec<u8>>, py: Python) -> PyResult<()>;
+        fn set_palettes(&mut self, value: Vec<StU8List>, py: Python) -> PyResult<()>;
     }
 
     impl DplProvider for Py<Dpl> {
-        fn set_palettes(&mut self, value: Vec<Vec<u8>>, py: Python) -> PyResult<()> {
+        fn set_palettes(&mut self, value: Vec<StU8List>, py: Python) -> PyResult<()> {
             self.borrow_mut(py).palettes = value;
             Ok(())
+        }
+    }
+
+    impl DplProvider for PyObject {
+        fn set_palettes(&mut self, value: Vec<StU8List>, py: Python) -> PyResult<()> {
+            let self_ref = self.bind(py);
+            self_ref.setattr("palettes", value)
         }
     }
 
@@ -128,5 +135,6 @@ pub mod input {
     #[derive(FromPyObject, IntoPyObject)]
     pub enum InputDpl {
         Rs(Py<Dpl>),
+        Py(PyObject),
     }
 }

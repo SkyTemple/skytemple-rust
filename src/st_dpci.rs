@@ -18,7 +18,7 @@
  */
 use pyo3::prelude::*;
 
-use crate::bytes::StBytes;
+use crate::bytes::{StBytes, StU8List};
 use crate::image::tiled::TiledImage;
 use crate::image::tilemap_entry::TilemapEntry;
 use crate::image::{In256ColIndexedImage, InIndexedImage, IndexedImage, PixelGenerator};
@@ -53,7 +53,7 @@ impl Dpci {
     #[pyo3(signature = (palettes, width_in_tiles = 20, palette_index = 0))]
     pub fn tiles_to_pil(
         &self,
-        palettes: Vec<Vec<u8>>,
+        palettes: Vec<StU8List>,
         width_in_tiles: usize,
         palette_index: u8,
     ) -> IndexedImage {

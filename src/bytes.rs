@@ -30,6 +30,9 @@ pub struct StBytesMut(pub(crate) BytesMut);
 #[derive(Clone, Default, PartialEq, Eq, Debug)]
 pub struct StBytes(pub(crate) Bytes);
 
+#[derive(Clone, Default, PartialEq, Eq, Debug)]
+pub struct StU8List(pub(crate) Vec<u8>);
+
 /// Export Bytes as bytes
 impl<'py> IntoPyObject<'py> for StBytes {
     type Target = PyBytes;
@@ -103,6 +106,12 @@ impl From<&[u8]> for StBytes {
 impl From<Vec<u8>> for StBytes {
     fn from(v: Vec<u8>) -> Self {
         Self(Bytes::from(v))
+    }
+}
+
+impl From<StU8List> for StBytes {
+    fn from(v: StU8List) -> Self {
+        Self(Bytes::from(v.0))
     }
 }
 
@@ -245,5 +254,105 @@ where
 {
     fn as_bytes_pyref(&self, py: Python) -> StBytes {
         self.clone_ref(py).into()
+    }
+}
+
+/// Export Vec<u8> as list
+impl<'py> IntoPyObject<'py> for StU8List {
+    type Target = PyList;
+    type Output = Bound<'py, Self::Target>;
+    type Error = PyErr;
+
+    fn into_pyobject(self, py: Python<'py>) -> Result<Self::Output, Self::Error> {
+        PyList::new(py, &self.0)
+    }
+}
+
+impl<'source> FromPyObject<'source> for StU8List {
+    fn extract_bound(ob: &Bound<'source, PyAny>) -> PyResult<Self> {
+        if let Ok(bytes) = ob.downcast::<PyBytes>() {
+            // TODO: Maybe we could do without copying?
+            let data = Vec::from(bytes.as_bytes());
+            Ok(Self(data))
+        } else if let Ok(bytearray) = ob.downcast::<PyByteArray>() {
+            // TODO: Maybe we could do without copying?
+            let data: Vec<u8>;
+            unsafe {
+                data = Vec::from(bytearray.as_bytes());
+            }
+            Ok(Self(data))
+        } else {
+            let data: &Bound<PyList> = ob.downcast()?;
+            Ok(Self(
+                data.into_iter()
+                    .map(|x| x.extract::<u8>())
+                    .collect::<PyResult<Vec<u8>>>()?,
+            ))
+        }
+    }
+}
+
+impl Deref for StU8List {
+    type Target = Vec<u8>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl DerefMut for StU8List {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
+    }
+}
+
+impl FromIterator<u8> for StU8List {
+    fn from_iter<T: IntoIterator<Item = u8>>(iter: T) -> Self {
+        Self(Vec::from_iter(iter))
+    }
+}
+
+impl IntoIterator for StU8List {
+    type Item = u8;
+    type IntoIter = std::vec::IntoIter<u8>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.0.into_iter()
+    }
+}
+
+impl From<&[u8]> for StU8List {
+    fn from(v: &[u8]) -> Self {
+        Self(Vec::from(v))
+    }
+}
+
+impl From<Vec<u8>> for StU8List {
+    fn from(v: Vec<u8>) -> Self {
+        Self(v)
+    }
+}
+
+impl From<StBytes> for StU8List {
+    fn from(v: StBytes) -> Self {
+        Self(v.to_vec())
+    }
+}
+
+impl From<Bytes> for StU8List {
+    fn from(v: Bytes) -> Self {
+        Self(v.to_vec())
+    }
+}
+
+impl From<BytesMut> for StU8List {
+    fn from(v: BytesMut) -> Self {
+        Self(v.to_vec())
+    }
+}
+
+impl AsRef<[u8]> for StU8List {
+    fn as_ref(&self) -> &[u8] {
+        self.0.as_ref()
     }
 }

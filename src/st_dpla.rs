@@ -24,7 +24,7 @@ use pyo3::prelude::*;
 use pyo3::types::PyType;
 use pyo3::IntoPyObjectExt;
 
-use crate::bytes::StBytes;
+use crate::bytes::{StBytes, StU8List};
 use crate::gettext::gettext;
 use crate::st_sir0::{Sir0Error, Sir0Result, Sir0Serializable};
 
@@ -35,7 +35,7 @@ pub const DPLA_MAX_COLORS: usize = 32;
 #[derive(Clone)]
 pub struct Dpla {
     #[pyo3(get, set)]
-    pub colors: Vec<Vec<u8>>,
+    pub colors: Vec<StU8List>,
     #[pyo3(get, set)]
     pub durations_per_frame_for_colors: Vec<u16>,
 }
@@ -55,7 +55,7 @@ impl Dpla {
         }
 
         //  A list of colors stored in this file. The colors are lists of RGB values: [R, G, B, R, G, B...]
-        let mut colors: Vec<Vec<u8>> = Vec::with_capacity(toc_pointers.len());
+        let mut colors: Vec<StU8List> = Vec::with_capacity(toc_pointers.len());
         let mut durations_per_frame_for_colors: Vec<u16> = Vec::with_capacity(toc_pointers.len());
 
         for pnt in toc_pointers {
@@ -78,7 +78,7 @@ impl Dpla {
                 let unk = entries.get_u8();
                 debug_assert_eq!(128, unk);
             }
-            colors.push(frame_colors);
+            colors.push(frame_colors.into());
         }
         Ok(Self {
             colors,
@@ -89,7 +89,7 @@ impl Dpla {
     /// Returns the color palette at the given frame id. Returned is a stream of RGB colors: [R, G, B, R, G, B...].
     /// Returned are always 16 colors. If the palette file has more than 16 colors, the pal_idx specifies what set
     /// of 16 colors to return.
-    pub fn get_palette_for_frame(&self, pal_idx: usize, frame_id: usize) -> PyResult<Vec<u8>> {
+    pub fn get_palette_for_frame(&self, pal_idx: usize, frame_id: usize) -> PyResult<StU8List> {
         let colors = self.colors.get((pal_idx * 16)..((pal_idx + 1) * 16));
         if let Some(colors) = colors {
             let result = colors
@@ -110,7 +110,7 @@ impl Dpla {
                 .collect::<Result<Vec<u8>, ()>>();
             match result {
                 Err(_) => Err(PyIndexError::new_err(gettext("Palette is invalid."))),
-                Ok(palette) => Ok(palette),
+                Ok(palette) => Ok(palette.into()),
             }
         } else {
             Err(PyIndexError::new_err(gettext(
@@ -136,7 +136,7 @@ impl Dpla {
         if !self.has_for_palette(palid) {
             // Add one entry, this enables it.
             while self.colors.len() < ((palid + 1) * DPLA_COLORS_PER_PALETTE) {
-                self.colors.push(vec![0, 0, 0])
+                self.colors.push(vec![0, 0, 0].into())
             }
             for entry in self
                 .colors
@@ -201,9 +201,9 @@ impl Dpla {
     /// This could be inaccurate.
     pub fn apply_palette_animations(
         &self,
-        mut palettes: Vec<Vec<u8>>,
+        mut palettes: Vec<StU8List>,
         frame_idx: usize,
-    ) -> PyResult<Vec<Vec<u8>>> {
+    ) -> PyResult<Vec<StU8List>> {
         if self.has_for_palette(0) {
             if palettes.len() < 11 {
                 return Err(PyIndexError::new_err(gettext(
@@ -257,7 +257,7 @@ impl Sir0Serializable for Dpla {
                 // Always one null color
                 let null_color = color_frames.is_empty();
                 if null_color {
-                    color_frames = vec![0, 0, 0]
+                    color_frames = vec![0, 0, 0].into()
                 }
 
                 let mut buffer = Vec::with_capacity(color_frames.len() * 4 + 4);

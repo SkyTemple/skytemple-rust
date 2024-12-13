@@ -24,7 +24,7 @@ use pyo3::prelude::*;
 use std::convert::TryInto;
 use std::io::Cursor;
 
-use crate::bytes::StBytes;
+use crate::bytes::{StBytes, StU8List};
 use crate::image::{In16ColIndexedImage, InIndexedImage};
 use crate::python::create_value_user_error;
 
@@ -60,7 +60,7 @@ struct FragmentBytesStore {
 #[derive(Clone)]
 pub struct FragmentBytes {
     #[pyo3(get)]
-    pub mixed_pixels: Vec<u8>,
+    pub mixed_pixels: StU8List,
     #[pyo3(get)]
     pub z_index: u32,
 }
@@ -284,7 +284,7 @@ fn wrap_fragment_bytes_store(lib_ent: &lib::FragmentBytesStore) -> FragmentBytes
 
 fn wrap_fragment_bytes(lib_ent: &lib::FragmentBytes) -> FragmentBytes {
     FragmentBytes {
-        mixed_pixels: lib_ent.mixed_pixels.clone(),
+        mixed_pixels: lib_ent.mixed_pixels.clone().into(),
         z_index: lib_ent.z_index,
     }
 }

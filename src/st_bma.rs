@@ -26,7 +26,7 @@ use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 use pyo3::pyclass;
 
-use crate::bytes::StBytes;
+use crate::bytes::{StBytes, StU8List};
 use crate::compression::bma_collision_rle::{
     BmaCollisionRleCompressor, BmaCollisionRleDecompressor,
 };
@@ -71,7 +71,7 @@ pub struct Bma {
 
     // if unk6:
     #[pyo3(get, set)]
-    pub unknown_data_block: Option<Vec<u8>>,
+    pub unknown_data_block: Option<StU8List>,
     // if number_of_collision_layers > 0:
     #[pyo3(get, set)]
     pub collision: Option<Vec<bool>>,
@@ -144,7 +144,7 @@ impl Bma {
                 }
                 decompression_step(&mut data, &mut decompressed_data);
             }
-            Some(decompressed_data)
+            Some(decompressed_data.into())
         } else {
             None
         };
@@ -213,7 +213,7 @@ impl Bma {
     pub fn to_pil_single_layer(
         &self,
         mut bpc: InputBpc,
-        palettes: Vec<StBytes>,
+        palettes: Vec<StU8List>,
         bpas: Vec<Option<InputBpa>>,
         layer: usize,
         py: Python,
@@ -506,7 +506,7 @@ impl Bma {
         }
 
         // Import tiles, tile mappings and chunks mappings
-        let mut palettes: Vec<Vec<u8>> = Default::default();
+        let mut palettes: Vec<StU8List> = Default::default();
         if let Some(lower_img) = lower_img {
             palettes = self.from_pil_step(
                 false,
@@ -708,7 +708,7 @@ impl Bma {
         palette_offset: usize,
         bpc: &mut InputBpc,
         py: Python,
-    ) -> PyResult<Vec<Vec<u8>>> {
+    ) -> PyResult<Vec<StU8List>> {
         let layer = match is_upper {
             true => self.layer1.as_mut(),
             false => Some(&mut self.layer0),
@@ -771,8 +771,8 @@ impl Bma {
         Ok(palettes
             .0
             .chunks(BPL_IMG_PAL_LEN * 3)
-            .map(|x| x.to_vec())
-            .collect::<Vec<Vec<u8>>>())
+            .map(|x| x.to_vec().into())
+            .collect::<Vec<StU8List>>())
     }
 }
 
@@ -1011,6 +1011,23 @@ where
     fn collect<U>(iter: U) -> Self
     where
         U: Iterator<Item = T>,
+    {
+        iter.collect()
+    }
+}
+
+impl Resizable<u8> for StU8List {
+    fn len(&self) -> usize {
+        Vec::len(self)
+    }
+
+    fn enumerate(&self) -> Enumerate<Copied<Iter<u8>>> {
+        self.iter().copied().enumerate()
+    }
+
+    fn collect<U>(iter: U) -> Self
+    where
+        U: Iterator<Item = u8>,
     {
         iter.collect()
     }

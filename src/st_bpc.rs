@@ -25,7 +25,7 @@ use pyo3::exceptions::{PyAssertionError, PyValueError};
 use pyo3::prelude::*;
 use pyo3::IntoPyObjectExt;
 
-use crate::bytes::StBytes;
+use crate::bytes::{StBytes, StU8List};
 use crate::compression::bpc_image::{BpcImageCompressor, BpcImageDecompressor};
 use crate::compression::bpc_tilemap::{BpcTilemapCompressor, BpcTilemapDecompressor};
 use crate::gettext::gettext;
@@ -241,7 +241,7 @@ impl Bpc {
     pub fn _chunks_to_pil(
         &self,
         layer_id: usize,
-        palettes: Vec<StBytes>,
+        palettes: Vec<StU8List>,
         width_in_mtiles: usize,
         py: Python,
     ) -> IndexedImage {
@@ -256,7 +256,7 @@ impl Bpc {
         &self,
         layer_id: usize,
         chunk_idx: usize,
-        palettes: Vec<StBytes>,
+        palettes: Vec<StU8List>,
         py: Python,
     ) -> IndexedImage {
         self.single_chunk_to_pil(layer_id, chunk_idx, &palettes, py)
@@ -326,7 +326,7 @@ impl Bpc {
     pub fn chunks_animated_to_pil(
         &mut self,
         layer_id: usize,
-        palettes: Vec<StBytes>,
+        palettes: Vec<StU8List>,
         bpas: Vec<Option<InputBpa>>,
         width_in_mtiles: usize,
         py: Python,
@@ -347,7 +347,7 @@ impl Bpc {
         &mut self,
         layer_id: usize,
         chunk_idx: usize,
-        palettes: Vec<StBytes>,
+        palettes: Vec<StU8List>,
         bpas: Vec<Option<InputBpa>>,
         py: Python,
     ) -> PyResult<Vec<IndexedImage>> {
@@ -397,7 +397,7 @@ impl Bpc {
         image: In256ColIndexedImage,
         force_import: bool,
         py: Python,
-    ) -> PyResult<Vec<Vec<u8>>> {
+    ) -> PyResult<Vec<StU8List>> {
         let image = image.extract(py)?;
         let w = image.0 .1;
         let h = image.0 .2;
@@ -421,7 +421,10 @@ impl Bpc {
         layer.number_tiles = (layer.tiles.len() - 1) as u16;
         layer.chunk_tilemap_len =
             layer.tilemap.len() as u16 / self.tiling_width / self.tiling_height;
-        Ok(palettes.chunks(16 * 3).map(|x| x.to_vec()).collect())
+        Ok(palettes
+            .chunks(16 * 3)
+            .map(|x| x.to_vec().into())
+            .collect::<Vec<StU8List>>())
     }
 
     pub fn get_tile(&self, layer: usize, index: usize, py: Python) -> PyResult<TilemapEntry> {
@@ -650,7 +653,7 @@ impl Bpc {
     pub fn chunks_to_pil(
         &self,
         layer_id: usize,
-        palettes: &[StBytes],
+        palettes: &[StU8List],
         width_in_mtiles: usize,
         py: Python,
     ) -> IndexedImage {
@@ -678,7 +681,7 @@ impl Bpc {
         &self,
         layer_id: usize,
         chunk_idx: usize,
-        palettes: &[StBytes],
+        palettes: &[StU8List],
         py: Python,
     ) -> IndexedImage {
         let layer = self.layers[layer_id].borrow(py);
@@ -738,7 +741,7 @@ impl Bpc {
         &mut self,
         layer_id: usize,
         mode: AnimatedExportMode,
-        palettes: &[StBytes],
+        palettes: &[StU8List],
         bpas: &[Option<InputBpa>],
         py: Python,
     ) -> PyResult<Vec<IndexedImage>> {
@@ -1038,7 +1041,7 @@ pub mod input {
     use pyo3::types::{PyList, PyTuple};
     use pyo3::IntoPyObjectExt;
 
-    use crate::bytes::StBytes;
+    use crate::bytes::{StBytes, StU8List};
     use crate::image::tilemap_entry::InputTilemapEntry;
     use crate::image::{In256ColIndexedImage, InIndexedImage, IndexedImage};
     use crate::st_bpa::input::InputBpa;
@@ -1050,7 +1053,7 @@ pub mod input {
         fn get_chunks_animated_to_pil(
             &mut self,
             layer_id: usize,
-            palettes: &[StBytes],
+            palettes: &[StU8List],
             bpas: &[Option<InputBpa>],
             width_in_mtiles: usize,
             py: Python,
@@ -1081,7 +1084,7 @@ pub mod input {
         fn get_chunks_animated_to_pil(
             &mut self,
             layer_id: usize,
-            palettes: &[StBytes],
+            palettes: &[StU8List],
             bpas: &[Option<InputBpa>],
             width_in_mtiles: usize,
             py: Python,
@@ -1137,7 +1140,7 @@ pub mod input {
         fn get_chunks_animated_to_pil(
             &mut self,
             layer_id: usize,
-            palettes: &[StBytes],
+            palettes: &[StU8List],
             bpas: &[Option<InputBpa>],
             width_in_mtiles: usize,
             py: Python,
@@ -1150,8 +1153,8 @@ pub mod input {
                     layer_id.into_py_any(py)?,
                     palettes
                         .iter()
-                        .map(|x| x.to_vec())
-                        .collect::<Vec<Vec<u8>>>()
+                        .map(|x| x.to_vec().into())
+                        .collect::<Vec<StU8List>>()
                         .into_py_any(py)?,
                     bpas.to_vec().into_py_any(py)?,
                     width_in_mtiles.into_py_any(py)?,
