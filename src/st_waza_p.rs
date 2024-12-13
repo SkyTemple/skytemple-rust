@@ -26,6 +26,7 @@ use packed_struct::PackingResult;
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 use pyo3::types::PyType;
+use pyo3::IntoPyObjectExt;
 
 use crate::bytes::{AsStBytesPyRef, StBytes};
 use crate::err::convert_packing_err;
@@ -60,13 +61,13 @@ impl LevelUpMove {
         Self { move_id, level_id }
     }
 
-    fn __richcmp__(&self, other: PyRef<Self>, op: pyo3::basic::CompareOp) -> Py<PyAny> {
+    fn __richcmp__(&self, other: PyRef<Self>, op: pyo3::basic::CompareOp) -> PyResult<Py<PyAny>> {
         let py = other.py();
-        match op {
-            pyo3::basic::CompareOp::Eq => (self == other.deref()).into_py(py),
-            pyo3::basic::CompareOp::Ne => (self != other.deref()).into_py(py),
+        Ok(match op {
+            pyo3::basic::CompareOp::Eq => (self == other.deref()).into_py_any(py)?,
+            pyo3::basic::CompareOp::Ne => (self != other.deref()).into_py_any(py)?,
             _ => py.NotImplemented(),
-        }
+        })
     }
 }
 
@@ -166,13 +167,13 @@ impl MoveLearnset {
         }
     }
 
-    fn __richcmp__(&self, other: PyRef<Self>, op: pyo3::basic::CompareOp) -> Py<PyAny> {
+    fn __richcmp__(&self, other: PyRef<Self>, op: pyo3::basic::CompareOp) -> PyResult<Py<PyAny>> {
         let py = other.py();
-        match op {
-            pyo3::basic::CompareOp::Eq => (self == other.deref()).into_py(py),
-            pyo3::basic::CompareOp::Ne => (self != other.deref()).into_py(py),
+        Ok(match op {
+            pyo3::basic::CompareOp::Eq => (self == other.deref()).into_py_any(py)?,
+            pyo3::basic::CompareOp::Ne => (self != other.deref()).into_py_any(py)?,
             _ => py.NotImplemented(),
-        }
+        })
     }
 }
 
@@ -210,20 +211,20 @@ pub struct WazaMoveRangeSettings {
 impl WazaMoveRangeSettings {
     #[new]
     pub fn new(data: StBytes) -> PyResult<Self> {
-        <Self as PackedStruct>::unpack(&data[..2].try_into().unwrap()).map_err(convert_packing_err)
+        <Self as PackedStruct>::unpack(&data[..2].try_into()?).map_err(convert_packing_err)
     }
 
     pub fn __int__(&self) -> u16 {
         self.into()
     }
 
-    fn __richcmp__(&self, other: PyRef<Self>, op: pyo3::basic::CompareOp) -> Py<PyAny> {
+    fn __richcmp__(&self, other: PyRef<Self>, op: pyo3::basic::CompareOp) -> PyResult<Py<PyAny>> {
         let py = other.py();
-        match op {
-            pyo3::basic::CompareOp::Eq => (self == other.deref()).into_py(py),
-            pyo3::basic::CompareOp::Ne => (self != other.deref()).into_py(py),
+        Ok(match op {
+            pyo3::basic::CompareOp::Eq => (self == other.deref()).into_py_any(py)?,
+            pyo3::basic::CompareOp::Ne => (self != other.deref()).into_py_any(py)?,
             _ => py.NotImplemented(),
-        }
+        })
     }
 }
 
@@ -271,9 +272,13 @@ impl PackedStruct for PyWazaMoveRangeSettings {
     }
 }
 
-impl IntoPy<PyObject> for PyWazaMoveRangeSettings {
-    fn into_py(self, py: Python) -> PyObject {
-        self.0.into_py(py)
+impl<'py> IntoPyObject<'py> for PyWazaMoveRangeSettings {
+    type Target = WazaMoveRangeSettings;
+    type Output = Bound<'py, Self::Target>;
+    type Error = std::convert::Infallible;
+
+    fn into_pyobject(self, py: Python<'py>) -> Result<Self::Output, Self::Error> {
+        Ok(self.0.into_bound(py))
     }
 }
 
@@ -355,8 +360,7 @@ impl WazaMove {
         if data.len() < Self::BYTELEN {
             Err(PyValueError::new_err("Not enough data for WazaMove."))
         } else {
-            <Self as PackedStruct>::unpack(data[..].try_into().unwrap())
-                .map_err(convert_packing_err)
+            <Self as PackedStruct>::unpack(data[..].try_into()?).map_err(convert_packing_err)
         }
     }
 
@@ -366,13 +370,13 @@ impl WazaMove {
         slf.into()
     }
 
-    fn __richcmp__(&self, other: PyRef<Self>, op: pyo3::basic::CompareOp) -> Py<PyAny> {
+    fn __richcmp__(&self, other: PyRef<Self>, op: pyo3::basic::CompareOp) -> PyResult<Py<PyAny>> {
         let py = other.py();
-        match op {
-            pyo3::basic::CompareOp::Eq => (self == other.deref()).into_py(py),
-            pyo3::basic::CompareOp::Ne => (self != other.deref()).into_py(py),
+        Ok(match op {
+            pyo3::basic::CompareOp::Eq => (self == other.deref()).into_py_any(py)?,
+            pyo3::basic::CompareOp::Ne => (self != other.deref()).into_py_any(py)?,
             _ => py.NotImplemented(),
-        }
+        })
     }
 }
 
@@ -533,7 +537,7 @@ impl WazaP {
 
     #[pyo3(name = "sir0_serialize_parts")]
     pub fn _sir0_serialize_parts(&self, py: Python) -> PyResult<PyObject> {
-        Ok(self.sir0_serialize_parts(py)?.into_py(py))
+        self.sir0_serialize_parts(py)?.into_py_any(py)
     }
 
     #[classmethod]
@@ -547,13 +551,13 @@ impl WazaP {
         Ok(Self::sir0_unwrap(content_data, data_pointer, py)?)
     }
 
-    fn __richcmp__(&self, other: PyRef<Self>, op: pyo3::basic::CompareOp) -> Py<PyAny> {
+    fn __richcmp__(&self, other: PyRef<Self>, op: pyo3::basic::CompareOp) -> PyResult<Py<PyAny>> {
         let py = other.py();
-        match op {
-            pyo3::basic::CompareOp::Eq => (self == other.deref()).into_py(py),
-            pyo3::basic::CompareOp::Ne => (self != other.deref()).into_py(py),
+        Ok(match op {
+            pyo3::basic::CompareOp::Eq => (self == other.deref()).into_py_any(py)?,
+            pyo3::basic::CompareOp::Ne => (self != other.deref()).into_py_any(py)?,
             _ => py.NotImplemented(),
-        }
+        })
     }
 }
 
@@ -694,7 +698,7 @@ impl WazaPWriter {
 
 pub(crate) fn create_st_waza_p_module(py: Python) -> PyResult<(&str, Bound<'_, PyModule>)> {
     let name: &'static str = "skytemple_rust.st_waza_p";
-    let m = PyModule::new_bound(py, name)?;
+    let m = PyModule::new(py, name)?;
     m.add_class::<LevelUpMove>()?;
     m.add_class::<LevelUpMoveList>()?;
     m.add_class::<U32List>()?;

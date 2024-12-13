@@ -262,7 +262,7 @@ pub(crate) fn create_st_bpc_tilemap_compression_module(
     py: Python,
 ) -> PyResult<(&str, Bound<'_, PyModule>)> {
     let name: &'static str = "skytemple_rust._st_bpc_tilemap_compression";
-    let m = PyModule::new_bound(py, name)?;
+    let m = PyModule::new(py, name)?;
     m.add_class::<BpcTilemapCompressionContainer>()?;
 
     Ok((name, m))

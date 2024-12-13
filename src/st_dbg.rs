@@ -22,15 +22,19 @@ use crate::image::tiled::TiledImage;
 use crate::image::tilemap_entry::{InputTilemapEntry, TilemapEntry};
 use crate::image::{In256ColIndexedImage, InIndexedImage, IndexedImage, Raster};
 use crate::python::create_value_user_error;
+use crate::st_dpc::input::DpcProvider;
 use crate::st_dpc::input::InputDpc;
 use crate::st_dpc::DPC_TILING_DIM;
+use crate::st_dpci::input::DpciProvider;
 use crate::st_dpci::input::InputDpci;
 use crate::st_dpci::DPCI_TILE_DIM;
-use crate::st_dpl::input::InputDpl;
+use crate::st_dpl::input::{DplProvider, InputDpl};
 use crate::st_dpl::{DPL_MAX_PAL, DPL_PAL_LEN};
 use bytes::{Buf, BufMut, BytesMut};
 use itertools::Itertools;
 use pyo3::prelude::*;
+use pyo3::IntoPyObjectExt;
+use std::ops::Deref;
 
 const DBG_TILING_DIM: usize = 3;
 const DBG_CHUNK_WIDTH: usize = 24;
@@ -68,7 +72,7 @@ impl Dbg {
         py: Python,
     ) -> PyResult<IndexedImage> {
         let width_and_height_map = DBG_WIDTH_AND_HEIGHT * DBG_CHUNK_WIDTH;
-        let chunks = dpc.0.do_chunks_to_pil(dpci, palettes, 1, py)?;
+        let chunks = dpc.do_chunks_to_pil(dpci, palettes, 1, py)?;
         let mut fimg = IndexedImage(
             Raster::new(width_and_height_map, width_and_height_map),
             chunks.1.clone(),
@@ -150,8 +154,7 @@ impl Dbg {
             .take(DPL_MAX_PAL)
             .collect::<Vec<Vec<u8>>>();
 
-        dpci.0
-            .do_import_tiles(tiles.into_iter().map(|x| x.0.into()).collect(), false, py)?;
+        dpci.do_import_tiles(tiles.into_iter().map(|x| x.0.into()).collect(), false, py)?;
 
         // Build a new list of chunks / tile mappings for the DPC based on repeating chunks
         // in the imported image. Generate chunk mappings.
@@ -177,7 +180,7 @@ impl Dbg {
             }
         }
 
-        dpc.0.do_import_tile_mappings(
+        dpc.do_import_tile_mappings(
             tile_mappings
                 .into_iter()
                 .chunks(DPC_TILING_DIM * DPC_TILING_DIM)
@@ -195,17 +198,17 @@ impl Dbg {
         self.mappings = chunk_mappings;
 
         // Import palettes
-        dpl.0.set_palettes(palettes, py)?;
+        dpl.set_palettes(palettes, py)?;
         Ok(())
     }
 
-    fn __richcmp__(&self, other: PyRef<Self>, op: pyo3::basic::CompareOp) -> Py<PyAny> {
+    fn __richcmp__(&self, other: PyRef<Self>, op: pyo3::basic::CompareOp) -> PyResult<Py<PyAny>> {
         let py = other.py();
-        match op {
-            pyo3::basic::CompareOp::Eq => (self == &*other).into_py(py),
-            pyo3::basic::CompareOp::Ne => (self != &*other).into_py(py),
+        Ok(match op {
+            pyo3::basic::CompareOp::Eq => (self == other.deref()).into_py_any(py)?,
+            pyo3::basic::CompareOp::Ne => (self != other.deref()).into_py_any(py)?,
             _ => py.NotImplemented(),
-        }
+        })
     }
 }
 
@@ -232,7 +235,7 @@ impl DbgWriter {
 
 pub(crate) fn create_st_dbg_module(py: Python) -> PyResult<(&str, Bound<'_, PyModule>)> {
     let name: &'static str = "skytemple_rust.st_dbg";
-    let m = PyModule::new_bound(py, name)?;
+    let m = PyModule::new(py, name)?;
     m.add_class::<Dbg>()?;
     m.add_class::<DbgWriter>()?;
 

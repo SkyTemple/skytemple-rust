@@ -16,18 +16,16 @@
  * You should have received a copy of the GNU General Public License
  * along with SkyTemple.  If not, see <https://www.gnu.org/licenses/>.
  */
-use pyo3::exceptions;
 use pyo3::prelude::*;
 use pyo3::PyErr;
+use pyo3::{exceptions, PyErrArguments};
 
 const USER_ERROR_MARK: &str = "_skytemple__user_error";
 
 /// Creates a PyValueError that is marked as an user error for Python contexts (for error reporting purposes).
-pub fn create_value_user_error<S: Into<String> + IntoPy<PyObject> + Send + Sync + 'static>(
-    msg: S,
-) -> PyErr {
+pub fn create_value_user_error<S: PyErrArguments + 'static>(msg: S) -> PyErr {
     let exc = exceptions::PyValueError::new_err(msg);
-    Python::with_gil(|py| exc.value_bound(py).setattr(USER_ERROR_MARK, true).ok());
+    Python::with_gil(|py| exc.value(py).setattr(USER_ERROR_MARK, true).ok());
     exc
 }
 

@@ -22,6 +22,7 @@ use bytes::Buf;
 use pyo3::exceptions::{PyIndexError, PyValueError};
 use pyo3::prelude::*;
 use pyo3::types::PyType;
+use pyo3::IntoPyObjectExt;
 
 use crate::bytes::StBytes;
 use crate::st_mappa_bin::minimize::MinimizedMappa;
@@ -265,7 +266,7 @@ impl MappaBin {
 
     #[pyo3(name = "sir0_serialize_parts")]
     pub fn _sir0_serialize_parts(&self, py: Python) -> PyResult<PyObject> {
-        Ok(self.sir0_serialize_parts(py)?.into_py(py))
+        self.sir0_serialize_parts(py)?.into_py_any(py)
     }
 
     #[classmethod]
@@ -279,13 +280,13 @@ impl MappaBin {
         Ok(Self::sir0_unwrap(content_data, data_pointer, py)?)
     }
 
-    fn __richcmp__(&self, other: PyRef<Self>, op: pyo3::basic::CompareOp) -> Py<PyAny> {
+    fn __richcmp__(&self, other: PyRef<Self>, op: pyo3::basic::CompareOp) -> PyResult<Py<PyAny>> {
         let py = other.py();
-        match op {
-            pyo3::basic::CompareOp::Eq => self.eq_pyref(other.deref(), py).into_py(py),
-            pyo3::basic::CompareOp::Ne => { !self.eq_pyref(other.deref(), py) }.into_py(py),
+        Ok(match op {
+            pyo3::basic::CompareOp::Eq => self.eq_pyref(other.deref(), py).into_py_any(py)?,
+            pyo3::basic::CompareOp::Ne => { !self.eq_pyref(other.deref(), py) }.into_py_any(py)?,
             _ => py.NotImplemented(),
-        }
+        })
     }
 }
 

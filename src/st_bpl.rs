@@ -314,7 +314,7 @@ impl BplWriter {
 
 pub(crate) fn create_st_bpl_module(py: Python) -> PyResult<(&str, Bound<'_, PyModule>)> {
     let name: &'static str = "skytemple_rust.st_bpl";
-    let m = PyModule::new_bound(py, name)?;
+    let m = PyModule::new(py, name)?;
     m.add_class::<BplAnimationSpec>()?;
     m.add_class::<Bpl>()?;
     m.add_class::<BplWriter>()?;
@@ -327,13 +327,15 @@ pub(crate) fn create_st_bpl_module(py: Python) -> PyResult<(&str, Bound<'_, PyMo
 // BPLs as inputs (for compatibility of including other BPL implementations from Python)
 
 pub mod input {
+    use enum_dispatch::enum_dispatch;
     use pyo3::prelude::*;
     use pyo3::types::PyTuple;
 
     use crate::bytes::StBytes;
     use crate::st_bpl::Bpl;
 
-    pub trait BplProvider: ToPyObject {
+    #[enum_dispatch(InputBpl)]
+    pub trait BplProvider {
         fn get_palettes(&self, py: Python) -> PyResult<Vec<StBytes>>;
         fn get_has_palette_animation(&self, py: Python) -> PyResult<bool>;
         fn get_animation_palette(&self, py: Python) -> PyResult<Vec<StBytes>>;
@@ -396,32 +398,21 @@ pub mod input {
         }
 
         fn do_apply_palette_animations(&self, frame: u16, py: Python) -> PyResult<Vec<StBytes>> {
-            let args = PyTuple::new_bound(py, [frame]);
+            let args = PyTuple::new(py, [frame])?;
             self.call_method1(py, "apply_palette_animations", args)?
                 .extract(py)
         }
 
         fn do_import_palettes(&mut self, palettes: Vec<Vec<u8>>, py: Python) -> PyResult<()> {
-            let args = PyTuple::new_bound(py, [palettes]);
+            let args = PyTuple::new(py, [palettes])?;
             self.call_method1(py, "import_palettes", args).map(|_| ())
         }
     }
 
-    pub struct InputBpl(pub Box<dyn BplProvider>);
-
-    impl<'source> FromPyObject<'source> for InputBpl {
-        fn extract_bound(ob: &Bound<'source, PyAny>) -> PyResult<Self> {
-            if let Ok(obj) = ob.extract::<Py<Bpl>>() {
-                Ok(Self(Box::new(obj)))
-            } else {
-                Ok(Self(Box::new(ob.to_object(ob.py()))))
-            }
-        }
-    }
-
-    impl IntoPy<PyObject> for InputBpl {
-        fn into_py(self, py: Python) -> PyObject {
-            self.0.to_object(py)
-        }
+    #[enum_dispatch]
+    #[derive(FromPyObject, IntoPyObject)]
+    pub enum InputBpl {
+        Rs(Py<Bpl>),
+        Py(PyObject),
     }
 }

@@ -22,6 +22,7 @@ use log::warn;
 use pyo3::exceptions::{PyIndexError, PyValueError};
 use pyo3::prelude::*;
 use pyo3::types::PyType;
+use pyo3::IntoPyObjectExt;
 
 use crate::bytes::StBytes;
 use crate::gettext::gettext;
@@ -224,7 +225,7 @@ impl Dpla {
 
     #[pyo3(name = "sir0_serialize_parts")]
     pub fn _sir0_serialize_parts(&self, py: Python) -> PyResult<PyObject> {
-        Ok(self.sir0_serialize_parts(py)?.into_py(py))
+        self.sir0_serialize_parts(py)?.into_py_any(py)
     }
 
     #[classmethod]
@@ -322,7 +323,7 @@ impl DplaWriter {
 
 pub(crate) fn create_st_dpla_module(py: Python) -> PyResult<(&str, Bound<'_, PyModule>)> {
     let name: &'static str = "skytemple_rust.st_dpla";
-    let m = PyModule::new_bound(py, name)?;
+    let m = PyModule::new(py, name)?;
     m.add_class::<Dpla>()?;
     m.add_class::<DplaWriter>()?;
 

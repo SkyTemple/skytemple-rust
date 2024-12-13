@@ -32,7 +32,7 @@ pub struct StrCharIndexIterator<'r> {
     chars: Chars<'r>,
 }
 
-impl<'r> Iterator for StrCharIndexIterator<'r> {
+impl Iterator for StrCharIndexIterator<'_> {
     type Item = ((usize, usize), char);
 
     #[inline]
@@ -82,15 +82,15 @@ pub struct StatefulDecoderHelper<'a, St, Data: 'a> {
 }
 
 #[cfg(feature = "strings")]
-impl<'a, St: Default, Data> crate::encoding_utils::StatefulDecoderHelper<'a, St, Data> {
+impl<'a, St: Default, Data> StatefulDecoderHelper<'a, St, Data> {
     /// Makes a new decoder context out of given buffer and output callback.
     #[inline(always)]
     pub fn new(
         buf: &'a [u8],
         output: &'a mut (dyn types::StringWriter + 'a),
         data: &'a Data,
-    ) -> crate::encoding_utils::StatefulDecoderHelper<'a, St, Data> {
-        crate::encoding_utils::StatefulDecoderHelper {
+    ) -> StatefulDecoderHelper<'a, St, Data> {
+        StatefulDecoderHelper {
             buf,
             pos: 0,
             output,

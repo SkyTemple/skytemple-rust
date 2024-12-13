@@ -95,7 +95,7 @@ impl DplWriter {
 
 pub(crate) fn create_st_dpl_module(py: Python) -> PyResult<(&str, Bound<'_, PyModule>)> {
     let name: &'static str = "skytemple_rust.st_dpl";
-    let m = PyModule::new_bound(py, name)?;
+    let m = PyModule::new(py, name)?;
     m.add_class::<Dpl>()?;
     m.add_class::<DplWriter>()?;
 
@@ -107,11 +107,13 @@ pub(crate) fn create_st_dpl_module(py: Python) -> PyResult<(&str, Bound<'_, PyMo
 // DPLs as inputs (for compatibility of including other DPL implementations from Python)
 
 pub mod input {
+    use enum_dispatch::enum_dispatch;
     use pyo3::prelude::*;
 
     use crate::st_dpl::Dpl;
 
-    pub trait DplProvider: ToPyObject {
+    #[enum_dispatch(InputDpl)]
+    pub trait DplProvider {
         fn set_palettes(&mut self, value: Vec<Vec<u8>>, py: Python) -> PyResult<()>;
     }
 
@@ -122,28 +124,9 @@ pub mod input {
         }
     }
 
-    impl DplProvider for PyObject {
-        fn set_palettes(&mut self, value: Vec<Vec<u8>>, py: Python) -> PyResult<()> {
-            let self_ref = self.bind(py);
-            self_ref.setattr("palettes", value)
-        }
-    }
-
-    pub struct InputDpl(pub Box<dyn DplProvider>);
-
-    impl<'source> FromPyObject<'source> for InputDpl {
-        fn extract_bound(ob: &Bound<'source, PyAny>) -> PyResult<Self> {
-            if let Ok(obj) = ob.extract::<Py<Dpl>>() {
-                Ok(Self(Box::new(obj)))
-            } else {
-                Ok(Self(Box::new(ob.to_object(ob.py()))))
-            }
-        }
-    }
-
-    impl IntoPy<PyObject> for InputDpl {
-        fn into_py(self, py: Python) -> PyObject {
-            self.0.to_object(py)
-        }
+    #[enum_dispatch]
+    #[derive(FromPyObject, IntoPyObject)]
+    pub enum InputDpl {
+        Rs(Py<Dpl>),
     }
 }

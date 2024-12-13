@@ -106,7 +106,7 @@ impl At4px {
 
 pub(crate) fn create_st_at4px_module(py: Python) -> PyResult<(&str, Bound<'_, PyModule>)> {
     let name: &'static str = "skytemple_rust.st_at4px";
-    let m = PyModule::new_bound(py, name)?;
+    let m = PyModule::new(py, name)?;
     m.add_class::<At4px>()?;
 
     Ok((name, m))

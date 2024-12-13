@@ -132,9 +132,13 @@ impl<'source> FromPyObject<'source> for InputTilemapEntry {
     }
 }
 
-impl IntoPy<Py<TilemapEntry>> for InputTilemapEntry {
-    fn into_py(self, _py: Python) -> Py<TilemapEntry> {
-        self.0
+impl<'py> IntoPyObject<'py> for InputTilemapEntry {
+    type Target = TilemapEntry;
+    type Output = Bound<'py, Self::Target>;
+    type Error = std::convert::Infallible;
+
+    fn into_pyobject(self, py: Python<'py>) -> Result<Self::Output, Self::Error> {
+        Ok(self.0.into_bound(py))
     }
 }
 

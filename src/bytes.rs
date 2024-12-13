@@ -30,11 +30,14 @@ pub struct StBytesMut(pub(crate) BytesMut);
 #[derive(Clone, Default, PartialEq, Eq, Debug)]
 pub struct StBytes(pub(crate) Bytes);
 
-/** Export Bytes as bytes */
+/// Export Bytes as bytes
+impl<'py> IntoPyObject<'py> for StBytes {
+    type Target = PyBytes;
+    type Output = Bound<'py, Self::Target>;
+    type Error = std::convert::Infallible;
 
-impl IntoPy<PyObject> for StBytes {
-    fn into_py(self, py: Python) -> PyObject {
-        PyBytes::new_bound(py, &self.0).into()
+    fn into_pyobject(self, py: Python<'py>) -> Result<Self::Output, Self::Error> {
+        Ok(PyBytes::new(py, &self.0))
     }
 }
 
@@ -127,11 +130,14 @@ impl AsRef<[u8]> for StBytes {
     }
 }
 
-/** Export Vec<u8> as bytes */
+/// Export BytesMut as bytes
+impl<'py> IntoPyObject<'py> for StBytesMut {
+    type Target = PyBytes;
+    type Output = Bound<'py, Self::Target>;
+    type Error = std::convert::Infallible;
 
-impl IntoPy<PyObject> for StBytesMut {
-    fn into_py(self, py: Python) -> PyObject {
-        PyBytes::new_bound(py, &self.0).into()
+    fn into_pyobject(self, py: Python<'py>) -> Result<Self::Output, Self::Error> {
+        Ok(PyBytes::new(py, &self.0))
     }
 }
 

@@ -400,7 +400,7 @@ impl WanImage {
     }
 }
 
-fn convert_error(err: lib::WanError) -> PyErr {
+fn convert_error(err: WanError) -> PyErr {
     match err {
         WanError::IOError(_) => PyIOError::new_err("an io error happened"),
         err => PyValueError::new_err(format!("{}", err)),
@@ -481,7 +481,7 @@ pub fn encode_image_to_static_wan_file(py: Python, image: PyObject) -> PyResult<
 
 pub(crate) fn create_pmd_wan_module(py: Python) -> PyResult<(&str, Bound<'_, PyModule>)> {
     let name: &'static str = "skytemple_rust.pmd_wan";
-    let m = PyModule::new_bound(py, name)?;
+    let m = PyModule::new(py, name)?;
     m.add_class::<WanImage>()?;
     m.add_class::<FragmentBytesStore>()?;
     m.add_class::<FragmentBytes>()?;

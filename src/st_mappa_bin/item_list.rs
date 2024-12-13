@@ -24,6 +24,7 @@ use packed_struct::PrimitiveEnum;
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 use pyo3::types::PyType;
+use pyo3::IntoPyObjectExt;
 
 use crate::bytes::StBytes;
 use crate::st_mappa_bin::Probability;
@@ -65,13 +66,13 @@ impl MappaItemList {
         slf.into()
     }
 
-    fn __richcmp__(&self, other: PyRef<Self>, op: pyo3::basic::CompareOp) -> Py<PyAny> {
+    fn __richcmp__(&self, other: PyRef<Self>, op: pyo3::basic::CompareOp) -> PyResult<Py<PyAny>> {
         let py = other.py();
-        match op {
-            pyo3::basic::CompareOp::Eq => (self == other.deref()).into_py(py),
-            pyo3::basic::CompareOp::Ne => (self != other.deref()).into_py(py),
+        Ok(match op {
+            pyo3::basic::CompareOp::Eq => (self == other.deref()).into_py_any(py)?,
+            pyo3::basic::CompareOp::Ne => (self != other.deref()).into_py_any(py)?,
             _ => py.NotImplemented(),
-        }
+        })
     }
 }
 

@@ -25,7 +25,7 @@ use pyo3::prelude::*;
 
 pub(crate) fn create_st_mappa_bin_module(py: Python) -> PyResult<(&str, Bound<'_, PyModule>)> {
     let name: &'static str = "skytemple_rust.st_mappa_bin";
-    let m = PyModule::new_bound(py, name)?;
+    let m = PyModule::new(py, name)?;
     m.add_class::<MappaTrapList>()?;
     m.add_class::<MappaMonster>()?;
     m.add_class::<MappaMonsterList>()?;

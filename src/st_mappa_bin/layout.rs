@@ -18,14 +18,14 @@
  */
 use std::ops::Deref;
 
-use packed_struct::prelude::*;
-use packed_struct::PackingResult;
-use pyo3::prelude::*;
-
 use crate::bytes::StBytes;
 use crate::err::convert_packing_err;
 use crate::python::create_value_user_error;
 use crate::st_mappa_bin::{MappaFloorDarknessLevel, MappaFloorStructureType, MappaFloorWeather};
+use packed_struct::prelude::*;
+use packed_struct::PackingResult;
+use pyo3::prelude::*;
+use pyo3::IntoPyObjectExt;
 
 #[pyclass(module = "skytemple_rust.st_mappa_bin")]
 #[derive(PackedStruct, Debug, PartialEq, Eq)]
@@ -83,13 +83,13 @@ impl MappaFloorTerrainSettings {
         }
     }
 
-    fn __richcmp__(&self, other: PyRef<Self>, op: pyo3::basic::CompareOp) -> Py<PyAny> {
+    fn __richcmp__(&self, other: PyRef<Self>, op: pyo3::basic::CompareOp) -> PyResult<Py<PyAny>> {
         let py = other.py();
-        match op {
-            pyo3::basic::CompareOp::Eq => (self == other.deref()).into_py(py),
-            pyo3::basic::CompareOp::Ne => (self != other.deref()).into_py(py),
+        Ok(match op {
+            pyo3::basic::CompareOp::Eq => (self == other.deref()).into_py_any(py)?,
+            pyo3::basic::CompareOp::Ne => (self != other.deref()).into_py_any(py)?,
             _ => py.NotImplemented(),
-        }
+        })
     }
 }
 
@@ -128,9 +128,13 @@ impl PackedStruct for PyMappaFloorTerrainSettings {
     }
 }
 
-impl IntoPy<PyObject> for PyMappaFloorTerrainSettings {
-    fn into_py(self, py: Python) -> PyObject {
-        self.0.into_py(py)
+impl<'py> IntoPyObject<'py> for PyMappaFloorTerrainSettings {
+    type Target = MappaFloorTerrainSettings;
+    type Output = Bound<'py, Self::Target>;
+    type Error = std::convert::Infallible;
+
+    fn into_pyobject(self, py: Python<'py>) -> Result<Self::Output, Self::Error> {
+        Ok(self.0.into_bound(py))
     }
 }
 
@@ -297,13 +301,13 @@ impl MappaFloorLayout {
         Ok(())
     }
 
-    fn __richcmp__(&self, other: PyRef<Self>, op: pyo3::basic::CompareOp) -> Py<PyAny> {
+    fn __richcmp__(&self, other: PyRef<Self>, op: pyo3::basic::CompareOp) -> PyResult<Py<PyAny>> {
         let py = other.py();
-        match op {
-            pyo3::basic::CompareOp::Eq => (self == other.deref()).into_py(py),
-            pyo3::basic::CompareOp::Ne => (self != other.deref()).into_py(py),
+        Ok(match op {
+            pyo3::basic::CompareOp::Eq => (self == other.deref()).into_py_any(py)?,
+            pyo3::basic::CompareOp::Ne => (self != other.deref()).into_py_any(py)?,
             _ => py.NotImplemented(),
-        }
+        })
     }
 }
 

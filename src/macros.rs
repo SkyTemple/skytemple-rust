@@ -76,14 +76,14 @@ macro_rules! impl_pylist {
                 pub fn __getitem__(&self, idx: $crate::python::SliceOrInt, py: Python) -> PyResult<PyObject> {
                     match idx {
                         $crate::python::SliceOrInt::Slice(sl) => {
-                            let pylist = ::pyo3::types::PyList::new_bound(py, self.0.iter().map(|e| e.clone_ref(py)));
+                            let pylist = ::pyo3::types::PyList::new(py, self.0.iter().map(|e| e.clone_ref(py)))?;
                             pylist
-                                .call_method1("__getitem__", ::pyo3::types::PyTuple::new_bound(py, [sl]))
-                                .map(|v| v.into_py(py))
+                                .call_method1("__getitem__", ::pyo3::types::PyTuple::new(py, [sl])?)
+                                .and_then(|v| v.into_py_any(py))
                         }
                         $crate::python::SliceOrInt::Int(idx) => {
                             if idx >= 0 && idx as usize <= self.0.len() {
-                                Ok(self.0[idx as usize].clone_ref(py).into_py(py))
+                                Ok(self.0[idx as usize].clone_ref(py).into_py_any(py)?)
                             } else {
                                 Err(::pyo3::exceptions::PyIndexError::new_err("list index out of range"))
                             }
@@ -93,8 +93,8 @@ macro_rules! impl_pylist {
                 pub fn __setitem__(&mut self, idx: $crate::python::SliceOrInt, o: PyObject, py: Python) -> PyResult<()> {
                     match idx {
                         $crate::python::SliceOrInt::Slice(sl) => {
-                            let pylist = ::pyo3::types::PyList::new_bound(py, self.0.iter().map(|e| e.clone_ref(py)));
-                            pylist.call_method1("__setitem__", ::pyo3::types::PyTuple::new_bound(py, [sl.into_py(py), o]))?;
+                            let pylist = ::pyo3::types::PyList::new(py, self.0.iter().map(|e| e.clone_ref(py)))?;
+                            pylist.call_method1("__setitem__", ::pyo3::types::PyTuple::new(py, [sl.into_py_any(py)?, o])?)?;
                             self.0 = pylist
                                 .into_iter()
                                 .map(|o| o.extract())
@@ -114,8 +114,8 @@ macro_rules! impl_pylist {
                 pub fn __delitem__(&mut self, idx: $crate::python::SliceOrInt, py: Python) -> PyResult<()> {
                     match idx {
                         $crate::python::SliceOrInt::Slice(sl) => {
-                            let pylist = ::pyo3::types::PyList::new_bound(py, self.0.iter().map(|e| e.clone_ref(py)));
-                            pylist.call_method1("__delitem__", ::pyo3::types::PyTuple::new_bound(py, [sl]))?;
+                            let pylist = ::pyo3::types::PyList::new(py, self.0.iter().map(|e| e.clone_ref(py)))?;
+                            pylist.call_method1("__delitem__", ::pyo3::types::PyTuple::new(py, [sl])?)?;
                             self.0 = pylist
                                 .into_iter()
                                 .map(|o| o.extract())
@@ -164,25 +164,26 @@ macro_rules! impl_pylist {
                 pub fn __iadd__(&mut self, value: PyObject) -> PyResult<()> {
                     self.extend(value)
                 }
-                fn __richcmp__(&self, other: PyRef<Self>, op: ::pyo3::basic::CompareOp) -> Py<PyAny> {
+                fn __richcmp__(&self, other: PyRef<Self>, op: ::pyo3::basic::CompareOp) -> PyResult<Py<PyAny>> {
                     let py = other.py();
-                    match op {
-                        ::pyo3::basic::CompareOp::Eq => (self == other.deref()).into_py(py),
-                        ::pyo3::basic::CompareOp::Ne => (self != other.deref()).into_py(py),
+                    Ok(match op {
+                        ::pyo3::basic::CompareOp::Eq => (self == other.deref()).into_py_any(py)?,
+                        ::pyo3::basic::CompareOp::Ne => (self != other.deref()).into_py_any(py)?,
                         _ => py.NotImplemented(),
-                    }
+                    })
                 }
 
                 pub fn index(&self, value: PyObject, py: Python) -> PyResult<usize> {
                     if let Ok(value) = value.extract::<$itemty>(py) {
                         if let Some(idx) = self.0.iter().position(|x| {
-                            x.call_method1(
-                                py,
-                                "__eq__",
-                                ::pyo3::types::PyTuple::new_bound(py, [value.clone_ref(py)]),
-                            )
-                            .and_then(|x| x.is_truthy(py))
-                            .unwrap_or_default()
+                            ::pyo3::types::PyTuple::new(py, [value.clone_ref(py)])
+                                .and_then(|param| x.call_method1(
+                                    py,
+                                    "__eq__",
+                                    param,
+                                ))
+                                .and_then(|x| x.is_truthy(py))
+                                .unwrap_or_default()
                         }) {
                             Ok(idx)
                         } else {
@@ -192,34 +193,36 @@ macro_rules! impl_pylist {
                         Err(::pyo3::exceptions::PyValueError::new_err("not in list"))
                     }
                 }
-                pub fn count(&self, value: PyObject, py: Python) -> usize {
-                    if let Ok(value) = value.extract::<$itemty>(py) {
+                pub fn count(&self, value: PyObject, py: Python) -> PyResult<usize> {
+                    Ok(if let Ok(value) = value.extract::<$itemty>(py) {
                         self.0
                             .iter()
                             .filter(|x| {
-                                x.call_method1(
-                                    py,
-                                    "__eq__",
-                                    ::pyo3::types::PyTuple::new_bound(py, [value.clone_ref(py)]),
-                                )
-                                .and_then(|x| x.is_truthy(py))
-                                .unwrap_or_default()
+                                ::pyo3::types::PyTuple::new(py, [value.clone_ref(py)])
+                                    .and_then(|param| x.call_method1(
+                                        py,
+                                        "__eq__",
+                                        param,
+                                    ))
+                                    .and_then(|x| x.is_truthy(py))
+                                    .unwrap_or_default()
                             })
                             .count()
                     } else {
                         0
-                    }
+                    })
                 }
                 pub fn remove(&mut self, value: PyObject, py: Python) -> PyResult<()> {
                     if let Ok(value) = value.extract::<$itemty>(py) {
                         if let Some(idx) = self.0.iter().position(|x| {
-                            x.call_method1(
-                                py,
-                                "__eq__",
-                                ::pyo3::types::PyTuple::new_bound(py, [value.clone_ref(py)]),
-                            )
-                            .and_then(|x| x.is_truthy(py))
-                            .unwrap_or_default()
+                            ::pyo3::types::PyTuple::new(py, [value.clone_ref(py)])
+                                .and_then(|param| x.call_method1(
+                                    py,
+                                    "__eq__",
+                                    param,
+                                ))
+                                .and_then(|x| x.is_truthy(py))
+                                .unwrap_or_default()
                         }) {
                             self.0.remove(idx);
                             Ok(())
@@ -294,14 +297,14 @@ macro_rules! impl_pylist_primitive {
                 pub fn __getitem__(&self, idx: $crate::python::SliceOrInt, py: Python) -> PyResult<PyObject> {
                     match idx {
                         $crate::python::SliceOrInt::Slice(sl) => {
-                            let pylist = ::pyo3::types::PyList::new_bound(py, self.0.iter().cloned());
+                            let pylist = ::pyo3::types::PyList::new(py, self.0.iter().cloned())?;
                             pylist
-                                .call_method1("__getitem__", ::pyo3::types::PyTuple::new_bound(py, [sl]))
-                                .map(|v| v.into_py(py))
+                                .call_method1("__getitem__", ::pyo3::types::PyTuple::new(py, [sl])?)
+                                .and_then(|v| v.into_py_any(py))
                         }
                         $crate::python::SliceOrInt::Int(idx) => {
                             if idx >= 0 && idx as usize <= self.0.len() {
-                                Ok(self.0[idx as usize].clone().into_py(py))
+                                Ok(self.0[idx as usize].clone().into_py_any(py)?)
                             } else {
                                 Err(::pyo3::exceptions::PyIndexError::new_err("list index out of range"))
                             }
@@ -311,8 +314,8 @@ macro_rules! impl_pylist_primitive {
                 pub fn __setitem__(&mut self, idx: $crate::python::SliceOrInt, o: PyObject, py: Python) -> PyResult<()> {
                     match idx {
                         $crate::python::SliceOrInt::Slice(sl) => {
-                            let pylist = ::pyo3::types::PyList::new_bound(py, self.0.iter().cloned());
-                            pylist.call_method1("__setitem__", ::pyo3::types::PyTuple::new_bound(py, [sl.into_py(py), o]))?;
+                            let pylist = ::pyo3::types::PyList::new(py, self.0.iter().cloned())?;
+                            pylist.call_method1("__setitem__", ::pyo3::types::PyTuple::new(py, [sl.into_py_any(py)?, o])?)?;
                             self.0 = pylist
                                 .into_iter()
                                 .map(|o| o.extract())
@@ -332,8 +335,8 @@ macro_rules! impl_pylist_primitive {
                 pub fn __delitem__(&mut self, idx: $crate::python::SliceOrInt, py: Python) -> PyResult<()> {
                     match idx {
                         $crate::python::SliceOrInt::Slice(sl) => {
-                            let pylist = ::pyo3::types::PyList::new_bound(py, self.0.iter().cloned());
-                            pylist.call_method1("__delitem__", ::pyo3::types::PyTuple::new_bound(py, [sl]))?;
+                            let pylist = ::pyo3::types::PyList::new(py, self.0.iter().cloned())?;
+                            pylist.call_method1("__delitem__", ::pyo3::types::PyTuple::new(py, [sl])?)?;
                             self.0 = pylist
                                 .into_iter()
                                 .map(|o| o.extract())
@@ -382,13 +385,13 @@ macro_rules! impl_pylist_primitive {
                 pub fn __iadd__(&mut self, value: PyObject) -> PyResult<()> {
                     self.extend(value)
                 }
-                fn __richcmp__(&self, other: PyRef<Self>, op: ::pyo3::basic::CompareOp) -> Py<PyAny> {
+                fn __richcmp__(&self, other: PyRef<Self>, op: ::pyo3::basic::CompareOp) -> PyResult<Py<PyAny>> {
                     let py = other.py();
-                    match op {
-                        ::pyo3::basic::CompareOp::Eq => (self == other.deref()).into_py(py),
-                        ::pyo3::basic::CompareOp::Ne => (self != other.deref()).into_py(py),
+                    Ok(match op {
+                        ::pyo3::basic::CompareOp::Eq => (self == other.deref()).into_py_any(py)?,
+                        ::pyo3::basic::CompareOp::Ne => (self != other.deref()).into_py_any(py)?,
                         _ => py.NotImplemented(),
-                    }
+                    })
                 }
 
                 pub fn index(&self, value: PyObject, py: Python) -> PyResult<usize> {
