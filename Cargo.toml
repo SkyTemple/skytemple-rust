@@ -62,4 +62,4 @@ enum_dispatch = "0.3"
 # gettext-rs is not supported under Windows (native)
 [target.'cfg( not(target_env = "msvc") )'.dependencies]
 # TODO: 0.7.1 removed gettext macro.
-gettext-rs = { version = "=0.7.0", features = ["gettext-system"] }
+gettext-rs = { version = "=0.7.2", features = ["gettext-system"] }
