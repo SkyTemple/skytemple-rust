@@ -16,9 +16,9 @@
  * You should have received a copy of the GNU General Public License
  * along with SkyTemple.  If not, see <https://www.gnu.org/licenses/>.
  */
-use std::ops::Deref;
-
 use pyo3::prelude::*;
+use pyo3::IntoPyObjectExt;
+use std::ops::Deref;
 
 use crate::st_mappa_bin::{
     MappaFloorLayout, MappaItemList, MappaMonster, MappaMonsterList, MappaTrapList,
@@ -194,13 +194,13 @@ impl MappaFloor {
         Ok(())
     }
 
-    fn __richcmp__(&self, other: PyRef<Self>, op: pyo3::basic::CompareOp) -> Py<PyAny> {
+    fn __richcmp__(&self, other: PyRef<Self>, op: pyo3::basic::CompareOp) -> PyResult<Py<PyAny>> {
         let py = other.py();
-        match op {
-            pyo3::basic::CompareOp::Eq => self.eq_pyref(other.deref(), py).into_py(py),
-            pyo3::basic::CompareOp::Ne => { !self.eq_pyref(other.deref(), py) }.into_py(py),
+        Ok(match op {
+            pyo3::basic::CompareOp::Eq => self.eq_pyref(other.deref(), py).into_py_any(py)?,
+            pyo3::basic::CompareOp::Ne => { !self.eq_pyref(other.deref(), py) }.into_py_any(py)?,
             _ => py.NotImplemented(),
-        }
+        })
     }
 }
 

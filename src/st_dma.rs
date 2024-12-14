@@ -21,7 +21,7 @@ use num_traits::FromPrimitive;
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 
-use crate::bytes::StBytes;
+use crate::bytes::{StBytes, StU8List};
 
 #[repr(u8)]
 #[derive(PartialEq, Eq, PartialOrd, FromPrimitive)]
@@ -68,7 +68,7 @@ pub const DMA_NEIGHBOR_SOUTH_WEST: u8 = 0x80;
 #[derive(Clone)]
 pub struct Dma {
     #[pyo3(get, set)]
-    pub chunk_mappings: Vec<u8>,
+    pub chunk_mappings: StU8List,
 }
 
 #[pymethods]
@@ -76,7 +76,7 @@ impl Dma {
     #[new]
     pub fn new(data: StBytes) -> PyResult<Self> {
         Ok(Self {
-            chunk_mappings: data.to_vec(),
+            chunk_mappings: data.into(),
         })
     }
 
@@ -84,20 +84,22 @@ impl Dma {
     /// neighbors_same is a bitfield with the bits for the directions set to 1 if the neighbor at this
     /// position has the same type as the tile at this position.
     /// TIP: For neighbors_same, use the bit flags DMA_NEIGHBOR_*.
-    pub fn get(&self, get_type: DmaType, neighbors_same: usize) -> Vec<u8> {
+    pub fn get(&self, get_type: DmaType, neighbors_same: usize) -> StU8List {
         let high_two = match get_type {
             DmaType::Wall => 0,
             DmaType::Water => 0x100,
             DmaType::Floor => 0x200,
         };
         let idx = high_two + neighbors_same;
-        self.chunk_mappings[(idx * 3)..(idx * 3) + 3].to_vec()
+        self.chunk_mappings[(idx * 3)..(idx * 3) + 3]
+            .to_vec()
+            .into()
     }
 
     /// Returns a few extra chunk variations for the given type.
     /// How they are used exactly by the game is currently not know,
     /// this interface could change if we find out.
-    pub fn get_extra(&self, extra_type: DmaExtraType) -> Vec<u8> {
+    pub fn get_extra(&self, extra_type: DmaExtraType) -> StU8List {
         let extra_type_idx = extra_type as u8 as usize;
         ((0x300 * 3)..self.chunk_mappings.len())
             .filter_map(|i| {
@@ -107,7 +109,8 @@ impl Dma {
                     None
                 }
             })
-            .collect()
+            .collect::<Vec<_>>()
+            .into()
     }
 
     /// Sets the mapping for the given configuration and the given variation of it.
@@ -145,13 +148,13 @@ impl DmaWriter {
         Self
     }
     pub fn write(&self, model: Py<Dma>, py: Python) -> PyResult<StBytes> {
-        Ok(StBytes::from(model.borrow(py).chunk_mappings.clone()))
+        Ok(StBytes::from(model.borrow(py).chunk_mappings.clone().0))
     }
 }
 
 pub(crate) fn create_st_dma_module(py: Python) -> PyResult<(&str, Bound<'_, PyModule>)> {
     let name: &'static str = "skytemple_rust.st_dma";
-    let m = PyModule::new_bound(py, name)?;
+    let m = PyModule::new(py, name)?;
     m.add_class::<Dma>()?;
     m.add_class::<DmaWriter>()?;
 

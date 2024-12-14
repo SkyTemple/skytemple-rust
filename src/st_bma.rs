@@ -26,7 +26,7 @@ use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 use pyo3::pyclass;
 
-use crate::bytes::StBytes;
+use crate::bytes::{StBytes, StU8List};
 use crate::compression::bma_collision_rle::{
     BmaCollisionRleCompressor, BmaCollisionRleDecompressor,
 };
@@ -37,9 +37,9 @@ use crate::image::tiled::TiledImage;
 use crate::image::tilemap_entry::{InputTilemapEntry, TilemapEntry};
 use crate::image::{In256ColIndexedImage, InIndexedImage, IndexedImage, Palette, Raster};
 use crate::st_bpa::input::InputBpa;
-use crate::st_bpc::input::InputBpc;
+use crate::st_bpc::input::{BpcProvider, InputBpc};
 use crate::st_bpc::BPC_TILE_DIM;
-use crate::st_bpl::input::InputBpl;
+use crate::st_bpl::input::{BplProvider, InputBpl};
 use crate::st_bpl::{BPL_IMG_PAL_LEN, BPL_MAX_PAL, BPL_PAL_LEN};
 use crate::util::lcm;
 
@@ -71,7 +71,7 @@ pub struct Bma {
 
     // if unk6:
     #[pyo3(get, set)]
-    pub unknown_data_block: Option<Vec<u8>>,
+    pub unknown_data_block: Option<StU8List>,
     // if number_of_collision_layers > 0:
     #[pyo3(get, set)]
     pub collision: Option<Vec<bool>>,
@@ -144,7 +144,7 @@ impl Bma {
                 }
                 decompression_step(&mut data, &mut decompressed_data);
             }
-            Some(decompressed_data)
+            Some(decompressed_data.into())
         } else {
             None
         };
@@ -213,7 +213,7 @@ impl Bma {
     pub fn to_pil_single_layer(
         &self,
         mut bpc: InputBpc,
-        palettes: Vec<StBytes>,
+        palettes: Vec<StU8List>,
         bpas: Vec<Option<InputBpa>>,
         layer: usize,
         py: Python,
@@ -228,7 +228,7 @@ impl Bma {
         let bpc_layer_id;
         if layer == 0 {
             bma_layer = &self.layer0;
-            bpc_layer_id = if bpc.0.get_number_of_layers(py)? == 1 {
+            bpc_layer_id = if bpc.get_number_of_layers(py)? == 1 {
                 0
             } else {
                 1
@@ -238,9 +238,7 @@ impl Bma {
             bpc_layer_id = 0;
         }
 
-        let chunks = &bpc
-            .0
-            .get_chunks_animated_to_pil(bpc_layer_id, &palettes, &bpas, 1, py)?[0];
+        let chunks = &bpc.get_chunks_animated_to_pil(bpc_layer_id, &palettes, &bpas, 1, py)?[0];
 
         let mut fimg = IndexedImage(Raster::new(width_map, height_map), chunks.1.clone());
 
@@ -301,17 +299,16 @@ impl Bma {
         let width_map = self.map_width_chunks as usize * chunk_width;
         let height_map = self.map_height_chunks as usize * chunk_height;
 
-        let palettes = bpl.0.get_palettes(py)?;
+        let palettes = bpl.get_palettes(py)?;
 
         let mut final_images = Vec::with_capacity(50);
-        let lower_layer_bpc = if bpc.0.get_number_of_layers(py)? == 1 {
+        let lower_layer_bpc = if bpc.get_number_of_layers(py)? == 1 {
             0
         } else {
             1
         };
         let chunks_lower =
-            bpc.0
-                .get_chunks_animated_to_pil(lower_layer_bpc, &palettes, &bpas, 1, py)?;
+            bpc.get_chunks_animated_to_pil(lower_layer_bpc, &palettes, &bpas, 1, py)?;
         let len_lower = chunks_lower.len();
         for img in chunks_lower {
             let mut fimg = IndexedImage(Raster::new(width_map, height_map), img.1.clone());
@@ -333,11 +330,10 @@ impl Bma {
                 break;
             }
         }
-        if bpc.0.get_number_of_layers(py)? > 1 {
+        if bpc.get_number_of_layers(py)? > 1 {
             // Overlay higher layer tiles
             let mut chunks_higher =
-                bpc.0
-                    .get_chunks_animated_to_pil(0, &bpl.0.get_palettes(py)?, &bpas, 1, py)?;
+                bpc.get_chunks_animated_to_pil(0, &bpl.get_palettes(py)?, &bpas, 1, py)?;
             let len_higher = chunks_higher.len();
             if len_higher != len_lower && !single_frame {
                 // oh fun! We are missing animations for one of the layers, let's stretch to the lowest common multiple
@@ -374,19 +370,18 @@ impl Bma {
         // Apply palette animations
         if pal_ani
             && !single_frame
-            && bpl.0.get_has_palette_animation(py)?
-            && !bpl.0.get_animation_palette(py)?.is_empty()
+            && bpl.get_has_palette_animation(py)?
+            && !bpl.get_animation_palette(py)?.is_empty()
         {
             let old_images = final_images;
             let mut old_images_i = 0;
 
             final_images = Vec::with_capacity(old_images.len());
 
-            for ppal_ani in 0..bpl.0.get_animation_palette(py)?.len() {
+            for ppal_ani in 0..bpl.get_animation_palette(py)?.len() {
                 let mut current_img = old_images[old_images_i].clone();
                 // Switch out the palette with that from the palette animation
                 let pal_for_frame = bpl
-                    .0
                     .do_apply_palette_animations(ppal_ani as u16, py)?
                     .into_iter()
                     .flatten()
@@ -507,15 +502,15 @@ impl Bma {
         let low_map_idx = if lower_img.is_some() { 0 } else { 1 };
         if number_of_layers > self.number_of_layers {
             self.add_upper_layer();
-            bpc.0.do_add_upper_layer(py)?;
+            bpc.do_add_upper_layer(py)?;
         }
 
         // Import tiles, tile mappings and chunks mappings
-        let mut palettes: Vec<Vec<u8>> = Default::default();
+        let mut palettes: Vec<StU8List> = Default::default();
         if let Some(lower_img) = lower_img {
             palettes = self.from_pil_step(
                 false,
-                if bpc.0.get_number_of_layers(py)? == 1 {
+                if bpc.get_number_of_layers(py)? == 1 {
                     0
                 } else {
                     1
@@ -538,7 +533,7 @@ impl Bma {
         }
 
         // Import palettes
-        bpl.0.do_import_palettes(palettes, py)?;
+        bpl.do_import_palettes(palettes, py)?;
         Ok(())
     }
 
@@ -713,7 +708,7 @@ impl Bma {
         palette_offset: usize,
         bpc: &mut InputBpc,
         py: Python,
-    ) -> PyResult<Vec<Vec<u8>>> {
+    ) -> PyResult<Vec<StU8List>> {
         let layer = match is_upper {
             true => self.layer1.as_mut(),
             false => Some(&mut self.layer0),
@@ -730,7 +725,7 @@ impl Bma {
             palette_offset,
             true,
         )?;
-        bpc.0.do_import_tiles(
+        bpc.do_import_tiles(
             bpc_layer_id,
             tiles.into_iter().map(|x| x.freeze()).collect(),
             false,
@@ -762,7 +757,7 @@ impl Bma {
             }
         }
 
-        bpc.0.do_import_tile_mappings(
+        bpc.do_import_tile_mappings(
             bpc_layer_id,
             tile_mappings
                 .into_iter()
@@ -776,8 +771,8 @@ impl Bma {
         Ok(palettes
             .0
             .chunks(BPL_IMG_PAL_LEN * 3)
-            .map(|x| x.to_vec())
-            .collect::<Vec<Vec<u8>>>())
+            .map(|x| x.to_vec().into())
+            .collect::<Vec<StU8List>>())
     }
 }
 
@@ -813,39 +808,35 @@ impl BmaWriter {
             model.map_height_chunks as usize,
             &model.layer0,
         )?);
-        match &model.layer1 {
-            Some(layer1) => data.extend(Self::convert_layer(
+        if let Some(layer1) = &model.layer1 {
+            data.extend(Self::convert_layer(
                 model.map_width_chunks as usize,
                 model.map_height_chunks as usize,
                 layer1,
-            )?),
-            None => {}
+            )?)
         }
 
-        match &model.unknown_data_block {
-            Some(unknown_data_block) => data.extend(Self::convert_unknown_data_layer(
+        if let Some(unknown_data_block) = &model.unknown_data_block {
+            data.extend(Self::convert_unknown_data_layer(
                 model.map_width_camera as usize,
                 model.map_height_camera as usize,
                 unknown_data_block,
-            )?),
-            None => {}
+            )?)
         }
 
-        match &model.collision {
-            Some(collision) => data.extend(Self::convert_collision(
+        if let Some(collision) = &model.collision {
+            data.extend(Self::convert_collision(
                 model.map_width_camera as usize,
                 model.map_height_camera as usize,
                 collision,
-            )?),
-            None => {}
+            )?)
         }
-        match &model.collision2 {
-            Some(collision2) => data.extend(Self::convert_collision(
+        if let Some(collision2) = &model.collision2 {
+            data.extend(Self::convert_collision(
                 model.map_width_camera as usize,
                 model.map_height_camera as usize,
                 collision2,
-            )?),
-            None => {}
+            )?)
         }
 
         Ok(data.into())
@@ -953,7 +944,7 @@ impl BmaWriter {
 
 pub(crate) fn create_st_bma_module(py: Python) -> PyResult<(&str, Bound<'_, PyModule>)> {
     let name: &'static str = "skytemple_rust.st_bma";
-    let m = PyModule::new_bound(py, name)?;
+    let m = PyModule::new(py, name)?;
     m.add_class::<Bma>()?;
     m.add_class::<BmaWriter>()?;
 
@@ -1020,6 +1011,23 @@ where
     fn collect<U>(iter: U) -> Self
     where
         U: Iterator<Item = T>,
+    {
+        iter.collect()
+    }
+}
+
+impl Resizable<u8> for StU8List {
+    fn len(&self) -> usize {
+        Vec::len(self)
+    }
+
+    fn enumerate(&self) -> Enumerate<Copied<Iter<u8>>> {
+        self.iter().copied().enumerate()
+    }
+
+    fn collect<U>(iter: U) -> Self
+    where
+        U: Iterator<Item = u8>,
     {
         iter.collect()
     }

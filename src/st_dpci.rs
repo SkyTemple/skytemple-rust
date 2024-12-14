@@ -18,7 +18,7 @@
  */
 use pyo3::prelude::*;
 
-use crate::bytes::StBytes;
+use crate::bytes::{StBytes, StU8List};
 use crate::image::tiled::TiledImage;
 use crate::image::tilemap_entry::TilemapEntry;
 use crate::image::{In256ColIndexedImage, InIndexedImage, IndexedImage, PixelGenerator};
@@ -53,14 +53,14 @@ impl Dpci {
     #[pyo3(signature = (palettes, width_in_tiles = 20, palette_index = 0))]
     pub fn tiles_to_pil(
         &self,
-        palettes: Vec<Vec<u8>>,
+        palettes: Vec<StU8List>,
         width_in_tiles: usize,
         palette_index: u8,
     ) -> IndexedImage {
         let tilemap = (0..self.tiles.len()).map(|i| TilemapEntry(i, false, false, palette_index));
         let width = width_in_tiles * DPCI_TILE_DIM;
         let height =
-            (((self.tiles.len()) as f32 / width_in_tiles as f32).ceil()) as usize * DPCI_TILE_DIM;
+            (self.tiles.len() as f32 / width_in_tiles as f32).ceil() as usize * DPCI_TILE_DIM;
         TiledImage::tiled_to_native(
             tilemap,
             PixelGenerator::tiled4bpp(&self.tiles[..]),
@@ -119,7 +119,7 @@ impl DpciWriter {
 
 pub(crate) fn create_st_dpci_module(py: Python) -> PyResult<(&str, Bound<'_, PyModule>)> {
     let name: &'static str = "skytemple_rust.st_dpci";
-    let m = PyModule::new_bound(py, name)?;
+    let m = PyModule::new(py, name)?;
     m.add_class::<Dpci>()?;
     m.add_class::<DpciWriter>()?;
 
@@ -131,13 +131,16 @@ pub(crate) fn create_st_dpci_module(py: Python) -> PyResult<(&str, Bound<'_, PyM
 // DPCIs as inputs (for compatibility of including other DPCI implementations from Python)
 
 pub mod input {
+    use enum_dispatch::enum_dispatch;
     use pyo3::prelude::*;
     use pyo3::types::PyTuple;
+    use pyo3::IntoPyObjectExt;
 
     use crate::bytes::StBytes;
     use crate::st_dpci::Dpci;
 
-    pub trait DpciProvider: ToPyObject {
+    #[enum_dispatch(InputDpci)]
+    pub trait DpciProvider {
         fn get_tiles(&self, py: Python) -> PyResult<Vec<StBytes>>;
 
         fn do_import_tiles(
@@ -175,26 +178,18 @@ pub mod input {
             contains_null_tile: bool,
             py: Python,
         ) -> PyResult<()> {
-            let args = PyTuple::new_bound(py, [tiles.into_py(py), contains_null_tile.into_py(py)]);
+            let args = PyTuple::new(
+                py,
+                [tiles.into_py_any(py)?, contains_null_tile.into_py_any(py)?],
+            )?;
             self.call_method1(py, "import_tiles", args).map(|_| ())
         }
     }
 
-    pub struct InputDpci(pub Box<dyn DpciProvider>);
-
-    impl<'source> FromPyObject<'source> for InputDpci {
-        fn extract_bound(ob: &Bound<'source, PyAny>) -> PyResult<Self> {
-            if let Ok(obj) = ob.extract::<Py<Dpci>>() {
-                Ok(Self(Box::new(obj)))
-            } else {
-                Ok(Self(Box::new(ob.to_object(ob.py()))))
-            }
-        }
-    }
-
-    impl IntoPy<PyObject> for InputDpci {
-        fn into_py(self, py: Python) -> PyObject {
-            self.0.to_object(py)
-        }
+    #[enum_dispatch]
+    #[derive(FromPyObject, IntoPyObject)]
+    pub enum InputDpci {
+        Rs(Py<Dpci>),
+        Py(PyObject),
     }
 }

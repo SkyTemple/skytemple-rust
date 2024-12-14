@@ -177,7 +177,7 @@ impl NrlDecompWrite<Pair24> for DecompWrite {
     }
 }
 
-impl<'a, T> NrlDecompRead<Pair24> for DecompRead<'a, T>
+impl<T> NrlDecompRead<Pair24> for DecompRead<'_, T>
 where
     T: Buf,
 {
@@ -313,7 +313,7 @@ pub(crate) fn create_st_bma_layer_nrl_compression_module(
     py: Python,
 ) -> PyResult<(&str, Bound<'_, PyModule>)> {
     let name: &'static str = "skytemple_rust._st_bma_layer_nrl_compression";
-    let m = PyModule::new_bound(py, name)?;
+    let m = PyModule::new(py, name)?;
     m.add_class::<BmaLayerNrlCompressionContainer>()?;
 
     Ok((name, m))

@@ -91,7 +91,7 @@ impl Atupx {
 
 pub(crate) fn create_st_atupx_module(py: Python) -> PyResult<(&str, Bound<'_, PyModule>)> {
     let name: &'static str = "skytemple_rust.st_atupx";
-    let m = PyModule::new_bound(py, name)?;
+    let m = PyModule::new(py, name)?;
     m.add_class::<Atupx>()?;
 
     Ok((name, m))

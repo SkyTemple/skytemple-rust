@@ -16,16 +16,16 @@
  * You should have received a copy of the GNU General Public License
  * along with SkyTemple.  If not, see <https://www.gnu.org/licenses/>.
  */
-use std::cmp::{max, min};
-use std::io::Cursor;
-use std::iter::{once, repeat, repeat_with};
-
 use bytes::{Buf, BufMut, Bytes, BytesMut};
 use itertools::Itertools;
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
+use std::cmp::{max, min};
+use std::io::Cursor;
+use std::iter::{once, repeat, repeat_with};
+use std::ops::Deref;
 
-use crate::bytes::StBytes;
+use crate::bytes::{StBytes, StU8List};
 use crate::image::tiled::TiledImage;
 use crate::image::tilemap_entry::TilemapEntry;
 use crate::image::{In256ColIndexedImage, InIndexedImage, IndexedImage, PixelGenerator};
@@ -52,7 +52,7 @@ pub const BGP_TOTAL_NUMBER_TILES_ACTUALLY: usize = 1024;
 #[pyclass(module = "skytemple_rust.st_bgp")]
 pub struct Bgp {
     #[pyo3(get, set)]
-    pub palettes: Vec<Vec<u8>>,
+    pub palettes: Vec<StU8List>,
     #[pyo3(get, set)]
     pub tilemap: Vec<Py<TilemapEntry>>,
     #[pyo3(get, set)]
@@ -104,7 +104,7 @@ impl Bgp {
                 .map(|x| x.borrow(py))
                 .take(BGP_TOTAL_NUMBER_TILES),
             PixelGenerator::tiled4bpp(&self.tiles[..]),
-            self.palettes.iter().flatten().copied(),
+            self.palettes.iter().flat_map(Deref::deref).copied(),
             BGP_TILE_DIM,
             BGP_RES_WIDTH,
             BGP_RES_HEIGHT,
@@ -177,21 +177,22 @@ impl Bgp {
         self.palettes = palettes
             .0
             .chunks(BGP_PAL_NUMBER_COLORS * 3)
-            .map(|x| x.to_vec())
-            .collect::<Vec<Vec<u8>>>();
+            .map(|x| x.to_vec().into())
+            .collect::<Vec<StU8List>>();
         Ok(())
     }
 }
 
 impl Bgp {
-    fn extract_palette(data: &[u8]) -> Vec<Vec<u8>> {
+    fn extract_palette(data: &[u8]) -> Vec<StU8List> {
         let mut palettes = Vec::with_capacity(BGP_MAX_PAL as usize);
         for palette in data.chunks(BGP_PAL_NUMBER_COLORS * BGP_PAL_ENTRY_LEN as usize) {
             palettes.push(
                 palette
                     .chunks(BGP_PAL_ENTRY_LEN as usize)
                     .flat_map(|bl| vec![bl[0], bl[1], bl[2]])
-                    .collect::<Vec<u8>>(),
+                    .collect::<Vec<u8>>()
+                    .into(),
             )
         }
         palettes
@@ -249,7 +250,7 @@ impl BgpWriter {
                     model
                         .palettes
                         .iter()
-                        .flatten()
+                        .flat_map(Deref::deref)
                         .chunks(3)
                         .into_iter()
                         .flat_map(|c| {
@@ -272,7 +273,7 @@ impl BgpWriter {
 
 pub(crate) fn create_st_bgp_module(py: Python) -> PyResult<(&str, Bound<'_, PyModule>)> {
     let name: &'static str = "skytemple_rust.st_bgp";
-    let m = PyModule::new_bound(py, name)?;
+    let m = PyModule::new(py, name)?;
     m.add_class::<Bgp>()?;
     m.add_class::<BgpWriter>()?;
 

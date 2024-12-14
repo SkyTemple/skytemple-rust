@@ -362,7 +362,7 @@ pub(crate) fn create_st_generic_nrl_compression_module(
     py: Python,
 ) -> PyResult<(&str, Bound<'_, PyModule>)> {
     let name: &'static str = "skytemple_rust._st_generic_nrl_compression";
-    let m = PyModule::new_bound(py, name)?;
+    let m = PyModule::new(py, name)?;
     m.add_class::<GenericNrlCompressionContainer>()?;
 
     Ok((name, m))

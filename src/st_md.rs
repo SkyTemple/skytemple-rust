@@ -16,12 +16,11 @@
  * You should have received a copy of the GNU General Public License
  * along with SkyTemple.  If not, see <https://www.gnu.org/licenses/>.
  */
-use std::cell::RefCell;
+use parking_lot::Mutex;
 use std::collections::btree_map::Entry;
 use std::collections::BTreeMap;
 use std::mem::size_of;
 use std::ops::Deref;
-use std::sync::Mutex;
 use std::vec;
 
 use bytes::Buf;
@@ -48,7 +47,7 @@ struct MdPropertiesState {
 
 impl MdPropertiesState {
     pub fn instance(py: Python) -> PyResult<Py<Self>> {
-        let mut inst_locked = MD_PROPERTIES_STATE_INSTANCE.lock().unwrap();
+        let mut inst_locked = MD_PROPERTIES_STATE_INSTANCE.lock();
         if inst_locked.is_none() {
             *inst_locked = Some(Py::new(
                 py,
@@ -1220,7 +1219,7 @@ impl MdIterator {
 pub struct Md {
     #[pyo3(get, set)]
     pub entries: Vec<Py<MdEntry>>,
-    cache_entries_by_entid: RefCell<BTreeMap<usize, Vec<Py<MdEntry>>>>,
+    cache_entries_by_entid: Mutex<BTreeMap<usize, Vec<Py<MdEntry>>>>,
 }
 
 #[pymethods]
@@ -1250,7 +1249,7 @@ impl Md {
                         .and_then(|mde| Py::new(py, mde))
                 })
                 .collect::<PyResult<Vec<Py<MdEntry>>>>()?,
-            cache_entries_by_entid: RefCell::new(BTreeMap::new()),
+            cache_entries_by_entid: Mutex::new(BTreeMap::new()),
         };
 
         pyr_assert!(
@@ -1269,7 +1268,7 @@ impl Md {
     }
 
     pub fn get_by_entity_id(&self, index: usize, py: Python) -> PyResult<Vec<(u32, Py<MdEntry>)>> {
-        let mut cache_mut = self.cache_entries_by_entid.borrow_mut();
+        let mut cache_mut = self.cache_entries_by_entid.lock();
         match cache_mut.entry(index) {
             Entry::Vacant(ve) => {
                 let new_list = self
@@ -1375,7 +1374,7 @@ impl MdWriter {
 
 pub(crate) fn create_st_md_module(py: Python) -> PyResult<(&str, Bound<'_, PyModule>)> {
     let name: &'static str = "skytemple_rust.st_md";
-    let m = PyModule::new_bound(py, name)?;
+    let m = PyModule::new(py, name)?;
     m.add_class::<MdPropertiesState>()?;
     m.add_class::<MdEntry>()?;
     m.add_class::<MdIterator>()?;

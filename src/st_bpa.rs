@@ -129,7 +129,7 @@ impl Bpa {
 
         let etr = (self.number_of_frames * self.number_of_tiles) as usize;
         let width = self.number_of_frames as usize * BPA_TILE_DIM;
-        let height = ((etr as f32 / self.number_of_frames as f32).ceil()) as usize * BPA_TILE_DIM;
+        let height = (etr as f32 / self.number_of_frames as f32).ceil() as usize * BPA_TILE_DIM;
 
         Some(TiledImage::tiled_to_native(
             dummy_chunks.into_iter(),
@@ -159,7 +159,7 @@ impl Bpa {
 
         let width = width_in_tiles * BPA_TILE_DIM;
         let height =
-            ((self.number_of_tiles as f32 / width_in_tiles as f32).ceil()) as usize * BPA_TILE_DIM;
+            (self.number_of_tiles as f32 / width_in_tiles as f32).ceil() as usize * BPA_TILE_DIM;
 
         let mut images = Vec::with_capacity(self.number_of_frames as usize);
         for chunk in dummy_chunks_chunked {
@@ -337,7 +337,7 @@ impl BpaWriter {
 
 pub(crate) fn create_st_bpa_module(py: Python) -> PyResult<(&str, Bound<'_, PyModule>)> {
     let name: &'static str = "skytemple_rust.st_bpa";
-    let m = PyModule::new_bound(py, name)?;
+    let m = PyModule::new(py, name)?;
     m.add_class::<BpaFrameInfo>()?;
     m.add_class::<Bpa>()?;
     m.add_class::<BpaWriter>()?;
@@ -350,13 +350,15 @@ pub(crate) fn create_st_bpa_module(py: Python) -> PyResult<(&str, Bound<'_, PyMo
 // BPAs as inputs (for compatibility of including other BPA implementations from Python)
 
 pub mod input {
+    use enum_dispatch::enum_dispatch;
     use pyo3::prelude::*;
     use pyo3::types::PyTuple;
 
     use crate::bytes::StBytes;
     use crate::st_bpa::{Bpa, BpaFrameInfo};
 
-    pub trait BpaProvider: ToPyObject {
+    #[enum_dispatch(InputBpa)]
+    pub trait BpaProvider {
         fn get_number_of_tiles(&self, py: Python) -> PyResult<u16>;
         fn get_number_of_frames(&self, py: Python) -> PyResult<u16>;
         fn provide_tiles_for_frame(&self, frame: u16, py: Python) -> PyResult<Vec<StBytes>>;
@@ -403,7 +405,7 @@ pub mod input {
         }
 
         fn provide_tiles_for_frame(&self, frame: u16, py: Python) -> PyResult<Vec<StBytes>> {
-            let args = PyTuple::new_bound(py, [frame]);
+            let args = PyTuple::new(py, [frame])?;
             self.call_method1(py, "tiles_for_frame", args)?.extract(py)
         }
 
@@ -428,39 +430,28 @@ pub mod input {
         }
     }
 
-    pub struct InputBpa(pub Box<dyn BpaProvider>);
-
-    impl<'source> FromPyObject<'source> for InputBpa {
-        fn extract_bound(ob: &Bound<'source, PyAny>) -> PyResult<Self> {
-            if let Ok(obj) = ob.extract::<Py<Bpa>>() {
-                Ok(Self(Box::new(obj)))
-            } else {
-                Ok(Self(Box::new(ob.to_object(ob.py()))))
-            }
-        }
-    }
-
-    impl IntoPy<PyObject> for InputBpa {
-        fn into_py(self, py: Python) -> PyObject {
-            self.0.to_object(py)
-        }
+    #[enum_dispatch]
+    #[derive(FromPyObject, IntoPyObject)]
+    pub enum InputBpa {
+        Rs(Py<Bpa>),
+        Py(PyObject),
     }
 
     impl Clone for InputBpa {
         fn clone(&self) -> Self {
             Python::with_gil(|py| {
-                Self(Box::new(
+                Self::Rs(
                     Py::new(
                         py,
                         Bpa {
-                            number_of_tiles: self.0.get_number_of_tiles(py).unwrap(),
-                            number_of_frames: self.0.get_number_of_frames(py).unwrap(),
-                            tiles: self.0.__get_cloned_tiles(py).unwrap(),
-                            frame_info: self.0.__get_cloned_frame_info(py).unwrap(),
+                            number_of_tiles: self.get_number_of_tiles(py).unwrap(),
+                            number_of_frames: self.get_number_of_frames(py).unwrap(),
+                            tiles: self.__get_cloned_tiles(py).unwrap(),
+                            frame_info: self.__get_cloned_frame_info(py).unwrap(),
                         },
                     )
                     .unwrap(),
-                ))
+                )
             })
         }
     }

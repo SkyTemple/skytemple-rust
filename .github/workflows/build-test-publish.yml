@@ -45,9 +45,9 @@ jobs:
           # very slow:
           #- os: ubuntu-latest
           #  arch: arm64
-          - os: macos-12
+          - os: macos-13
             arch: x86_64
-          - os: macos-12
+          - os: macos-13
             arch: arm64
           - os: windows-2019
             arch: x86
@@ -112,6 +112,7 @@ jobs:
           CIBW_BEFORE_ALL_LINUX: "curl https://sh.rustup.rs -sSf | sh -s -- --default-toolchain stable -y"
           CIBW_ENVIRONMENT_LINUX: 'PATH="$PATH:$HOME/.cargo/bin"'
           CIBW_ARCHS: ${{ matrix.arch }}
+          MACOSX_DEPLOYMENT_TARGET: "10.12"
       - name: Upload wheels
         uses: actions/upload-artifact@v4
         with:

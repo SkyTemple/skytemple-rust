@@ -22,9 +22,9 @@ extern crate proc_macro;
 use proc_macro::TokenStream;
 
 use quote::quote;
+use syn::parse_macro_input;
 use syn::DeriveInput;
 use syn::Ident;
-use syn::parse_macro_input;
 
 /// Derive conversion from/to Python integers for PrimitiveEnums.
 /// Only works if packed_struct and pyo3 are available.
@@ -56,10 +56,13 @@ pub fn enum_to_py_derive_i8(input: TokenStream) -> TokenStream {
 fn do_enum_to_py_derive(input: DeriveInput, bytesize: Ident) -> TokenStream {
     let ident = &input.ident;
     let expanded = quote! {
-        impl ::pyo3::prelude::IntoPy<::pyo3::prelude::PyObject> for #ident
-        {
-            fn into_py(self, py: ::pyo3::prelude::Python<'_>) -> ::pyo3::prelude::PyObject {
-                packed_struct::PrimitiveEnum::to_primitive(&self).into_py(py)
+        impl<'py> ::pyo3::prelude::IntoPyObject<'py> for #ident {
+            type Target = <#bytesize as ::pyo3::prelude::IntoPyObject<'py>>::Target;
+            type Output = <#bytesize as ::pyo3::prelude::IntoPyObject<'py>>::Output;
+            type Error = <#bytesize as ::pyo3::prelude::IntoPyObject<'py>>::Error;
+
+            fn into_pyobject(self, py: ::pyo3::prelude::Python<'py>) -> Result<Self::Output, Self::Error> {
+                packed_struct::PrimitiveEnum::to_primitive(&self).into_pyobject(py)
             }
         }
 

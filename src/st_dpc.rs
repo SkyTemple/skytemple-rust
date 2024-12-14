@@ -23,12 +23,12 @@ use itertools::Itertools;
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 
-use crate::bytes::StBytes;
+use crate::bytes::{StBytes, StU8List};
 use crate::gettext::gettext;
 use crate::image::tiled::TiledImage;
 use crate::image::tilemap_entry::{InputTilemapEntry, ProvidesTilemapEntry, TilemapEntry};
 use crate::image::{In256ColIndexedImage, InIndexedImage, IndexedImage, PixelGenerator};
-use crate::st_dpci::input::InputDpci;
+use crate::st_dpci::input::{DpciProvider, InputDpci};
 use crate::st_dpci::DPCI_TILE_DIM;
 use crate::st_dpl::DPL_MAX_PAL;
 
@@ -83,17 +83,17 @@ impl Dpc {
     pub fn chunks_to_pil(
         &self,
         dpci: InputDpci,
-        palettes: Vec<Vec<u8>>,
+        palettes: Vec<StU8List>,
         width_in_mtiles: usize,
         py: Python,
     ) -> PyResult<IndexedImage> {
         let width = width_in_mtiles * DPC_TILING_DIM * DPCI_TILE_DIM;
-        let height = (((self.chunks.len()) as f32 / width_in_mtiles as f32).ceil()) as usize
+        let height = (self.chunks.len() as f32 / width_in_mtiles as f32).ceil() as usize
             * DPC_TILING_DIM
             * DPCI_TILE_DIM;
         Ok(TiledImage::tiled_to_native(
             self.chunks.iter().flatten().map(|x| x.borrow(py)),
-            PixelGenerator::tiled4bpp(dpci.0.get_tiles(py)?.as_slice()),
+            PixelGenerator::tiled4bpp(dpci.get_tiles(py)?.as_slice()),
             palettes.iter().flat_map(|x| x.iter().copied()),
             DPCI_TILE_DIM,
             width,
@@ -107,12 +107,12 @@ impl Dpc {
         &self,
         chunk_idx: usize,
         dpci: InputDpci,
-        palettes: Vec<Vec<u8>>,
+        palettes: Vec<StU8List>,
         py: Python,
     ) -> PyResult<IndexedImage> {
         Ok(TiledImage::tiled_to_native(
             self.chunks[chunk_idx].iter().map(|x| x.borrow(py)),
-            PixelGenerator::tiled4bpp(dpci.0.get_tiles(py)?.as_slice()),
+            PixelGenerator::tiled4bpp(dpci.get_tiles(py)?.as_slice()),
             palettes.iter().flat_map(|x| x.iter().copied()),
             DPCI_TILE_DIM,
             DPCI_TILE_DIM * DPC_TILING_DIM,
@@ -136,7 +136,7 @@ impl Dpc {
         img: In256ColIndexedImage,
         force_import: bool,
         py: Python,
-    ) -> PyResult<(Vec<StBytes>, Vec<Vec<u8>>)> {
+    ) -> PyResult<(Vec<StBytes>, Vec<StU8List>)> {
         let image = img.extract(py)?;
         let w = image.0 .1;
         let h = image.0 .2;
@@ -172,8 +172,8 @@ impl Dpc {
                 .chunks(3 * 16)
                 .into_iter()
                 .take(DPL_MAX_PAL)
-                .map(|x| x.into_iter().collect())
-                .collect::<Vec<Vec<u8>>>(),
+                .map(|x| x.into_iter().collect::<Vec<u8>>().into())
+                .collect::<Vec<StU8List>>(),
         ))
     }
 
@@ -253,7 +253,7 @@ impl DpcWriter {
 
 pub(crate) fn create_st_dpc_module(py: Python) -> PyResult<(&str, Bound<'_, PyModule>)> {
     let name: &'static str = "skytemple_rust.st_dpc";
-    let m = PyModule::new_bound(py, name)?;
+    let m = PyModule::new(py, name)?;
     m.add_class::<Dpc>()?;
     m.add_class::<DpcWriter>()?;
 
@@ -265,19 +265,22 @@ pub(crate) fn create_st_dpc_module(py: Python) -> PyResult<(&str, Bound<'_, PyMo
 // DPCs as inputs (for compatibility of including other DPC implementations from Python)
 
 pub mod input {
-    use pyo3::prelude::*;
-    use pyo3::types::{PyList, PyTuple};
-
+    use crate::bytes::StU8List;
     use crate::image::tilemap_entry::InputTilemapEntry;
     use crate::image::{In256ColIndexedImage, InIndexedImage, IndexedImage};
     use crate::st_dpc::Dpc;
     use crate::st_dpci::input::InputDpci;
+    use enum_dispatch::enum_dispatch;
+    use pyo3::prelude::*;
+    use pyo3::types::{PyList, PyTuple};
+    use pyo3::IntoPyObjectExt;
 
-    pub trait DpcProvider: ToPyObject {
+    #[enum_dispatch(InputDpc)]
+    pub trait DpcProvider {
         fn do_chunks_to_pil(
             &self,
             dpci: InputDpci,
-            palettes: Vec<Vec<u8>>,
+            palettes: Vec<StU8List>,
             width_in_mtiles: usize,
             py: Python,
         ) -> PyResult<IndexedImage>;
@@ -295,7 +298,7 @@ pub mod input {
         fn do_chunks_to_pil(
             &self,
             dpci: InputDpci,
-            palettes: Vec<Vec<u8>>,
+            palettes: Vec<StU8List>,
             width_in_mtiles: usize,
             py: Python,
         ) -> PyResult<IndexedImage> {
@@ -323,18 +326,18 @@ pub mod input {
         fn do_chunks_to_pil(
             &self,
             dpci: InputDpci,
-            palettes: Vec<Vec<u8>>,
+            palettes: Vec<StU8List>,
             width_in_mtiles: usize,
             py: Python,
         ) -> PyResult<IndexedImage> {
-            let args = PyTuple::new_bound(
+            let args = PyTuple::new(
                 py,
                 [
-                    dpci.into_py(py),
-                    palettes.into_py(py),
-                    width_in_mtiles.into_py(py),
+                    dpci.into_py_any(py)?,
+                    palettes.into_py_any(py)?,
+                    width_in_mtiles.into_py_any(py)?,
                 ],
-            );
+            )?;
             let img: In256ColIndexedImage = self
                 .call_method1(py, "chunks_to_pil", args)
                 .and_then(|v| v.extract(py))?;
@@ -348,41 +351,36 @@ pub mod input {
             correct_tile_ids: bool,
             py: Python,
         ) -> PyResult<()> {
-            let args = PyTuple::new_bound(
+            let args = PyTuple::new(
                 py,
                 [
-                    PyList::new_bound(
+                    PyList::new(
                         py,
-                        tile_mappings.into_iter().map(|v| {
-                            PyList::new_bound(py, v.into_iter().map(|vv| vv.0.into_py(py)))
-                        }),
-                    )
-                    .into_py(py),
-                    contains_null_chunk.into_py(py),
-                    correct_tile_ids.into_py(py),
+                        &tile_mappings
+                            .into_iter()
+                            .map(|v| {
+                                v.into_iter()
+                                    .map(|vv| vv.0.into_py_any(py))
+                                    .collect::<PyResult<Vec<_>>>()
+                                    .and_then(|vok| PyList::new(py, vok))
+                            })
+                            .collect::<PyResult<Vec<_>>>()?,
+                    )?
+                    .into_py_any(py)?,
+                    contains_null_chunk.into_py_any(py)?,
+                    correct_tile_ids.into_py_any(py)?,
                 ],
-            );
+            )?;
             self.call_method1(py, "import_tile_mappings", args)
                 .map(|_| ())
         }
     }
 
-    pub struct InputDpc(pub Box<dyn DpcProvider>);
-
-    impl<'source> FromPyObject<'source> for InputDpc {
-        fn extract_bound(ob: &Bound<'source, PyAny>) -> PyResult<Self> {
-            if let Ok(obj) = ob.extract::<Py<Dpc>>() {
-                Ok(Self(Box::new(obj)))
-            } else {
-                Ok(Self(Box::new(ob.to_object(ob.py()))))
-            }
-        }
-    }
-
-    impl IntoPy<PyObject> for InputDpc {
-        fn into_py(self, py: Python) -> PyObject {
-            self.0.to_object(py)
-        }
+    #[enum_dispatch]
+    #[derive(FromPyObject, IntoPyObject)]
+    pub enum InputDpc {
+        Rs(Py<Dpc>),
+        Py(PyObject),
     }
 }
 

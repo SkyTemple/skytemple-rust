@@ -91,7 +91,7 @@ use crate::st_waza_p::create_st_waza_p_module;
 fn skytemple_rust(py: Python, module: &Bound<'_, PyModule>) -> PyResult<()> {
     pyo3_log::init();
     info!("Loading skytemple_rust...");
-    let sys = py.import_bound("sys")?;
+    let sys = py.import("sys")?;
     let modules_raw = sys.getattr("modules")?;
     let modules: &Bound<'_, PyDict> = modules_raw.downcast()?;
     #[cfg(feature = "sir0")]

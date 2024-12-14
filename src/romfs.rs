@@ -158,7 +158,7 @@ impl<T: AsRef<[u8]>> GenericRomFs<T> {
             "The file is invalid.",
             PyValueError
         );
-        Ok(&self.data.as_ref()[(f_entry.alloc.start) as usize..(f_entry.alloc.end) as usize])
+        Ok(&self.data.as_ref()[f_entry.alloc.start as usize..f_entry.alloc.end as usize])
     }
 
     /// Writes ROMs. WARNING: This is currently pretty limited. It will fail if the fat/fnt size
@@ -265,14 +265,13 @@ impl<T: AsRef<[u8]>> GenericRomFs<T> {
             dirs: &'a BTreeMap<u16, Directory>,
             d: &Directory,
         ) -> Vec<&'a Directory> {
-            return dirs
-                .values()
+            dirs.values()
                 .filter(|id| {
                     id.path
                         .parent()
                         .map_or(false, |idp| idp == d.path.as_path())
                 })
-                .collect();
+                .collect()
         }
         let mut end_cursor: u32 = (self.fs.dirs.len() * 8) as u32;
 

@@ -210,7 +210,7 @@ pub(crate) fn create_st_script_var_table_module(
     py: Python,
 ) -> PyResult<(&str, Bound<'_, PyModule>)> {
     let name: &'static str = "skytemple_rust.st_script_var_table";
-    let m = PyModule::new_bound(py, name)?;
+    let m = PyModule::new(py, name)?;
     m.add_class::<ScriptVariableDefinition>()?;
     m.add_class::<ScriptVariableTables>()?;
     m.add("COUNT_GLOBAL_VARS", COUNT_GLOBAL_VARS)?;

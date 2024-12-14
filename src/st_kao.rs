@@ -33,9 +33,9 @@ use pyo3::types::PyType;
 
 use crate::bytes::{StBytes, StBytesMut};
 use crate::gettext::gettext;
-use crate::image::{In16ColSolidIndexedImage, IndexedImage, InIndexedImage, PixelGenerator};
 use crate::image::tiled::TiledImage;
-use crate::st_at_common::{COMMON_AT_BEST_3, CommonAt};
+use crate::image::{In16ColSolidIndexedImage, InIndexedImage, IndexedImage, PixelGenerator};
+use crate::st_at_common::{CommonAt, COMMON_AT_BEST_3};
 
 const KAO_IMAGE_LIMIT: usize = 800;
 static KAO_PROPERTIES_STATE_INSTANCE: Mutex<Option<Py<KaoPropertiesState>>> = Mutex::new(None);
@@ -441,7 +441,7 @@ impl Kao {
 
 #[pyclass(module = "skytemple_rust.st_kao", unsendable)]
 pub struct KaoIterator {
-    reference: Box<dyn Iterator<Item = std::vec::IntoIter<Option<Py<KaoImage>>>>>,
+    reference: Box<dyn Iterator<Item = vec::IntoIter<Option<Py<KaoImage>>>>>,
     iter_outer: Option<vec::IntoIter<Option<Py<KaoImage>>>>,
     i_outer: u32,
     i_inner: i32,
@@ -522,7 +522,7 @@ impl KaoWriter {
 
 pub(crate) fn create_st_kao_module(py: Python) -> PyResult<(&str, Bound<'_, PyModule>)> {
     let name: &'static str = "skytemple_rust.st_kao";
-    let m = PyModule::new_bound(py, name)?;
+    let m = PyModule::new(py, name)?;
     m.add_class::<KaoPropertiesState>()?;
     m.add_class::<KaoImage>()?;
     m.add_class::<Kao>()?;
