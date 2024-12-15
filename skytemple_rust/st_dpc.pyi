@@ -21,23 +21,25 @@ from PIL import Image
 from skytemple_rust import TilemapEntry
 from skytemple_rust.st_dpci import Dpci
 
-
 class Dpc:
     chunks: Sequence[Sequence[TilemapEntry]]
 
     def __init__(self, data: bytes): ...
-
-    def chunks_to_pil(self, dpci: Dpci, palettes: Sequence[Sequence[int]], width_in_mtiles=16) -> Image.Image: ...
-
-    def single_chunk_to_pil(self, chunk_idx, dpci: Dpci, palettes: Sequence[Sequence[int]]) -> Image.Image: ...
-
-    def pil_to_chunks(self, image: Image.Image, force_import=True) -> Tuple[Sequence[bytes], Sequence[Sequence[int]]]: ...
-
+    def chunks_to_pil(
+        self, dpci: Dpci, palettes: Sequence[Sequence[int]], width_in_mtiles=16
+    ) -> Image.Image: ...
+    def single_chunk_to_pil(
+        self, chunk_idx, dpci: Dpci, palettes: Sequence[Sequence[int]]
+    ) -> Image.Image: ...
+    def pil_to_chunks(
+        self, image: Image.Image, force_import=True
+    ) -> Tuple[Sequence[bytes], Sequence[Sequence[int]]]: ...
     def import_tile_mappings(
-            self, tile_mappings: Sequence[Sequence[TilemapEntry]],
-            contains_null_chunk=False, correct_tile_ids=True
+        self,
+        tile_mappings: Sequence[Sequence[TilemapEntry]],
+        contains_null_chunk=False,
+        correct_tile_ids=True,
     ): ...
-
 
 class DpcWriter:
     def __new__(cls): ...

@@ -14,12 +14,10 @@
 #
 #  You should have received a copy of the GNU General Public License
 #  along with SkyTemple.  If not, see <https://www.gnu.org/licenses/>.
+from range_typed_integers import u8, u16
 from typing import MutableSequence
 
-from range_typed_integers import *
-
 from skytemple_rust.st_sir0 import Sir0Serializable
-
 
 class ItemPEntry:
     buy_price: u16
@@ -39,7 +37,6 @@ class ItemPEntry:
     ai_flag_3: bool
 
     def __eq__(self, other: object) -> bool: ...
-
 
 class ItemP(Sir0Serializable):
     item_list: MutableSequence[ItemPEntry]

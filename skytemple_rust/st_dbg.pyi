@@ -22,22 +22,22 @@ from skytemple_rust.st_dpc import Dpc
 from skytemple_rust.st_dpci import Dpci
 from skytemple_rust.st_dpl import Dpl
 
-
 class Dbg:
     mappings: Sequence[int]
 
     def __init__(self, data: bytes): ...
-
     def place_chunk(self, x: int, y: int, chunk_index: int) -> None: ...
-
     def to_pil(
-            self, dpc: Dpc, dpci: Dpci, palettes: Sequence[Sequence[int]]
+        self, dpc: Dpc, dpci: Dpci, palettes: Sequence[Sequence[int]]
     ) -> Image.Image: ...
-
     def from_pil(
-            self, dpc: Dpc, dpci: Dpci, dpl: Dpl, img: Image.Image, force_import: bool = False
+        self,
+        dpc: Dpc,
+        dpci: Dpci,
+        dpl: Dpl,
+        img: Image.Image,
+        force_import: bool = False,
     ) -> None: ...
-
 
 class DbgWriter:
     def __new__(cls): ...
