@@ -16,13 +16,14 @@
  * You should have received a copy of the GNU General Public License
  * along with SkyTemple.  If not, see <https://www.gnu.org/licenses/>.
  */
+use bytes::{Buf, BufMut};
+use log::warn;
+use pyo3::exceptions::PyAssertionError;
+use pyo3::prelude::*;
 use std::cmp::Ordering;
 use std::iter::repeat;
 use std::mem::take;
-
-use bytes::{Buf, BufMut};
-use pyo3::exceptions::PyAssertionError;
-use pyo3::prelude::*;
+use std::sync::OnceLock;
 
 use crate::bytes::{StBytes, StU8List};
 
@@ -211,13 +212,23 @@ impl Bpl {
     ///
     ///  The maximum number of frames is the length of self.animation_palette.
     pub fn apply_palette_animations(&self, frame: u16, py: Python) -> Vec<StU8List> {
+        static BLACK: OnceLock<StU8List> = OnceLock::new();
+
         // TODO: First frame is missing: No change!
+        let mut already_used_colors = 0;
         let mut f_palettes = Vec::with_capacity(self.animation_specs.len());
         for (i, spec) in self.animation_specs.iter().enumerate() {
             let spec = spec.borrow(py);
             if spec.number_of_frames > 0 {
-                let actual_frame_for_pal = frame % spec.number_of_frames;
-                let pal_for_frame = &self.animation_palette[actual_frame_for_pal as usize];
+                let actual_frame_for_pal = already_used_colors + (frame % spec.number_of_frames);
+                already_used_colors += spec.number_of_frames;
+                let pal_for_frame = &self
+                    .animation_palette
+                    .get(actual_frame_for_pal as usize)
+                    .unwrap_or_else(|| {
+                        warn!("palette animation frame out of bounds, using black");
+                        BLACK.get_or_init(|| StU8List(vec![0; 15 * 3]))
+                    });
                 f_palettes.push(
                     repeat(0)
                         .take(3)
