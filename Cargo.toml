@@ -42,7 +42,7 @@ romfs = ["nitro_fs", "memmap2", "strings"]
 skytemple_rust_macros = { path = "skytemple_rust_macros" }
 pyo3 = { version = "0.23", features = ["extension-module"] }
 pyo3-log = { version = "0.12" }
-itertools = "0.13"
+itertools = "0.14"
 log = "0.4"
 bytes = "1"
 num-traits = "0.2"
