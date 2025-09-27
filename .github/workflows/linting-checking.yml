@@ -9,6 +9,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
+      - name: Install Clippy
+        run: rustup component add clippy
       - name: Clippy
         run: cargo clippy --release
 
@@ -18,5 +20,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
+      - name: Install cargo fmt
+        run: rustup component add rustfmt
       - name: Run cargo fmt
         run: cargo fmt --verbose -- --check
