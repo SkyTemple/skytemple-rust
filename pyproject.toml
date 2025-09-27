@@ -10,7 +10,7 @@ authors = [
 ]
 description = "Binary Rust extension for skytemple-files"
 readme = "README.rst"
-requires-python = ">=3.10"
+requires-python = ">=3.10, <3.14"
 keywords = ["rom-hacking", "game-modding", "skytemple", "gtk"]
 license = { text = "GPL-3.0-or-later" }
 classifiers = [
