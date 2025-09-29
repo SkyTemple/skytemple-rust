@@ -41,7 +41,7 @@ Unit Tests
 ~~~~~~~~~~
 Unit tests for the ``st_`` modules are located as Python Tests in `SkyTemple Files`_. The reason
 for this is that they are tested together with the "legacy" Python implementations. When changing
-existing modules, be aware that I will run the Python tests on them before merging any Pull Requests.
+existing modules, be aware that I will run the Python tests on them before merging any pull requests.
 
 .. _SkyTemple Files: https://github.com/SkyTemple/skytemple-files
 .. _pmd_wan: https://github.com/marius851000/pmd_wan
